@@ -19,7 +19,7 @@ export interface AccountMember {
   avatar_url: string;
 }
 
-export type AccountsLoadState = 'loading' | 'ready' | 'error';
+type AccountsLoadState = 'loading' | 'ready' | 'error';
 
 const NO_ACCOUNTS: MetaAccount[] = [];
 const NO_MEMBERS: AccountMember[] = [];

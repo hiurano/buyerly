@@ -166,7 +166,7 @@ export interface PoolSnapshot {
 }
 
 /** What the sync engine (#507) tells the pool about itself. */
-export interface PoolSync {
+interface PoolSync {
   /** Settles once the workspace's bootstrap is in, or failed; null when none is on its way. */
   booting: Promise<void> | null;
   /** Its socket is open and caught up: a write's change will come over it, no read needed. */

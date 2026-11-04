@@ -2,7 +2,7 @@ import { type OpenPaletteKind } from '@/models/commandMenuStore';
 import { type SettingsSection } from '@/models/shellStore';
 
 /** The pages G then a letter opens; Settings opens on its first section. */
-export type GoToTarget = 'inbox' | 'accounts' | 'campaigns' | 'rules' | 'preferences';
+type GoToTarget = 'inbox' | 'accounts' | 'campaigns' | 'rules' | 'preferences';
 
 /**
  * Linear's "G then …": one letter per page, shown in the sidebar, the

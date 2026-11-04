@@ -54,10 +54,7 @@ export const TooltipProvider: React.FC<{ children: React.ReactNode }> = ({ child
   </TooltipPrimitive.Provider>
 );
 
-export const TooltipRoot = TooltipPrimitive.Root;
-export const TooltipTrigger = TooltipPrimitive.Trigger;
-
-export interface TooltipProps {
+interface TooltipProps {
   children: React.ReactNode;
   content: React.ReactNode;
   shortcut?: string;

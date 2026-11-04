@@ -165,7 +165,7 @@ export interface RuleLabel {
   createdAt: string;
 }
 
-export type RulesLoadState = 'idle' | 'loading' | 'ready' | 'error';
+type RulesLoadState = 'idle' | 'loading' | 'ready' | 'error';
 
 /** A buyer-managed bucket used only to organize campaigns in the campaign view. */
 export interface CampaignGroup {
@@ -175,7 +175,7 @@ export interface CampaignGroup {
   accentColor: string;
 }
 
-export interface RulesEnabledOutcome {
+interface RulesEnabledOutcome {
   changed: string[];
   unchanged: string[];
   skipped: string[];
@@ -267,7 +267,7 @@ const sameIds = (left: string[], right: string[]) =>
  * model pool (#488), and the rules attached to the ad accounts Ads Manager
  * shows; with the writes that change them.
  */
-export class RulesStore {
+class RulesStore {
   // Campaigns / Ads Manager
   campaigns: CampaignItem[] = [];
   campaignGroups: CampaignGroup[] = [];

@@ -1,13 +1,8 @@
-import asyncio
-import json
 import unittest
-from unittest.mock import AsyncMock, MagicMock
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from cryptography.fernet import Fernet
-from database.db import Base
-from database.models import Account, AppSettings, AutomationScheduleState, MetaConnection, User, Workspace
+from database.models import Account, MetaConnection, User, Workspace
 from core.config import settings
 from core.meta_tokens import encrypt_meta_token, resolve_account_access_token
 from scheduler.worker import MonitoringWorker

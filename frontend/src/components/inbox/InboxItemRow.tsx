@@ -205,7 +205,7 @@ const styles = stylex.create({
   },
 });
 
-export interface InboxItemActions {
+interface InboxItemActions {
   onToggleRead: (item: InboxItem) => void;
   onDelete: (item: InboxItem) => void;
   onSnooze: (item: InboxItem, until: Date) => void;

@@ -18,7 +18,7 @@ from api.deps import (
 from core.audit import build_audit_event
 from core.currency import UNKNOWN_CURRENCY, normalize_currency
 from core.meta_tokens import resolve_account_access_token
-from core.ownership import entity_is_owned_by, owned_by
+from core.ownership import owned_by
 from database.db import async_session_maker
 from database.models import Account, StoppedAdSet, User
 from meta_api.client import MetaClient

@@ -18,7 +18,7 @@ import { scopeStore } from './scopeStore';
 import { makeStore, useStore } from './store';
 
 /** Settings → Notifications: each channel's choices, the Telegram connection and this browser's desktop notifications. */
-export class NotificationSettingsStore {
+class NotificationSettingsStore {
   notificationChannels: NotificationChannels = DEFAULT_NOTIFICATION_CHANNELS;
   notificationChannelsLoaded = false;
   telegramConnection: TelegramConnection = NO_TELEGRAM_CONNECTION;

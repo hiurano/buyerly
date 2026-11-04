@@ -21,7 +21,7 @@ import { SYNC_CHANNEL, type WipeMessage } from './syncProtocol';
  */
 
 /** Bumped whenever what is stored changes shape: an older database is dropped, never read. */
-export const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 1;
 
 const PREFIX = 'buyerly_';
 /** Every database this browser made, by name, with the scope it holds: sign-out finds them here. */
@@ -170,7 +170,7 @@ export async function readAll(db: IDBDatabase, { models: withModels = true } = {
 }
 
 /** Runs one write; a closed or full database loses it quietly: the server still has it all. */
-export async function writeTo(db: IDBDatabase, stores: string[], run: (transaction: IDBTransaction) => void): Promise<void> {
+async function writeTo(db: IDBDatabase, stores: string[], run: (transaction: IDBTransaction) => void): Promise<void> {
   // Written in order: IndexedDB runs transactions on the same stores one after another.
   let transaction: IDBTransaction;
   try {
@@ -216,7 +216,7 @@ export function writeValue(db: IDBDatabase, key: string, value: unknown) {
 /** Waits before the pool's lists are written: a burst of answers makes one write. */
 const POOL_SAVE_MS = 1_000;
 
-export class LocalDatabase {
+class LocalDatabase {
   #scope: string | null = null;
   #db: Promise<IDBDatabase | null> = Promise.resolve(null);
   #generation = 0;
@@ -357,7 +357,7 @@ export class LocalDatabase {
 export const localDatabase = new LocalDatabase();
 
 /** The profiles last seen in this browser, by account (0 with one account and no account list). */
-export interface RememberedSession {
+interface RememberedSession {
   accounts: BrowserAccount[];
   users: Record<string, SessionUser>;
 }

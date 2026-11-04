@@ -13,7 +13,7 @@ from core.meta_tokens import (
     rotate_stored_meta_tokens,
     resolve_account_access_token,
 )
-from database.models import Account, MetaConnection, User, Workspace, WorkspaceMember
+from database.models import Account, MetaConnection, User, Workspace
 from tests.test_db_helper import create_test_engine, init_test_db
 
 

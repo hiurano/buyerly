@@ -93,7 +93,7 @@ async def _commit_quietly(session, what: str) -> bool:
     try:
         await session.commit()
         return True
-    except Exception as error:
+    except Exception:
         await session.rollback()
         logger.error("Failed to persist %s", what)
         return False

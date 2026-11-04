@@ -3,7 +3,7 @@ import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 
 export type SortDirection = 'asc' | 'desc';
 
-export interface ListSort<K extends string> {
+interface ListSort<K extends string> {
   key: K;
   direction: SortDirection;
 }

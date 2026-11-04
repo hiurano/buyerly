@@ -3,7 +3,7 @@ import { makeStore, useStore } from './store';
 import { toggled } from './viewStore';
 
 /** The rows picked and focused in Ads Manager and Rules. */
-export class SelectionStore {
+class SelectionStore {
   selectedCampaignIds: string[] = [];
   focusedCampaignId = '';
   selectedRuleIds: string[] = [];

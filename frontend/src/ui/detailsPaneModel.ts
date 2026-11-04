@@ -13,7 +13,7 @@ export interface DetailsPaneState {
 }
 
 /** Linear's `DetailsPaneWidth.default`: the pane's width until it is resized. */
-export const DETAILS_PANE_DEFAULT_WIDTH = 350;
+const DETAILS_PANE_DEFAULT_WIDTH = 350;
 /** Each pane's width beside its view until resized: Linear's project panel is 400px (measured 01.11). */
 export const DETAILS_PANE_DEFAULT_WIDTHS: Record<DetailsPaneId, number> = {
   adsManager: DETAILS_PANE_DEFAULT_WIDTH,
@@ -21,9 +21,9 @@ export const DETAILS_PANE_DEFAULT_WIDTHS: Record<DetailsPaneId, number> = {
   account: 400,
 };
 /** The narrowest a drag leaves it. */
-export const DETAILS_PANE_MIN_WIDTH = 360;
+const DETAILS_PANE_MIN_WIDTH = 360;
 /** The widest it ever gets. */
-export const DETAILS_PANE_MAX_WIDTH = 600;
+const DETAILS_PANE_MAX_WIDTH = 600;
 /** Room kept for the navigation sidebar (330) and the list (300) beside it. */
 const RESERVED_WIDTH = 330 + 300;
 
@@ -57,7 +57,7 @@ export function parseDetailsPanes(raw: string | null): Record<DetailsPaneId, Det
 }
 
 /** The widest the pane may be in a window this wide: the window itself when it overlays. */
-export function maxDetailsPaneWidth(windowWidth: number, overlay: boolean): number {
+function maxDetailsPaneWidth(windowWidth: number, overlay: boolean): number {
   return Math.min(DETAILS_PANE_MAX_WIDTH, overlay ? windowWidth + 1 : windowWidth - RESERVED_WIDTH);
 }
 
@@ -86,7 +86,7 @@ export function clampDetailsPaneWidth(width: number, windowWidth: number): numbe
  * the way react-spring does, one millisecond at a time. Overdamped: it settles
  * in about 170ms and never overshoots.
  */
-export const DETAILS_PANE_SPRING = { tension: 1000, friction: 40, mass: 0.1 };
+const DETAILS_PANE_SPRING = { tension: 1000, friction: 40, mass: 0.1 };
 const PRECISION = 0.01;
 
 export interface SpringValue {

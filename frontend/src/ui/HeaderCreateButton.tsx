@@ -4,7 +4,7 @@ import { colors } from '@/styles/tokens.stylex';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { Tooltip } from '@/ui/Tooltip';
 
-export interface HeaderCreateButtonProps {
+interface HeaderCreateButtonProps {
   /** Short label, also the accessible name: "New rule", "Add account". */
   label: string;
   /** Tooltip text, e.g. "Create new rule". */

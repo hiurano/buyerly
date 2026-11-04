@@ -17,7 +17,7 @@ const personOptions = (members: readonly MemberItem[]): FilterOption[] => member
 
 /* Members: Linear's Display options there order by Name, Role or Joined and show Role, Joined and Teams. */
 
-export const MEMBER_ROLES = ['owner', 'admin', 'member', 'guest'];
+const MEMBER_ROLES = ['owner', 'admin', 'member', 'guest'];
 
 export const MEMBERS_VIEW_DEFAULTS = listViewDefaults({
   grouping: 'none',

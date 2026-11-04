@@ -1,4 +1,4 @@
-from sqlalchemy import or_, and_, false
+from sqlalchemy import or_, false
 
 
 def owned_by(model, user):

@@ -6,7 +6,7 @@ import hashlib
 import time
 import uuid
 from datetime import date, datetime, time as day_time, timedelta, timezone
-from typing import Optional, Callable, Any, List, Dict
+from typing import Optional, Callable, Any, List
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError

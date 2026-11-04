@@ -2,7 +2,6 @@ import logging
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import func, or_, select, update
@@ -34,15 +33,6 @@ from core.email import send_otp_verification_email
 from core.rate_limit import get_client_ip, rate_limit_dep
 from database.db import async_session_maker
 from database.models import (
-    Account,
-    ActionUndoState,
-    AnalyticsViewPreference,
-    AuditEvent,
-    AutomationScheduleState,
-    RuleExecutionState,
-    RuleGroup,
-    RulePreset,
-    SummarySnapshot,
     User,
     WebSession,
     Workspace,

@@ -4,7 +4,7 @@ import { useCallback, useSyncExternalStore } from 'react';
  * Linear's `alwaysCollapsed` breakpoint: at this width and below the navigation
  * sidebar never takes layout space and opens as a drawer over the content.
  */
-export const SIDEBAR_ALWAYS_COLLAPSED_QUERY = '(max-width: 880px)';
+const SIDEBAR_ALWAYS_COLLAPSED_QUERY = '(max-width: 880px)';
 
 export function useMediaQuery(query: string): boolean {
   const subscribe = useCallback((onChange: () => void) => {
@@ -21,7 +21,7 @@ export function useIsSmallScreen(): boolean {
 }
 
 /** A finger and no hover: Linear's pure-touch case. */
-export const TOUCH_SCREEN_QUERY = '(hover: none) and (pointer: coarse)';
+const TOUCH_SCREEN_QUERY = '(hover: none) and (pointer: coarse)';
 
 export function useIsTouchScreen(): boolean {
   return useMediaQuery(TOUCH_SCREEN_QUERY);

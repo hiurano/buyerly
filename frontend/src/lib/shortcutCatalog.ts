@@ -12,7 +12,7 @@ export interface ShortcutEntry {
   keywords?: string;
 }
 
-export interface ShortcutGroup {
+interface ShortcutGroup {
   name: string;
   shortcuts: ShortcutEntry[];
 }
@@ -22,7 +22,7 @@ export interface ShortcutGroup {
  * (General, Navigation, …, List / Board, Inbox, Filters). Only keys the app
  * really answers are listed; keep this in step when one is added.
  */
-export const SHORTCUT_GROUPS: ShortcutGroup[] = [
+const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     name: 'General',
     shortcuts: [

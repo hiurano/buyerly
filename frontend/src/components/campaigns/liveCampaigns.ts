@@ -47,7 +47,7 @@ export function currencyPrefix(currency: string): string {
   }
 }
 
-export function formatDailyBudget(value: number, currency: string): string {
+function formatDailyBudget(value: number, currency: string): string {
   if (!Number.isFinite(value) || value <= 0) return '—';
   const money = formatMetricMoney(value, currency);
   return money === '—' ? money : `${money}/day`;

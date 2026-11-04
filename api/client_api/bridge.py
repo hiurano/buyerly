@@ -31,7 +31,6 @@ from fastapi.routing import APIRoute
 from graphql import GraphQLError
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from pydantic.fields import FieldInfo
-from pydantic_core import PydanticUndefined
 from strawberry.types import Info
 
 from api.auth import get_authenticated_user, get_current_user

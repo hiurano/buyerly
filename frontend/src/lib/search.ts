@@ -35,7 +35,7 @@ export interface SearchResponse {
 }
 
 /** Results per kind; the list scrolls, as Linear's search does. */
-export const SEARCH_LIMIT = 20;
+const SEARCH_LIMIT = 20;
 
 export type SearchTab = 'all' | SearchKind;
 

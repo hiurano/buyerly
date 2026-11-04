@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta, timezone
 import logging
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy import and_, delete, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from core.accounts import get_short_account_label

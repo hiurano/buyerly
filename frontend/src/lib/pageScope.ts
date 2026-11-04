@@ -9,7 +9,7 @@ import { useViewStore, type AdsManagerEntity } from '@/models/viewStore';
  * on (#490); the page still on screen reads these instead, so it
  * stays as it was until the next one takes its place.
  */
-export interface BuyerlyPageScope {
+interface BuyerlyPageScope {
   teamKey: string | null;
   entity: AdsManagerEntity;
   pathname: string;

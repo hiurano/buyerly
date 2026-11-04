@@ -48,7 +48,7 @@ function readCollapsed(): string[] {
 }
 
 /** Which sidebar sections and teams are folded; Linear remembers them per browser. */
-export function useSidebarCollapsed(id: string): [boolean, () => void] {
+function useSidebarCollapsed(id: string): [boolean, () => void] {
   const [collapsed, setCollapsed] = useState(() => readCollapsed().includes(id));
   const toggle = useCallback(() => {
     setCollapsed((current) => {

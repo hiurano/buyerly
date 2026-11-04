@@ -5,9 +5,8 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 from zoneinfo import ZoneInfo
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
-from database.db import Base
 from database.models import (
     Account,
     AccountHealth,
@@ -1925,7 +1924,7 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
         })
 
         worker = MonitoringWorker(meta_client=mock_meta)
-        stats = await worker.run_cycle()
+        await worker.run_cycle()
 
         async with self.test_session_maker() as session:
             events = (
@@ -1942,7 +1941,7 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
         mock_meta.get_account_info = AsyncMock(side_effect=PermissionError("Token expired"))
 
         worker = MonitoringWorker(meta_client=mock_meta)
-        stats = await worker.run_cycle()
+        await worker.run_cycle()
 
         async with self.test_session_maker() as session:
             events = (

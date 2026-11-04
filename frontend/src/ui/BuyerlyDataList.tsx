@@ -6,7 +6,7 @@ import { colors } from '@/styles/tokens.stylex';
 import { rowMarker } from '@/ui/markers.stylex';
 import { withClassName } from '@/ui/withClassName';
 
-export const BUYERLY_DATA_LIST = {
+const BUYERLY_DATA_LIST = {
   toolbarHeight: 43.5,
   rowHeight: 44,
   rowHeightComfortable: 56,
@@ -47,7 +47,7 @@ export interface BuyerlyDataListColumn {
   headerInset?: number;
 }
 
-export const getLinearDataListTemplate = (columns: BuyerlyDataListColumn[]) =>
+const getLinearDataListTemplate = (columns: BuyerlyDataListColumn[]) =>
   columns.map((column) => column.width).join(' ');
 
 /**
@@ -78,7 +78,7 @@ export const buyerlyDataNameColumn = ({
  * The narrowest width at which every column keeps its declared size. A
  * `minmax(Npx, …)` column counts as N; the viewport scrolls horizontally below it.
  */
-export const getLinearDataListMinWidth = (columns: BuyerlyDataListColumn[]) => {
+const getLinearDataListMinWidth = (columns: BuyerlyDataListColumn[]) => {
   const columnWidth = columns.reduce((total, column) => {
     const minimum = /^minmax\((\d+)px/.exec(column.width);
     return total + (minimum ? Number(minimum[1]) : Number.parseInt(column.width, 10) || 0);
@@ -472,7 +472,7 @@ export const BuyerlyDataListToolbar: React.FC<React.PropsWithChildren<{ classNam
   </div>
 );
 
-export const BuyerlyDataListViewport: React.FC<
+const BuyerlyDataListViewport: React.FC<
   React.PropsWithChildren<{
     className?: string;
     horizontal?: boolean;
@@ -483,7 +483,7 @@ export const BuyerlyDataListViewport: React.FC<
   </div>
 );
 
-export const BuyerlyDataListStack: React.FC<React.PropsWithChildren<{ className?: string; xstyle?: stylex.StyleXStyles }>> = ({
+const BuyerlyDataListStack: React.FC<React.PropsWithChildren<{ className?: string; xstyle?: stylex.StyleXStyles }>> = ({
   children,
   className = '',
   xstyle,
@@ -538,7 +538,7 @@ interface BuyerlyDataListColumnHeaderProps extends Omit<React.HTMLAttributes<HTM
   issueLayout?: boolean;
 }
 
-export const BuyerlyDataListColumnHeader: React.FC<BuyerlyDataListColumnHeaderProps> = ({
+const BuyerlyDataListColumnHeader: React.FC<BuyerlyDataListColumnHeaderProps> = ({
   columns,
   minWidth,
   sortKey,
@@ -621,7 +621,7 @@ interface BuyerlyDataListGroupHeaderProps {
 
 const GROUP_HEADER_BG = 'var(--rules-group-bg, var(--card-bg))';
 
-export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProps> = ({
+const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProps> = ({
   title,
   count,
   dotColor = 'rgb(148, 163, 184)',
@@ -815,7 +815,7 @@ interface BuyerlyDataMetricCellProps {
 }
 
 /** What a cell shows for no value. */
-export const EMPTY_VALUE = '—';
+const EMPTY_VALUE = '—';
 
 /** A right-aligned number with tabular figures and an optional caption. */
 export const BuyerlyDataMetricCell: React.FC<BuyerlyDataMetricCellProps> = ({

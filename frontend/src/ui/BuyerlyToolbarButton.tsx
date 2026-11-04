@@ -40,7 +40,7 @@ BuyerlyToolbarButton.displayName = 'BuyerlyToolbarButton';
  * Linear's tooltip under a toolbar button: centred in a page header, and on a
  * tab row lined up with the button's right edge.
  */
-export const toolbarTooltipAlign = (placement: BuyerlyToolbarButtonPlacement) =>
+const toolbarTooltipAlign = (placement: BuyerlyToolbarButtonPlacement) =>
   placement === 'toolbar' ? 'end' : 'center';
 
 interface BuyerlyDisplayOptionsButtonProps

@@ -29,7 +29,7 @@ import { sync } from './sync';
  * them are handed to another tab, which sends them.
  */
 
-export interface TransactionInput {
+interface TransactionInput {
   /** What failed, as the toast's title: "Couldn't rename the team". */
   label: string;
   /** One mutation with one root field, as `graphql` takes it. */
@@ -87,7 +87,7 @@ const refusal = (error: GraphQLError) => new ApiError(
  * Several transactions as one document: each mutation's root field under an
  * alias of its own (`t0: teamUpdate(…)`), its variables renamed to match.
  */
-export function batchDocument(batch: Pick<TransactionInput, 'mutation' | 'variables'>[]): { query: string; variables: Record<string, unknown> } {
+function batchDocument(batch: Pick<TransactionInput, 'mutation' | 'variables'>[]): { query: string; variables: Record<string, unknown> } {
   if (batch.length === 1) return { query: batch[0].mutation, variables: batch[0].variables ?? {} };
   const definitions: string[] = [];
   const fields: string[] = [];
@@ -108,7 +108,7 @@ export function batchDocument(batch: Pick<TransactionInput, 'mutation' | 'variab
 let counter = 0;
 const nextId = () => `${Date.now().toString(36)}-${(counter += 1).toString(36)}`;
 
-export class TransactionQueue {
+class TransactionQueue {
   /** Written but not yet held by the sync engine: what the pool shows over its records. */
   pending: Transaction[] = [];
   /** The last send failed on the network and waits to try again. */

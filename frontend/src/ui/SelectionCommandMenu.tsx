@@ -244,7 +244,7 @@ export const CommandMenuFooterKeys: React.FC<{ keys: string[] }> = ({ keys }) =>
 );
 
 /** What a scoped menu acts on: one record as "RUL-07 ⋅ Name", or a count. */
-export interface CommandMenuScope {
+interface CommandMenuScope {
   /** Linear's identifier before the dot, when the record has one. */
   prefix?: string;
   label: string;
@@ -254,7 +254,7 @@ export interface CommandMenuScope {
  * Linear's scope chip over a scoped command menu: the record, or how many,
  * in a 22px pill with ⌫ that drops the scope.
  */
-export const CommandMenuScopeChip: React.FC<{ scope: CommandMenuScope; onClear: () => void }> = ({ scope, onClear }) => (
+const CommandMenuScopeChip: React.FC<{ scope: CommandMenuScope; onClear: () => void }> = ({ scope, onClear }) => (
   <div {...stylex.props(styles.scope)}>
     <span {...stylex.props(styles.scopeChip)}>
       {scope.prefix && <span {...stylex.props(styles.scopePrefix)}>{`${scope.prefix} ⋅`}</span>}

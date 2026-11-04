@@ -23,7 +23,7 @@ function track<T>(promise: Promise<T>): Loading<T> {
   return loading;
 }
 
-export function buyerlyChunk<M>(importModule: () => Promise<M>): BuyerlyChunk<M> {
+function buyerlyChunk<M>(importModule: () => Promise<M>): BuyerlyChunk<M> {
   const state: { loading?: Loading<M> } = {};
   const load = () => {
     // A download that failed (offline, a new release) is tried again on the next open.

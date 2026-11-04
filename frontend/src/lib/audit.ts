@@ -41,7 +41,7 @@ export interface AuditEventListResponse {
   status_counts: Record<string, number>;
 }
 
-export interface AuditUndoResponse {
+interface AuditUndoResponse {
   success: boolean;
   already_reverted: boolean;
   original_event_id: number;
@@ -49,7 +49,7 @@ export interface AuditUndoResponse {
   message: string;
 }
 
-export type AuditInboxFilter = 'all' | 'error' | 'reverted';
+type AuditInboxFilter = 'all' | 'error' | 'reverted';
 
 interface AuditEventQuery {
   page: number;

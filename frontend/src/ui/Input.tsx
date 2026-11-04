@@ -3,7 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { colors, radii } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
 
-export type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
+type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
 
 const styles = stylex.create({
   input: {

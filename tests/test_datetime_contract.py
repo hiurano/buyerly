@@ -2,7 +2,7 @@ import unittest
 
 from sqlalchemy import DateTime
 
-import database.models  # Register every mapped table in Base.metadata.
+import database.models  # noqa: F401 - register every mapped table in Base.metadata.
 from database.db import Base
 
 

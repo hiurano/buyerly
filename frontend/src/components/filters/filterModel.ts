@@ -308,19 +308,3 @@ export const getFilterValueAccessibleName = <T>(
       return option?.label ?? String(value);
     })
     .join(', ');
-
-export const parseDisplayNumber = (value: string | number) => {
-  if (typeof value === 'number') return value;
-  const normalized = value.replace(/,/g, '').replace(/[^0-9.-]/g, '');
-  const parsed = Number.parseFloat(normalized);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-export const normalizeDisplayDate = (value: string) => {
-  const parsed = new Date(value);
-  if (Number.isFinite(parsed.getTime())) return parsed.toISOString();
-
-  const currentYear = new Date().getFullYear();
-  const withYear = new Date(`${value} ${currentYear}`);
-  return Number.isFinite(withYear.getTime()) ? withYear.toISOString() : value;
-};

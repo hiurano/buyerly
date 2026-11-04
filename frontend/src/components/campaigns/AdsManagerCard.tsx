@@ -48,7 +48,7 @@ export interface CardChip {
   icon?: React.ReactNode;
 }
 
-export interface CardFigure {
+interface CardFigure {
   key: string;
   label: string;
   value: string;

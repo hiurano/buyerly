@@ -18,7 +18,7 @@ export interface DetailsFacetTab {
 }
 
 /** One quick filter: a value of one tab's field, on top of the view's filters. */
-export interface DetailsFacetSelection {
+interface DetailsFacetSelection {
   fieldId: string;
   value: string;
 }

@@ -73,7 +73,7 @@ const SYSTEM_ROOTS = new Set([
 ]);
 
 /** Settings pages with their own address, at Linear's paths. */
-export const SETTINGS_PATHS = {
+const SETTINGS_PATHS = {
   workspace: 'workspace',
   teams: 'teams',
   'new-team': 'new-team',
@@ -216,7 +216,7 @@ interface MatchLike {
 }
 
 /** The route the matched branch of the tree opens. */
-export function routeFromMatches(matches: readonly MatchLike[] | null, search: string): Route {
+function routeFromMatches(matches: readonly MatchLike[] | null, search: string): Route {
   const last = matches?.[matches.length - 1];
   const opened = last?.handle as BuyerlyRouteHandle | undefined;
   if (!last || !opened) return { kind: 'unknown' };
@@ -345,7 +345,7 @@ export function pathForTab(
 }
 
 /** A Settings page's address; a team's pages take "<KEY>" or "<KEY>/<page>". */
-export function settingsPath(workspace: string, section: SettingsSection = 'preferences', teamPath = ''): string {
+function settingsPath(workspace: string, section: SettingsSection = 'preferences', teamPath = ''): string {
   if (section === 'team') {
     return teamPath ? `/${workspace}/settings/teams/${teamPath}` : `/${workspace}/settings/teams`;
   }

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { AVATAR_PX, avatarColor, avatarInitials, initialsFontSize, type AvatarSize } from '@/lib/avatar';
 
-export interface WorkspaceMark {
+interface WorkspaceMark {
   id: number;
   name: string;
   logo_url?: string | null;

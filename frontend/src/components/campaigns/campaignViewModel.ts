@@ -3,7 +3,7 @@ import { applyFilterClauses, NUMBER_OPERATORS, TEXT_OPERATORS } from '@/componen
 import type { FilterFieldDefinition, FilterClause, FilterOption } from '@/components/filters/filterModel';
 import { metricsFor, type AdsManagerMetrics } from './adsManagerMetrics';
 
-export interface ViewRow {
+interface ViewRow {
   id: string; name: string; status: string; effectiveStatus?: string; campaignId?: string; adSetId?: string;
   accountId?: string; metrics?: AdsManagerMetrics;
 }

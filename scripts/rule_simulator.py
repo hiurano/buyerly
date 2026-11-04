@@ -42,7 +42,7 @@ import argparse
 import asyncio
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import Callable, Optional
 from urllib.parse import parse_qs
 from zoneinfo import ZoneInfo

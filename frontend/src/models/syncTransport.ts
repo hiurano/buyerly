@@ -40,7 +40,7 @@ function inPage(receive: (message: HubMessage) => void): Channel {
 }
 
 /** The browser has SharedWorker; checks turn it off with `buyerlySharedSync = false` before the app loads. */
-export const sharedWorkerAvailable = () => typeof SharedWorker === 'function'
+const sharedWorkerAvailable = () => typeof SharedWorker === 'function'
   && (globalThis as { buyerlySharedSync?: boolean }).buyerlySharedSync !== false;
 
 export class HubLink {

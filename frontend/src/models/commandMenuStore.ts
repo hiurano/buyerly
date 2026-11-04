@@ -5,7 +5,7 @@ import { makeStore, useStore } from './store';
 export type OpenPaletteKind = 'campaign' | 'adset' | 'ad' | 'rule' | 'account' | 'settings' | 'favorite';
 
 /** Ctrl/Cmd+K, the "Open …" palettes and the keyboard shortcuts panel. */
-export class CommandMenuStore {
+class CommandMenuStore {
   isCommandMenuOpen = false;
   /** Linear's keyboard shortcuts panel (Cmd/Ctrl+/). */
   isShortcutsOpen = false;

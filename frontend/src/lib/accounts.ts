@@ -107,7 +107,7 @@ export function chooseAccount(accounts: BrowserAccount[], workspaceSlug?: string
   return preferred[0];
 }
 
-export interface AccountBlock {
+interface AccountBlock {
   /** Undefined only without any known account (local dev sign-in). */
   accountId?: number;
   label: string;

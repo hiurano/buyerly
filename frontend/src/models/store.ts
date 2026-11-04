@@ -24,7 +24,7 @@ function fields(store: object): string[] {
 }
 
 /** Calls back once after any action that changed one of the store's fields. */
-export function subscribeStore(store: object, onChange: () => void): () => void {
+function subscribeStore(store: object, onChange: () => void): () => void {
   const keys = fields(store);
   const record = store as Record<string, unknown>;
   return reaction(() => keys.map((key) => record[key]), onChange, { equals: compareShallow });

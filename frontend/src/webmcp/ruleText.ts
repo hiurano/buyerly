@@ -68,7 +68,7 @@ function joinWords(parts: string[], word: string): string {
   return `${parts.slice(0, -1).join(', ')} ${word} ${parts[parts.length - 1]}`;
 }
 
-export function describeConditions(
+function describeConditions(
   conditions: RuleConditionPayload[],
   logic: 'and' | 'or',
   currency?: string,

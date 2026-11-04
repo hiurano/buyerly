@@ -7,7 +7,7 @@ import type { FilterClause, FilterFieldDefinition, FilterOptionAvatar } from '@/
  * the ad account, Issue status type the event status. Issue priority has no
  * counterpart in ad events.
  */
-export const FILTER_FIELDS: Array<{
+const FILTER_FIELDS: Array<{
   id: string;
   field: InboxFilterClause['field'];
   label: string;

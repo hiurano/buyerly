@@ -3,10 +3,10 @@ import { preloadPage, type PageToOpen } from '@/models/pagePreload';
 import { preloadPageChunk } from '@/components/layout/BuyerlyPageChunks';
 
 /** How long the previous page stays while the next one reads its data; then the skeleton shows. */
-export const PAGE_HOLD_MS = 1_000;
+const PAGE_HOLD_MS = 1_000;
 
 /** What the app shows in `main`: one page, as of one navigation. */
-export interface BuyerlyShownPage<P> {
+interface BuyerlyShownPage<P> {
   page: P;
   key: string;
   /** The next page's data on its way; settled, or null, once the pool holds it. */

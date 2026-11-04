@@ -17,7 +17,6 @@ from sqlalchemy.exc import IntegrityError
 from api.auth import get_current_user
 from api.deps import (
     ensure_workspace_write_access,
-    get_user_workspace,
     get_user_workspace_member,
 )
 from core.config import settings
@@ -49,7 +48,6 @@ from meta_api.oauth import (
     MetaOAuthClient,
     MetaOAuthRemoteError,
     evaluate_meta_connection_health,
-    meta_token_expiry,
 )
 
 
@@ -385,7 +383,6 @@ async def list_meta_invites(user: User = Depends(get_current_user)):
         displayed_status = invite.status
         if invite.status == "pending" and invite.expires_at.replace(tzinfo=timezone.utc) <= now:
             displayed_status = "expired"
-        url = _invite_url("[hidden]")  # Don't re-expose raw token
         result.append({
             "id": invite.id,
             "label": invite.label or "",
@@ -515,7 +512,7 @@ async def start_oauth_via_invite(token: str):
         raw_state = secrets.token_urlsafe(32)
         state_hash = hashlib.sha256(raw_state.encode("utf-8")).hexdigest()
 
-        return_path = f"/connect/meta/success"
+        return_path = "/connect/meta/success"
         session.add(
             MetaOAuthState(
                 state_hash=state_hash,

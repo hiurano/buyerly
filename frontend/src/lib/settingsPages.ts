@@ -28,10 +28,10 @@ type SettingsPageGroup = { heading: string; pages: { section: SettingsPage; labe
 export const ADMINISTRATION_PAGES: SettingsPage[] = ['workspace', 'teams', 'members', 'workspace-security'];
 
 /** Every Administration section. */
-export const ADMINISTRATION_SECTIONS: SettingsSection[] = [...ADMINISTRATION_PAGES];
+const ADMINISTRATION_SECTIONS: SettingsSection[] = [...ADMINISTRATION_PAGES];
 
 /** A team's settings and Create team: open to every member, as in Linear; never to guests. */
-export const TEAM_SECTIONS: SettingsSection[] = ['new-team', 'team'];
+const TEAM_SECTIONS: SettingsSection[] = ['new-team', 'team'];
 
 /** Whether this member may open a settings section. */
 export function canOpenSettingsSection(workspace: Pick<Workspace, 'role'>, section: SettingsSection): boolean {

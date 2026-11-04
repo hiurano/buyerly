@@ -8,7 +8,7 @@ declare const __APP_VERSION__: string;
 export const BUILD_VERSION: string = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'local';
 
 /** How often an open tab asks the server which release it runs. */
-export const VERSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+const VERSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 /** How often a found update retries while a dialog or a text field holds the person. */
 const DEFERRED_RETRY_MS = 3000;
 const UNKNOWN_VERSIONS = new Set(['', 'local', 'unknown']);
@@ -28,7 +28,7 @@ export function isNewerRelease(buildVersion: string, serverVersion: unknown): bo
 }
 
 /** The release the server runs, or null when it cannot say right now. */
-export async function fetchServerVersion(): Promise<string | null> {
+async function fetchServerVersion(): Promise<string | null> {
   try {
     const response = await fetch('/health/live', { cache: 'no-store', credentials: 'same-origin' });
     if (!response.ok) return null;
@@ -44,7 +44,7 @@ export async function fetchServerVersion(): Promise<string | null> {
  * Whether the notice would cut into something the person is doing: an open
  * dialog or menu, or focus in a field that may hold unsaved input.
  */
-export function isPersonBusy(doc: Document = document): boolean {
+function isPersonBusy(doc: Document = document): boolean {
   if (doc.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]')) return true;
   const active = doc.activeElement as HTMLElement | null;
   if (!active) return false;

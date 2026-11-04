@@ -174,15 +174,6 @@ export function notifyTeamsChanged(): void {
   window.dispatchEvent(new Event(CHANGED_EVENT));
 }
 
-/**
- * A workspace's teams from the pool: one read shared by everyone asking at
- * once (the sidebar, the page title and the page itself, #489), and none at
- * all while the held teams are current (#488).
- */
-export function readTeams(workspaceId: number, status: 'all' | 'deleted' = 'all'): Promise<TeamItem[]> {
-  return pool.read(teamsQuery(workspaceId, status));
-}
-
 const keepTeam = (filter: TeamFilter | 'all') => (team: TeamItem) => (
   filter === 'active' ? !team.retired_at : filter === 'retired' ? Boolean(team.retired_at) : true
 );

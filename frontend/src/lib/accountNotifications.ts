@@ -27,7 +27,7 @@ export const ACCOUNT_NOTIFICATION_LABELS: Record<AccountNotificationKind, string
  * while Inbox's own rule decides: all of them for the lead, or for everyone
  * while nobody leads the account.
  */
-export interface AccountNotifications {
+interface AccountNotifications {
   account_id: string;
   kinds: AccountNotificationKind[];
   custom: boolean;

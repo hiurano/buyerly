@@ -3,7 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
 
-export interface BuyerlyLabelPillProps {
+interface BuyerlyLabelPillProps {
   label: string;
   dotColor?: string;
   className?: string;
