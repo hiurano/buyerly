@@ -7,6 +7,14 @@ from fastapi import FastAPI
 from api import server_proxy
 
 
+class Body(httpx.AsyncByteStream):
+    def __init__(self, data: bytes):
+        self.data = data
+
+    async def __aiter__(self):
+        yield self.data
+
+
 def upstream_app(seen: list[httpx.Request]) -> httpx.MockTransport:
     """The TypeScript server, as far as the proxy can tell."""
 
@@ -19,8 +27,10 @@ def upstream_app(seen: list[httpx.Request]) -> httpx.MockTransport:
             ("set-cookie", "a=1; Path=/"),
             ("set-cookie", "b=2; Path=/"),
             ("connection", "keep-alive"),
+            ("content-length", "17"),
         ]
-        return httpx.Response(201, headers=headers, content=b'{"from":"server"}')
+        # A stream, as from the network: content=bytes would be read up front.
+        return httpx.Response(201, headers=headers, stream=Body(b'{"from":"server"}'))
 
     return httpx.MockTransport(handle)
 
