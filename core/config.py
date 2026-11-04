@@ -128,6 +128,12 @@ class Settings(BaseSettings):
         default="Buyerly <team@buyerly.app>",
         description="Default sender email header for transactional emails",
     )
+    # The backup scripts read this and OFFSITE_RETENTION_DAYS from the environment;
+    # they are fields so that this class lists every variable of .env.example.
+    BACKUP_ENCRYPTION_KEY: str = Field(
+        default="",
+        description="Master encryption key for AES-256-CBC database backups",
+    )
     S3_ENDPOINT_URL: str = Field(
         default="",
         description="S3-compatible endpoint URL for off-site backups",
@@ -147,6 +153,11 @@ class Settings(BaseSettings):
     S3_REGION: str = Field(
         default="auto",
         description="S3 region for off-site backups",
+    )
+    OFFSITE_RETENTION_DAYS: int = Field(
+        default=60,
+        ge=1,
+        description="Retention period in days for off-site backups",
     )
 
     class Config:
