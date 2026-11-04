@@ -49,9 +49,6 @@ COMMIT_ORDER_LOCK = 504_000_504
 # NOTIFY channel a committed write wakes the API's WebSocket hubs on (#506), one notification per transaction.
 NOTIFY_CHANNEL = "sync_actions"
 
-ACTIONS = ("insert", "update", "archive", "delete")
-
-
 class Synced:
     """How one table is logged: its model name, columns kept out, and its soft-delete column."""
 
