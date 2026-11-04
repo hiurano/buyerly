@@ -91,11 +91,9 @@ Compose задаёт сам и в `.env` не нужны: `APP_VERSION`, `DATABA
 `CLOUDFLARE_TUNNEL_CIDRS` (фиксированный адрес `buyerly-tunnel`, `172.30.0.10/32`).
 Значения по умолчанию подходят для `API_HOST`, `API_PORT`, `SERVE_STATIC`,
 `CLOUDFLARE_IP_CIDRS`; `CORS_ORIGINS` нужен только для явно разрешённых
-cross-origin клиентов; `ENABLE_DEV_AUTH` в production всегда `false`.
+cross-origin клиентов.
 
-Допустимые операционные overrides: `ADMIN_CHAT_ID` (legacy Telegram ID
-супер-админа для dev-входа), `DEFAULT_POLL_INTERVAL_MINUTES`,
-`WEB_SESSION_IDLE_DAYS`. `DEV_EMAIL_LOG` включает
+Допустимый операционный override: `WEB_SESSION_IDLE_DAYS`. `DEV_EMAIL_LOG` включает
 только локальный стек (`compose.dev.yaml`): без `RESEND_API_KEY` письмо со
 ссылкой и кодом входа пишется в лог; в production всегда `false`.
 Полный перечень — в `.env.example`.

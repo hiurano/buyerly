@@ -52,12 +52,16 @@ async def init_test_db(engine):
         await conn.run_sync(Base.metadata.create_all)
 
 
+# The test user that session_headers creates as an approved admin; a test sets it.
+ADMIN_TELEGRAM_ID = ""
+
+
 async def session_headers(session_maker, telegram_user: dict) -> dict:
     """Browser-session headers for a test user keyed by legacy telegram_id.
 
     Creates the user when missing, with the rules the retired Telegram Mini App
-    sign-in used (the configured ADMIN_CHAT_ID becomes an approved admin, anyone
-    else an unapproved buyer), then opens a real web session. The returned
+    sign-in used (ADMIN_TELEGRAM_ID becomes an approved admin, anyone else an
+    unapproved buyer), then opens a real web session. The returned
     cookie and CSRF headers go through the production session check.
     """
     import secrets
@@ -79,7 +83,7 @@ async def session_headers(session_maker, telegram_user: dict) -> dict:
             await session.execute(select(User).where(User.telegram_id == telegram_id))
         ).scalar_one_or_none()
         if user is None:
-            is_super_admin = telegram_id == str(settings.ADMIN_CHAT_ID)
+            is_super_admin = telegram_id == str(ADMIN_TELEGRAM_ID)
             full_name = " ".join(
                 part
                 for part in (telegram_user.get("first_name", ""), telegram_user.get("last_name", ""))

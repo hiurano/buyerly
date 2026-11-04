@@ -32,6 +32,7 @@ from database.models import (
 )
 from tests.client_api_transport import client_api_transport
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
+import tests.test_db_helper as test_db_helper
 
 OWNER = {"id": 7300000001, "first_name": "Owner", "username": "push_owner"}
 BUYER = {"id": 7300000002, "first_name": "Buyer", "username": "push_buyer"}
@@ -179,7 +180,7 @@ class TestDesktopNotifications(unittest.IsolatedAsyncioTestCase):
         api_routes_module.async_session_maker = self.session_maker
         api_auth_module.async_session_maker = self.session_maker
         api_server_module.async_session_maker = self.session_maker
-        settings.ADMIN_CHAT_ID = "1"
+        test_db_helper.ADMIN_TELEGRAM_ID = "1"
         self.saved = settings.VAPID_PRIVATE_KEY
         settings.VAPID_PRIVATE_KEY = web_push.generate_private_key()
 

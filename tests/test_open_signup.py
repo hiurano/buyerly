@@ -25,6 +25,7 @@ from database.models import (
 from tests.sign_in_helper import sign_in
 from tests.test_db_helper import create_test_engine, init_test_db
 from tests.client_api_transport import client_api_transport
+import tests.test_db_helper as test_db_helper
 
 
 class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
@@ -38,8 +39,8 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
         self.original_routes_session_maker = api_routes_module.async_session_maker
         self.original_server_session_maker = api_server_module.async_session_maker
         self.original_db_session_maker = database_db_module.async_session_maker
-        self.original_admin_chat_id = settings.ADMIN_CHAT_ID
-        settings.ADMIN_CHAT_ID = "123456789"
+        self.original_admin_chat_id = test_db_helper.ADMIN_TELEGRAM_ID
+        test_db_helper.ADMIN_TELEGRAM_ID = "123456789"
         # OTP hashing needs a pepper, and the module must not rely on another
         # test file having set one earlier in the same process: CI splits the
         # suite across shards, so each module runs on its own.
@@ -94,7 +95,7 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
         api_routes_module.async_session_maker = self.original_routes_session_maker
         api_server_module.async_session_maker = self.original_server_session_maker
         database_db_module.async_session_maker = self.original_db_session_maker
-        settings.ADMIN_CHAT_ID = self.original_admin_chat_id
+        test_db_helper.ADMIN_TELEGRAM_ID = self.original_admin_chat_id
         settings.OTP_PEPPER = self.original_otp_pepper
         await self.engine.dispose()
 

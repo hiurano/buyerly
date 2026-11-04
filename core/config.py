@@ -39,8 +39,6 @@ class Settings(BaseSettings):
             "no tunnel"
         ),
     )
-    DEFAULT_POLL_INTERVAL_MINUTES: int = Field(default=5, description="Monitoring interval in minutes")
-    ADMIN_CHAT_ID: str = Field(default="", description="Legacy Telegram ID of the dev-auth super-admin")
     WEBAPP_URL: str = Field(default="", description="Public HTTPS URL of the web app")
     META_GRAPH_VERSION: str = Field(
         default="v26.0",
@@ -74,7 +72,6 @@ class Settings(BaseSettings):
         default=True,
         description="Serve the app's service worker; false serves the kill switch that unregisters it (#499)",
     )
-    ENABLE_DEV_AUTH: bool = Field(default=False, description="Enable dev auth fallback for local tests")
     CORS_ORIGINS: str = Field(
         default="",
         description="Comma-separated list of allowed CORS origins (e.g. https://buyerly.app)",
@@ -131,6 +128,8 @@ class Settings(BaseSettings):
         default="Buyerly <team@buyerly.app>",
         description="Default sender email header for transactional emails",
     )
+    # The backup scripts read this and OFFSITE_RETENTION_DAYS from the environment;
+    # they are fields so that this class lists every variable of .env.example.
     BACKUP_ENCRYPTION_KEY: str = Field(
         default="",
         description="Master encryption key for AES-256-CBC database backups",

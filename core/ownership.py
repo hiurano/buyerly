@@ -19,21 +19,6 @@ def owned_by(model, user):
     return false()
 
 
-def owned_by_ids(model, owner_user_id: int, legacy_owner_id: str = None):
-    if owner_user_id is not None and hasattr(model, "owner_user_id"):
-        return model.owner_user_id == owner_user_id
-    return false()
-
-
-def assign_owner(entity, user) -> None:
-    """Assign owner user and active workspace."""
-    if user:
-        if hasattr(entity, "owner_user_id"):
-            entity.owner_user_id = getattr(user, "id", None)
-        if hasattr(entity, "workspace_id") and getattr(user, "active_workspace_id", None):
-            entity.workspace_id = user.active_workspace_id
-
-
 def entity_is_owned_by(entity, user) -> bool:
     if not user:
         return False

@@ -131,7 +131,6 @@ async def _socket_user(websocket: WebSocket) -> tuple[User, Optional[str], list]
         response,
         authorization=websocket.headers.get("authorization"),
         x_auth_token=websocket.headers.get("x-auth-token"),
-        dev_user_id=params.get("dev_user_id"),
     )
     user = await get_current_user(user, x_workspace_slug=params.get("workspace"))
     cookies = [(k, v) for k, v in response.raw_headers if k == b"set-cookie"]

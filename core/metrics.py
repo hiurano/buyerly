@@ -673,6 +673,3 @@ def validate_runtime_rule(rule: Mapping[str, Any]) -> None:
     elif budget_percent != 0 or budget_max != 0:
         raise ValueError("Non-budget actions cannot contain budget parameters")
 
-
-def format_optional_cost(value: Optional[float]) -> str:
-    return "—" if value is None else f"${value:.2f}"

@@ -49,12 +49,12 @@ import api.server as api_server_module
 import scheduler.worker as worker_module
 import services.analytics_store as analytics_store_module
 from api.server import create_app
-from core.config import settings
 from core.metrics import round_half_up
 from database.models import Account, AnalyticsEntityFact, User, Workspace, WorkspaceMember
 from meta_api.client import MetaClient
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
 from tests.client_api_transport import client_api_transport
+import tests.test_db_helper as test_db_helper
 
 UTC = timezone.utc
 NZ = "act_9120001"
@@ -403,7 +403,7 @@ class TestGoldenMetrics(unittest.IsolatedAsyncioTestCase):
         for module in (api_routes_module, api_auth_module, analytics_router_module,
                        api_server_module, worker_module):
             module.async_session_maker = self.sessions
-        settings.ADMIN_CHAT_ID = "8634201356"
+        test_db_helper.ADMIN_TELEGRAM_ID = "8634201356"
 
         async with self.sessions() as session:
             user = User(telegram_id="71200001", username="golden", full_name="Golden Buyer",

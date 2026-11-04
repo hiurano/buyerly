@@ -17,8 +17,6 @@ from database.models import DeletedItem, RuleGroup, RulePreset
 TRASH_RETENTION_DAYS = 30
 KIND_RULE = "rule"
 KIND_RULE_GROUP = "rule_group"
-TRASH_KINDS = (KIND_RULE, KIND_RULE_GROUP)
-
 # Every stored column of a preset except its identity and bookkeeping.
 PRESET_FIELDS = (
     "name",

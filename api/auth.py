@@ -5,7 +5,7 @@ import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from fastapi import Depends, Header, HTTPException, Query, Request, Response, status
+from fastapi import Depends, Header, HTTPException, Request, Response, status
 from sqlalchemy import select
 
 from core.config import settings
@@ -212,13 +212,12 @@ async def get_authenticated_user(
     response: Response,
     authorization: Optional[str] = Header(None),
     x_auth_token: Optional[str] = Header(None),
-    dev_user_id: Optional[str] = Query(None, alias="dev_user_id")
 ) -> User:
     """
     FastAPI dependency that extracts and validates the authenticated user from:
     1. Secure HttpOnly browser session cookie
     2. Temporary legacy Bearer/X-Auth-Token during migration
-    3. Dev fallback if enabled
+    Anything else is 401: there is no sign-in without a session.
     """
     bearer_token = ""
     if authorization and authorization.startswith("Bearer "):
@@ -373,40 +372,10 @@ async def get_authenticated_user(
                     )
                 return user
 
-        # Strict Authentication Requirement (Production)
-        if not settings.ENABLE_DEV_AUTH or requested_user_id is not None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Sign-in is required"
-            )
-
-        # Dev / Local preview fallback (ONLY active when ENABLE_DEV_AUTH=True)
-        target_tg_id = dev_user_id or str(settings.ADMIN_CHAT_ID)
-        if target_tg_id:
-            res = await session.execute(select(User).where(User.telegram_id == target_tg_id))
-            user = res.scalar_one_or_none()
-            if user and user.is_approved:
-                return user
-
-        # If no users exist yet in dev mode, check for any approved admin or create default
-        res = await session.execute(select(User).where(User.is_approved == True).limit(1))
-        any_user = res.scalar_one_or_none()
-        if any_user:
-            return any_user
-
-        # Create fallback superadmin if DB is empty in dev mode
-        fallback_id = str(settings.ADMIN_CHAT_ID) or "123456789"
-        fallback_user = User(
-            telegram_id=fallback_id,
-            username="admin",
-            full_name="Administrator",
-            role="admin",
-            is_approved=True
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sign-in is required",
         )
-        session.add(fallback_user)
-        await session.commit()
-        await session.refresh(fallback_user)
-        return fallback_user
 
 
 async def get_current_user(
