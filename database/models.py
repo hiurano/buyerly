@@ -25,10 +25,6 @@ def utcnow():
     return datetime.now(timezone.utc)
 
 
-utcnow_aware = utcnow
-utcnow_naive = utcnow
-
-
 class User(Base):
     __tablename__ = "users"
     # A new user's INSERT leaves out columns the database fills itself (title),
@@ -486,7 +482,6 @@ class AppSettings(Base):
         nullable=False,
         doc="Automatically reduce frequency as quota usage grows",
     )
-    admin_chat_id = Column(String, default="", nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
     def __repr__(self):
@@ -1095,25 +1090,6 @@ class SummarySnapshot(Base):
         return f"<SummarySnapshot(workspace_id={self.workspace_id}, owner_user_id={self.owner_user_id}, period='{self.period}', generated='{self.generated_at}')>"
 
 
-class AnalyticsViewPreference(Base):
-    """Owner-isolated saved configuration for an analytics surface."""
-
-    __tablename__ = "analytics_view_preferences"
-    __table_args__ = (
-        UniqueConstraint("owner_user_id", "scope", name="uq_analytics_view_owner_scope"),
-    )
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
-    scope = Column(String, default="summary", nullable=False, index=True)
-    config = Column(JSONB, default=dict, nullable=False, doc="Safe JSONB of view settings")
-    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
-
-    def __repr__(self):
-        return f"<AnalyticsViewPreference(owner_user_id={self.owner_user_id}, scope='{self.scope}')>"
-
-
 class StoppedAdSet(Base):
     __tablename__ = "stopped_adsets"
 
@@ -1148,21 +1124,6 @@ class AdsetInventoryCache(Base):
 
     def __repr__(self):
         return f"<AdsetInventoryCache(account_id='{self.account_id}', expires_at='{self.expires_at}')>"
-
-
-class EventLog(Base):
-    __tablename__ = "event_logs"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    event_type = Column(String, nullable=False, index=True, doc="Event type (ACCOUNT_DAY_STARTED, STOP, etc.)")
-    target_chat_id = Column(String, default="", index=True, doc="Recipient (Telegram ID)")
-    account_id = Column(String, default="", index=True, doc="Ad account ID")
-    message = Column(Text, nullable=False, doc="Text of the sent message or event")
-    status = Column(String, default="SUCCESS", nullable=False, doc="Status: SUCCESS or ERROR")
-    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
-
-    def __repr__(self):
-        return f"<EventLog(type='{self.event_type}', chat='{self.target_chat_id}', status='{self.status}', time='{self.created_at}')>"
 
 
 class AuditEvent(Base):
