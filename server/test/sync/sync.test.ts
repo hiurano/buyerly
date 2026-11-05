@@ -4,6 +4,7 @@ import { testDatabase } from '../support/db.ts';
 import { DATABASE_URL, contractTarget, type Target } from '../support/target.ts';
 import { bootstrapCases } from './bootstrap.cases.ts';
 import { deltaCases } from './delta.cases.ts';
+import { streamCases } from './stream.cases.ts';
 
 // The sync engine's contract (tests/test_sync_bootstrap.py, tests/test_sync_stream.py)
 // over HTTP. One file, so its cases run one after another: a few of them move
@@ -29,4 +30,5 @@ describe.skipIf(!DATABASE_URL)('sync', () => {
 
   bootstrapCases(context);
   deltaCases(context);
+  streamCases(context);
 });

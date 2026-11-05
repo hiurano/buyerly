@@ -97,6 +97,14 @@ export class ClientAddress {
     return inNetworks(ip, configured);
   }
 
+  // Whether the request came straight from one of our proxies (the Python
+  // API while it forwards), which may then speak for the browser in
+  // X-Forwarded-* headers.
+  viaTrustedProxy(request: FastifyRequest): boolean {
+    const peer = normalizeIp(request.socket.remoteAddress ?? '');
+    return peer !== null && this.trustedProxy(peer);
+  }
+
   // The address that connected to our own proxies, and whether it is our
   // Cloudflare Tunnel. A trusted proxy's own address is never taken for the
   // tunnel, so the tunnel networks may overlap TRUSTED_PROXY_CIDRS.
