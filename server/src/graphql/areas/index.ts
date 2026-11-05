@@ -6,6 +6,9 @@ import { AuditResolver } from './audit/audit.resolver.ts';
 import { TrashResolver } from './audit/trash.resolver.ts';
 import { FavoritesResolver } from './views/favorites.resolver.ts';
 import { ViewsResolver } from './views/views.resolver.ts';
+import { NotificationChannelsResolver } from './notifications/channels.resolver.ts';
+import { DesktopNotificationsResolver } from './notifications/desktop.resolver.ts';
+import { TelegramResolver } from './notifications/telegram.resolver.ts';
 import { WorkspacesResolver } from './workspaces/workspaces.resolver.ts';
 
 // Every area's resolvers: the one place a new area is registered. An area
@@ -23,4 +26,7 @@ export const RESOLVERS: NonEmptyArray<new () => object> = [
   FavoritesResolver,
   AuditResolver,
   TrashResolver,
+  NotificationChannelsResolver,
+  DesktopNotificationsResolver,
+  TelegramResolver,
 ];

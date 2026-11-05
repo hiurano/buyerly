@@ -43,6 +43,12 @@ export interface Config {
   // Python API's, so a code issued by one server verifies on the other.
   otpPepper: string;
 
+  // The Telegram bot (core/telegram.py); empty means no Telegram channel.
+  telegramBotToken: string;
+  // The VAPID key desktop notifications are signed with (core/web_push.py):
+  // a raw P-256 scalar in base64url, or a PEM or DER key; empty means none.
+  vapidPrivateKey: string;
+
   // User images (avatars, workspace logos): the Python API's directory,
   // <repository>/uploads (services/image_uploads.py UPLOADS_ROOT), which
   // Compose mounts as the buyerly-uploads volume for both services.
@@ -112,6 +118,9 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     devEmailLog: envBool(env.DEV_EMAIL_LOG, false),
     turnstileSecretKey: env.TURNSTILE_SECRET_KEY ?? '',
     otpPepper: env.OTP_PEPPER ?? '',
+    // .env files sometimes keep the quotes around a pasted token.
+    telegramBotToken: (env.TELEGRAM_BOT_TOKEN ?? '').replace(/^["' \t\r\n]+|["' \t\r\n]+$/g, ''),
+    vapidPrivateKey: (env.VAPID_PRIVATE_KEY ?? '').trim(),
     uploadsRoot: env.SERVER_UPLOADS_DIR || DEFAULT_UPLOADS_ROOT,
   };
 }

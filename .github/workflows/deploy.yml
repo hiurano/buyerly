@@ -291,6 +291,9 @@ jobs:
           TRUSTED_PROXY_CIDRS: 127.0.0.1/32
           WEBAPP_URL: https://buyerly.test
           DEV_EMAIL_LOG: "true"
+          # Desktop notifications' key, the same as the server's in its
+          # tests (server/test/support/target.ts TEST_VAPID_PRIVATE_KEY).
+          VAPID_PRIVATE_KEY: Jktq3k5UFfBTLFB_MT7QCFPhMZvJyZiQvLJvTJ-D51Y
           SERVER_URL: ""
         run: |
           nohup python -m services.api > /tmp/python-api.out 2>&1 &
@@ -312,7 +315,7 @@ jobs:
           npm run lint
           npm test --workspace @buyerly/server
           echo "::group::The same contract tests against the Python API"
-          (cd server && CONTRACT_TARGET=python npx vitest run test/auth test/uploads test/sync test/workspaces test/graphql test/views test/audit)
+          (cd server && CONTRACT_TARGET=python npx vitest run test/auth test/uploads test/sync test/workspaces test/graphql test/views test/audit test/notifications)
           echo "::endgroup::"
 
       - name: Build the production image

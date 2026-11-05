@@ -3,12 +3,13 @@ import { readFile } from 'node:fs/promises';
 import { gunzipSync } from 'node:zlib';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 import type { AddressInfo } from 'node:net';
 import { buildApp, type BuildOptions, type Services } from '../../src/app.ts';
 import { DEFAULT_UPLOADS_ROOT, readConfig, type Config } from '../../src/config.ts';
 import { connectDatabase } from '../../src/database.ts';
 import type { EmailMessage } from '../../src/email/send.ts';
+import { telegramBot, type TelegramBot } from '../../src/notifications/telegram.ts';
 
 // The server a contract test talks to over HTTP (#611 stage 3).
 //
@@ -24,6 +25,32 @@ if (!DATABASE_URL && process.env.CI) throw new Error('SCHEMA_DATABASE_URL must b
 
 // Both servers hash codes with it; the Python API must run with the same one.
 export const TEST_OTP_PEPPER = 'contract-test-otp-pepper';
+
+// Desktop notifications' VAPID key, also the Python API's in CI, and the
+// public key both servers derive from it.
+export const TEST_VAPID_PRIVATE_KEY = 'Jktq3k5UFfBTLFB_MT7QCFPhMZvJyZiQvLJvTJ-D51Y';
+export const TEST_VAPID_PUBLIC_KEY = 'BFrmRoMHs_Wd-vXXwwbJ_piZPV0inXK4_K-Xvsj4lFldcRWw0xNPfBliqNqPRyogU1sr_gW7aeXSjOG5Ywd6W-M';
+
+// The bot in-process tests talk to instead of Telegram: set up only with
+// TELEGRAM_BOT_TOKEN, as the real one, and keeping what it would send.
+export interface FakeTelegram extends TelegramBot {
+  sent: { chatId: number; text: string }[];
+}
+
+export function fakeTelegram(token: string): FakeTelegram {
+  const real = telegramBot(token, { info: () => {}, error: () => {} } as unknown as FastifyBaseLogger);
+  const sent: { chatId: number; text: string }[] = [];
+  return {
+    configured: real.configured,
+    webhookSecret: () => real.webhookSecret(),
+    username: async () => (token ? 'buyerly_test_bot' : null),
+    sendMessage: async (chatId, text) => {
+      sent.push({ chatId, text });
+      return { ok: true, error: '' };
+    },
+    sent,
+  };
+}
 
 export interface HttpRequest {
   method: 'GET' | 'POST' | 'DELETE';
@@ -59,6 +86,7 @@ export interface InProcessTarget extends Target {
   app: FastifyInstance;
   services: Services;
   config: Config;
+  telegram: FakeTelegram;
 }
 
 // fetch takes bytes as a Uint8Array over an ArrayBuffer, not a Buffer.
@@ -90,23 +118,27 @@ export async function typescriptTarget(env: Record<string, string> = {}, build: 
     // browser's address, so each test browser has its own.
     TRUSTED_PROXY_CIDRS: '127.0.0.1/32',
     WEBAPP_URL: 'https://buyerly.test',
+    VAPID_PRIVATE_KEY: TEST_VAPID_PRIVATE_KEY,
     SERVER_UPLOADS_DIR: mkdtempSync(join(tmpdir(), 'buyerly-uploads-')),
     // Client API documents with fields not moved yet go to the Python API when one runs (CI).
     API_URL: process.env.PYTHON_API_URL ?? '',
     ...env,
   });
+  const telegram = fakeTelegram(config.telegramBotToken);
   const services: Services = {
     sendEmail: async (message) => {
       outbox.push(message);
       return true;
     },
     verifyTurnstile: async () => true,
+    telegram,
   };
   // Indirect, so a test may replace a service after the app is built.
   const app = buildApp(config, connectDatabase(DATABASE_URL), {
     services: {
       sendEmail: (message) => services.sendEmail(message),
       verifyTurnstile: (token, ip) => services.verifyTurnstile(token, ip),
+      telegram,
     },
     ...build,
   });
@@ -116,6 +148,7 @@ export async function typescriptTarget(env: Record<string, string> = {}, build: 
     app,
     services,
     config,
+    telegram,
     async send(request) {
       const response = await app.inject({
         method: request.method,
