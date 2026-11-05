@@ -62,6 +62,14 @@ function valueAt(root: unknown, path: (string | number)[]): unknown {
   return value;
 }
 
+// pydantic's type errors by the JSON Schema type the field expects.
+const TYPE_MESSAGES: Record<string, [string, string]> = {
+  string: ['string_type', 'Input should be a valid string'],
+  boolean: ['bool_type', 'Input should be a valid boolean'],
+  integer: ['int_type', 'Input should be a valid integer'],
+  array: ['list_type', 'Input should be a valid list'],
+};
+
 // Ajv's findings in pydantic's words. Only the keywords the route schemas use
 // are translated; anything else still answers 422 with Ajv's keyword.
 export function pydanticIssues(body: unknown, issues: AjvIssue[]): ValidationIssue[] {
@@ -113,11 +121,35 @@ export function pydanticIssues(body: unknown, issues: AjvIssue[]): ValidationIss
           ctx: { max_length: limit },
         };
       }
-      case 'type':
-        if (String(issue.params.type).startsWith('string')) {
-          return { type: 'string_type', loc: ['body', ...path], msg: 'Input should be a valid string', input };
-        }
+      case 'type': {
+        const expected = String(issue.params.type).split(',')[0];
+        const known = TYPE_MESSAGES[expected];
+        if (known) return { type: known[0], loc: ['body', ...path], msg: known[1], input };
         return { type: issue.keyword, loc: ['body', ...path], msg: 'Input should be valid', input };
+      }
+      case 'minItems':
+      case 'maxItems': {
+        const limit = Number(issue.params.limit);
+        const actual = Array.isArray(input) ? input.length : 0;
+        const short = issue.keyword === 'minItems';
+        return {
+          type: short ? 'too_short' : 'too_long',
+          loc: ['body', ...path],
+          msg: `List should have at ${short ? 'least' : 'most'} ${plural(limit, 'item')} after validation, not ${actual}`,
+          input,
+          ctx: { field_type: 'List', [short ? 'min_length' : 'max_length']: limit, actual_length: actual },
+        };
+      }
+      case 'pattern': {
+        const pattern = String(issue.params.pattern);
+        return {
+          type: 'string_pattern_mismatch',
+          loc: ['body', ...path],
+          msg: `String should match pattern '${pattern}'`,
+          input,
+          ctx: { pattern },
+        };
+      }
       default:
         return { type: issue.keyword, loc: ['body', ...path], msg: 'Input should be valid', input };
     }
