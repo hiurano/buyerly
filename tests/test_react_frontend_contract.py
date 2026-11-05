@@ -19,8 +19,11 @@ class TestReactFrontendContract(unittest.TestCase):
         rest_prefixes = (
             "/api/graphql",
             "/api/sync/",
-            "/api/auth/",
-            "/api/me",
+            # Signing in, still REST until it moves to GraphQL too (decision 55).
+            "/api/auth/accounts",
+            "/api/auth/request-temporary-password",
+            "/api/auth/verify-temporary-password",
+            "/api/auth/verify-email-link",
             # Uploads are multipart, as Linear's go to its file storage rather than GraphQL.
             "/api/onboarding/avatar",
             "/api/onboarding/workspace/logo",

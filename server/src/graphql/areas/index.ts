@@ -9,6 +9,7 @@ import { MembersResolver } from './workspaces/members.resolver.ts';
 import { OnboardingResolver } from './onboarding/onboarding.resolver.ts';
 import { HealthResolver } from './admin/health.resolver.ts';
 import { SupportResolver } from './admin/support.resolver.ts';
+import { AuthResolver } from './auth/auth.resolver.ts';
 import { AuditResolver } from './audit/audit.resolver.ts';
 import { TrashResolver } from './audit/trash.resolver.ts';
 import { FavoritesResolver } from './views/favorites.resolver.ts';
@@ -49,6 +50,7 @@ export const RESOLVERS: NonEmptyArray<new () => object> = [
   RuleLabelsResolver,
   RulesResolver,
   RuleAttachmentsResolver,
+  AuthResolver,
   SupportResolver,
   HealthResolver,
 ];

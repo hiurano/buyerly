@@ -2,9 +2,10 @@ import { toast } from '@/ui/toast';
 import { pool } from '@/models/pool';
 import { localDatabase } from '@/models/localDatabase';
 import { apiRequest } from './api';
+import { graphql } from './graphql';
 import { chooseAccount, getCurrentAccountId, getKnownAccounts, homeWorkspace, setCurrentAccountId, setKnownAccounts, type BrowserAccount } from './accounts';
 
-/** One signed-in browser, as `GET /api/auth/sessions` returns it. */
+/** One signed-in browser, as `authenticationSessions` returns it. */
 export interface WebSession {
   id: string;
   user_agent: string;
@@ -18,16 +19,19 @@ export interface WebSession {
 }
 
 export function fetchSessions(): Promise<WebSession[]> {
-  return apiRequest<WebSession[]>('/api/auth/sessions');
+  return graphql<WebSession[]>('query AuthenticationSessions { authenticationSessions }');
 }
 
 export async function revokeSession(id: string): Promise<void> {
-  await apiRequest(`/api/auth/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  await graphql('mutation LogoutSession($sessionId: String!) { logoutSession(sessionId: $sessionId) { success } }', { sessionId: id });
 }
 
 /** Linear's Revoke all: every other session ends, this one stays. */
 export async function revokeOtherSessions(): Promise<void> {
-  await apiRequest('/api/auth/logout-all?keep_current=true', { method: 'POST', body: JSON.stringify({}) });
+  await graphql(
+    'mutation LogoutOtherSessions($keepCurrent: Boolean!) { logoutAllSessions(keepCurrent: $keepCurrent) { success } }',
+    { keepCurrent: true },
+  );
 }
 
 /**
@@ -41,7 +45,7 @@ export async function logOut(): Promise<boolean> {
   const leaving = getKnownAccounts().find((account) => account.id === getCurrentAccountId())?.username
     ?? pool.scope?.split(':')[0] ?? null;
   try {
-    await apiRequest('/api/auth/logout', { method: 'POST', body: JSON.stringify({}) });
+    await graphql('mutation Logout { logout { success } }');
   } catch (error) {
     toast.error("Couldn't log out", error instanceof Error ? error.message : undefined);
     return false;

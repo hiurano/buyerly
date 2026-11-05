@@ -33,7 +33,7 @@ from api.routers import (
     sync_router,
 )
 from api.client_api import router as client_api_router
-from api.client_api.schema import ROUTES as CLIENT_API_ROUTES
+from api.client_api.schema import ALSO_REST, ROUTES as CLIENT_API_ROUTES
 from database.db import async_session_maker
 
 
@@ -65,7 +65,7 @@ ALL_REST_ROUTERS = [
     sync_router,
 ]
 
-_CLIENT_API_ONLY = {id(route) for route in CLIENT_API_ROUTES.values()}
+_CLIENT_API_ONLY = {id(route) for name, route in CLIENT_API_ROUTES.items() if name not in ALSO_REST}
 
 
 def rest_only(source: APIRouter) -> APIRouter:

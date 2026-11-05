@@ -407,7 +407,7 @@ export const App: React.FC = () => {
 
   const refreshUser = useCallback(async () => {
     const accountId = getCurrentAccountId();
-    const nextUser = await apiRequest<SessionUser>('/api/me');
+    const nextUser = await graphql<SessionUser>('query Viewer { viewer }', {}, { headers: { 'X-Workspace-Slug': '' } });
     // A late answer for an account this tab has since left never reaches the screen.
     if (getCurrentAccountId() === accountId && (accountId === null || nextUser.id == null || nextUser.id === accountId)) {
       setUser(nextUser);

@@ -38,6 +38,7 @@ export const AuditEventPayload = payload('AuditEventPayload', 'auditEvent');
 export const DeletedItemPayload = payload('DeletedItemPayload', 'deletedItem');
 export const DeliveryPayload = payload('DeliveryPayload', 'entity');
 export const DesktopNotificationsPayload = payload('DesktopNotificationsPayload', 'desktopNotifications');
+export const EmailChangePayload = payload('EmailChangePayload', 'emailChange');
 export const FavoritePayload = payload('FavoritePayload', 'favorite');
 export const InboxDisplayPayload = payload('InboxDisplayPayload', 'inboxDisplay');
 export const InboxNotificationPayload = payload('InboxNotificationPayload', 'inboxNotification');

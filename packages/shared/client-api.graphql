@@ -34,6 +34,12 @@ type DesktopNotificationsPayload {
   desktopNotifications: JSON
 }
 
+type EmailChangePayload {
+  success: Boolean!
+  lastSyncId: Float!
+  emailChange: JSON
+}
+
 type FavoritePayload {
   success: Boolean!
   lastSyncId: Float!
@@ -76,6 +82,23 @@ type MetaOAuthPayload {
 }
 
 type Mutation {
+  """
+  Logs this account out of this browser; the browser's other accounts stay.
+  """
+  logout: SuccessPayload
+
+  """Ends one of the user's sessions."""
+  logoutSession(sessionId: String!): SuccessPayload
+
+  """Ends every session of the user; with keepCurrent, all but this one."""
+  logoutAllSessions(keepCurrent: Boolean! = false): SuccessPayload
+
+  """Mails a code that attaches or changes the email of the user."""
+  userEmailChangeRequest(input: JSON!): EmailChangePayload
+
+  """Confirms the code and makes the new email the user's own."""
+  userEmailChangeVerify(input: JSON!): EmailChangePayload
+
   """
   Opens a time-limited support session in a workspace for a platform administrator.
   """
@@ -334,6 +357,12 @@ type Query {
 
   """The platform administrator's support sessions, newest first."""
   supportSessions(activeOnly: Boolean! = true): JSON!
+
+  """The signed-in user's profile and the workspaces they belong to."""
+  viewer: JSON!
+
+  """The user's signed-in browsers, most recently used first."""
+  authenticationSessions: JSON!
 
   """Reliability signals and ad account health of the active workspace."""
   healthOverview: JSON!

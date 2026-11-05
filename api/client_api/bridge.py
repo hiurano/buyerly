@@ -164,7 +164,14 @@ async def run(info: Info, route: APIRoute, /, **values: Any) -> Any:
             kwargs = await _arguments(info, route, values)
         except ValidationError as error:
             raise _validation_error(error) from error
-        return _content(route, await route.endpoint(**kwargs))
+        result = await route.endpoint(**kwargs)
+        # Cookies a handler sets or clears (logging out) are the browser's, as over REST.
+        for value in kwargs.values():
+            if isinstance(value, Response) and value is not result:
+                for key, header in value.raw_headers:
+                    if key == b"set-cookie":
+                        info.context["response"].raw_headers.append((key, header))
+        return _content(route, result)
     except HTTPException as error:
         raise RouteError(error.status_code, error.detail, getattr(error, "headers", None)) from error
     except RouteError:

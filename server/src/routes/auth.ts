@@ -280,27 +280,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       schema: { body: REQUEST_EMAIL_CHANGE },
       preValidation: [rateLimit({ limit: 5, scope: 'email_change_req' }), currentUser],
     },
-    async (request) => {
-      const clean = request.body.new_email.trim().toLowerCase();
-      if (!clean || !clean.includes('@') || !clean.includes('.')) throw new HttpError(400, 'Invalid email address');
-      const userId = request.auth!.user.id;
-      const issued = await app.db.transaction(async (tx) => {
-        const user = await tx.findOneByOrFail(UserEntity, { id: userId });
-        if ((user.email ?? '').trim().toLowerCase() === clean && user.emailVerifiedAt) return null;
-        const taken = await tx.exists(UserEntity, {
-          where: { email: lowerEquals(clean), id: Not(user.id), emailVerifiedAt: Not(IsNull()) },
-        });
-        if (taken) throw new HttpError(409, 'This email address is already in use by another user');
-        const scope = emailScope(user.id);
-        if (await app.otp.hasRecentActive(tx, scope)) throw new HttpError(429, CODE_SENT_RECENTLY);
-        return app.otp.create(tx, { email: clean, purpose: OTP_EMAIL_CHANGE, scope });
-      });
-      if (!issued) return { ok: true, message: 'This email is already confirmed for your account', already_verified: true };
-      await deliver(app, issued, clean, null, async (tx) => {
-        await tx.update(UserEntity, { id: userId }, { unconfirmedEmail: clean });
-      });
-      return { ok: true, message: 'A confirmation code has been sent to the new email', unconfirmed_email: clean };
-    },
+    async (request) => requestEmailChange(app, request.auth!.user.id, request.body.new_email),
   );
 
   // Atomically verify the code and make the new email the member's own.
@@ -310,48 +290,12 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       schema: { body: VERIFY_EMAIL_CHANGE },
       preValidation: [rateLimit({ limit: 10, scope: 'verify_email_code' }), currentUser],
     },
-    async (request) => {
-      const userId = request.auth!.user.id;
-      let email: string;
-      try {
-        email = await app.db.transaction(async (tx) => {
-          const user = await tx.findOneByOrFail(UserEntity, { id: userId });
-          const pending = user.unconfirmedEmail || user.email;
-          if (!pending) throw new HttpError(400, 'There is no active email confirmation request');
-          const target = pending.trim().toLowerCase();
-          const result = await app.otp.consume(tx, emailScope(user.id), request.body.code);
-          if (result.status !== 'consumed' || (result.purpose !== OTP_EMAIL_CHANGE && result.purpose !== OTP_EMAIL_VERIFICATION)) {
-            if (result.status === 'locked') throw afterCommit(new HttpError(401, TOO_MANY_ATTEMPTS));
-            throw afterCommit(new HttpError(400, 'Invalid confirmation code'));
-          }
-          // Rolled back: the code stays usable for the request it belongs to.
-          if (result.email !== target) throw new HttpError(400, 'The code does not match the active email request');
-
-          const sameEmail: FindOptionsWhere<UserEntity> = { email: lowerEquals(target), id: Not(user.id) };
-          if (await tx.exists(UserEntity, { where: { ...sameEmail, emailVerifiedAt: Not(IsNull()) } })) {
-            throw new HttpError(409, 'This email has already been confirmed by another user');
-          }
-          // Legacy holders of the address who never confirmed it lose it.
-          await tx.update(UserEntity, sameEmail, { email: null });
-          await tx.update(UserEntity, { id: user.id }, { email: target, emailVerifiedAt: new Date(), unconfirmedEmail: null });
-          return target;
-        });
-      } catch (error) {
-        if (!(error instanceof QueryFailedError)) throw error;
-        request.log.error({ err: error, userId }, 'Activating the email failed');
-        throw new HttpError(409, 'The email could not be activated because of a uniqueness conflict');
-      }
-      return { ok: true, message: 'Email confirmed and linked to your account', email, email_verified: true };
-    },
+    async (request) => verifyEmailChange(app, request, request.auth!.user.id, request.body.code),
   );
 
   // Log out this account; the browser's other accounts stay logged in (Linear).
   app.post('/api/auth/logout', { preValidation: [currentUser] }, async (request, reply) => {
-    const { user, webSessionId, slot } = request.auth!;
-    await app.db.transaction((tx) =>
-      tx.update(WebSessionEntity, { id: webSessionId, userId: user.id, revokedAt: IsNull() }, { revokedAt: new Date() }),
-    );
-    clearSessionCookies(reply, cookies(), slot);
+    await logout(app, reply, request.auth!);
     return { message: 'Signed out' };
   });
 
@@ -388,37 +332,14 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // The member's signed-in browsers, most recently used first.
-  app.get('/api/auth/sessions', { preValidation: [currentUser] }, async (request): Promise<WebSessionItem[]> => {
-    const { user, webSessionId } = request.auth!;
-    const rows = await app.db.transaction((tx) =>
-      tx.find(WebSessionEntity, {
-        where: { userId: user.id, revokedAt: IsNull(), expiresAt: MoreThan(new Date()) },
-        order: { lastSeenAt: 'DESC', createdAt: 'DESC' },
-      }),
-    );
-    return rows.map((row) => ({
-      id: row.id,
-      user_agent: row.userAgent,
-      ip_address: row.ipAddress,
-      location: row.location || '',
-      created_at: utcIso(row.createdAt),
-      expires_at: utcIso(row.expiresAt),
-      last_seen_at: utcIso(row.lastSeenAt),
-      current: row.id === webSessionId,
-    }));
-  });
+  app.get('/api/auth/sessions', { preValidation: [currentUser] }, async (request): Promise<WebSessionItem[]> =>
+    webSessions(app, request.auth!));
 
   app.delete<{ Params: { sessionId: string } }>(
     '/api/auth/sessions/:sessionId',
     { preValidation: [currentUser] },
     async (request, reply) => {
-      const { user, webSessionId, slot } = request.auth!;
-      const { sessionId } = request.params;
-      const ended = await app.db.transaction((tx) =>
-        tx.update(WebSessionEntity, { id: sessionId, userId: user.id, revokedAt: IsNull() }, { revokedAt: new Date() }),
-      );
-      if (!ended.affected) throw new HttpError(404, 'Session not found');
-      if (sessionId === webSessionId) clearSessionCookies(reply, cookies(), slot);
+      await endSession(app, reply, request.auth!, request.params.sessionId);
       return { message: 'Session ended' };
     },
   );
@@ -436,44 +357,150 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           detail: [{ type: 'bool_parsing', loc: ['query', 'keep_current'], msg: 'Input should be a valid boolean, unable to interpret input', input: raw }],
         };
       }
-      const { user, webSessionId, slot } = request.auth!;
-      await app.db.transaction((tx) =>
-        tx.update(
-          WebSessionEntity,
-          { userId: user.id, revokedAt: IsNull(), ...(keepCurrent ? { id: Not(webSessionId) } : {}) },
-          { revokedAt: new Date() },
-        ),
-      );
-      if (keepCurrent) return { message: 'Other sessions ended' };
-      clearSessionCookies(reply, cookies(), slot);
-      return { message: 'All sessions ended' };
+      await endAllSessions(app, reply, request.auth!, keepCurrent);
+      return { message: keepCurrent ? 'Other sessions ended' : 'All sessions ended' };
     },
   );
 
   // The profile lists every workspace, so it is not bound to the route's
   // X-Workspace-Slug: a URL for a foreign workspace must not read as logged out.
   app.get('/api/me', { preValidation: [authenticated] }, async (request): Promise<UserProfileResponse> =>
-    app.db.transaction(async (tx) => {
-      const user = await tx.findOneByOrFail(UserEntity, { id: request.auth!.user.id });
-      const workspaces = await userWorkspacesList(tx, user);
-      return {
-        id: user.id,
-        username: user.username || '',
-        full_name: user.fullName || '',
-        first_name: user.firstName || '',
-        last_name: user.lastName || '',
-        title: user.title || '',
-        email: user.email,
-        email_verified: Boolean(user.emailVerifiedAt),
-        unconfirmed_email: user.unconfirmedEmail,
-        avatar_url: user.avatarUrl || '',
-        role: user.role,
-        is_approved: user.isApproved,
-        onboarding_step: user.onboardingStep || 'completed',
-        onboarding_completed: Boolean(user.onboardingCompleted),
-        active_workspace: workspaces.find((item) => item.is_active) ?? workspaces[0] ?? null,
-        workspaces,
-      };
+    app.db.transaction((tx) => userProfile(tx, request.auth!.user.id)),
+  );
+}
+
+// What the REST routes above and the GraphQL fields (graphql/areas/auth)
+// both do; the routes go once the client uses the fields (decision 55).
+
+type Auth = NonNullable<FastifyRequest['auth']>;
+
+const cookieSettings = (app: FastifyInstance) => ({ secure: app.config.sessionCookieSecure });
+
+// The signed-in member's profile with every workspace they belong to.
+export async function userProfile(tx: EntityManager, userId: number): Promise<UserProfileResponse> {
+  const user = await tx.findOneByOrFail(UserEntity, { id: userId });
+  const workspaces = await userWorkspacesList(tx, user);
+  return {
+    id: user.id,
+    username: user.username || '',
+    full_name: user.fullName || '',
+    first_name: user.firstName || '',
+    last_name: user.lastName || '',
+    title: user.title || '',
+    email: user.email,
+    email_verified: Boolean(user.emailVerifiedAt),
+    unconfirmed_email: user.unconfirmedEmail,
+    avatar_url: user.avatarUrl || '',
+    role: user.role,
+    is_approved: user.isApproved,
+    onboarding_step: user.onboardingStep || 'completed',
+    onboarding_completed: Boolean(user.onboardingCompleted),
+    active_workspace: workspaces.find((item) => item.is_active) ?? workspaces[0] ?? null,
+    workspaces,
+  };
+}
+
+// The member's signed-in browsers, most recently used first.
+export async function webSessions(app: FastifyInstance, { user, webSessionId }: Auth): Promise<WebSessionItem[]> {
+  const rows = await app.db.transaction((tx) =>
+    tx.find(WebSessionEntity, {
+      where: { userId: user.id, revokedAt: IsNull(), expiresAt: MoreThan(new Date()) },
+      order: { lastSeenAt: 'DESC', createdAt: 'DESC' },
     }),
   );
+  return rows.map((row) => ({
+    id: row.id,
+    user_agent: row.userAgent,
+    ip_address: row.ipAddress,
+    location: row.location || '',
+    created_at: utcIso(row.createdAt),
+    expires_at: utcIso(row.expiresAt),
+    last_seen_at: utcIso(row.lastSeenAt),
+    current: row.id === webSessionId,
+  }));
+}
+
+// Log out this account; the browser's other accounts stay logged in (Linear).
+export async function logout(app: FastifyInstance, reply: FastifyReply, { user, webSessionId, slot }: Auth): Promise<void> {
+  await app.db.transaction((tx) =>
+    tx.update(WebSessionEntity, { id: webSessionId, userId: user.id, revokedAt: IsNull() }, { revokedAt: new Date() }),
+  );
+  clearSessionCookies(reply, cookieSettings(app), slot);
+}
+
+// End one of the member's sessions; ending this one also clears its cookies.
+export async function endSession(app: FastifyInstance, reply: FastifyReply, { user, webSessionId, slot }: Auth, sessionId: string): Promise<void> {
+  const ended = await app.db.transaction((tx) =>
+    tx.update(WebSessionEntity, { id: sessionId, userId: user.id, revokedAt: IsNull() }, { revokedAt: new Date() }),
+  );
+  if (!ended.affected) throw new HttpError(404, 'Session not found');
+  if (sessionId === webSessionId) clearSessionCookies(reply, cookieSettings(app), slot);
+}
+
+// End every session of the member; with keepCurrent, all but this one.
+export async function endAllSessions(app: FastifyInstance, reply: FastifyReply, { user, webSessionId, slot }: Auth, keepCurrent: boolean): Promise<void> {
+  await app.db.transaction((tx) =>
+    tx.update(
+      WebSessionEntity,
+      { userId: user.id, revokedAt: IsNull(), ...(keepCurrent ? { id: Not(webSessionId) } : {}) },
+      { revokedAt: new Date() },
+    ),
+  );
+  if (!keepCurrent) clearSessionCookies(reply, cookieSettings(app), slot);
+}
+
+// Mail a code that attaches or changes the member's email.
+export async function requestEmailChange(app: FastifyInstance, userId: number, newEmail: string): Promise<Record<string, unknown>> {
+  const clean = newEmail.trim().toLowerCase();
+  if (!clean || !clean.includes('@') || !clean.includes('.')) throw new HttpError(400, 'Invalid email address');
+  const issued = await app.db.transaction(async (tx) => {
+    const user = await tx.findOneByOrFail(UserEntity, { id: userId });
+    if ((user.email ?? '').trim().toLowerCase() === clean && user.emailVerifiedAt) return null;
+    const taken = await tx.exists(UserEntity, {
+      where: { email: lowerEquals(clean), id: Not(user.id), emailVerifiedAt: Not(IsNull()) },
+    });
+    if (taken) throw new HttpError(409, 'This email address is already in use by another user');
+    const scope = emailScope(user.id);
+    if (await app.otp.hasRecentActive(tx, scope)) throw new HttpError(429, CODE_SENT_RECENTLY);
+    return app.otp.create(tx, { email: clean, purpose: OTP_EMAIL_CHANGE, scope });
+  });
+  if (!issued) return { ok: true, message: 'This email is already confirmed for your account', already_verified: true };
+  await deliver(app, issued, clean, null, async (tx) => {
+    await tx.update(UserEntity, { id: userId }, { unconfirmedEmail: clean });
+  });
+  return { ok: true, message: 'A confirmation code has been sent to the new email', unconfirmed_email: clean };
+}
+
+// Atomically verify the code and make the new email the member's own.
+export async function verifyEmailChange(app: FastifyInstance, request: FastifyRequest, userId: number, code: string): Promise<Record<string, unknown>> {
+  let email: string;
+  try {
+    email = await app.db.transaction(async (tx) => {
+      const user = await tx.findOneByOrFail(UserEntity, { id: userId });
+      const pending = user.unconfirmedEmail || user.email;
+      if (!pending) throw new HttpError(400, 'There is no active email confirmation request');
+      const target = pending.trim().toLowerCase();
+      const result = await app.otp.consume(tx, emailScope(user.id), code);
+      if (result.status !== 'consumed' || (result.purpose !== OTP_EMAIL_CHANGE && result.purpose !== OTP_EMAIL_VERIFICATION)) {
+        if (result.status === 'locked') throw afterCommit(new HttpError(401, TOO_MANY_ATTEMPTS));
+        throw afterCommit(new HttpError(400, 'Invalid confirmation code'));
+      }
+      // Rolled back: the code stays usable for the request it belongs to.
+      if (result.email !== target) throw new HttpError(400, 'The code does not match the active email request');
+
+      const sameEmail: FindOptionsWhere<UserEntity> = { email: lowerEquals(target), id: Not(user.id) };
+      if (await tx.exists(UserEntity, { where: { ...sameEmail, emailVerifiedAt: Not(IsNull()) } })) {
+        throw new HttpError(409, 'This email has already been confirmed by another user');
+      }
+      // Legacy holders of the address who never confirmed it lose it.
+      await tx.update(UserEntity, sameEmail, { email: null });
+      await tx.update(UserEntity, { id: user.id }, { email: target, emailVerifiedAt: new Date(), unconfirmedEmail: null });
+      return target;
+    });
+  } catch (error) {
+    if (!(error instanceof QueryFailedError)) throw error;
+    request.log.error({ err: error, userId }, 'Activating the email failed');
+    throw new HttpError(409, 'The email could not be activated because of a uniqueness conflict');
+  }
+  return { ok: true, message: 'Email confirmed and linked to your account', email, email_verified: true };
 }

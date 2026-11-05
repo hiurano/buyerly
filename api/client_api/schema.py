@@ -50,6 +50,13 @@ def _route(module, endpoint):
 # Every GraphQL field and the route it runs; tests/test_client_api.py checks each against its route.
 ROUTES = {}
 
+# Fields whose routes also stay REST until the web client that uses the fields is deployed
+# (decision 55): the signed-in account's routes. api/routes.py keeps mounting them.
+ALSO_REST = {
+    "viewer", "authenticationSessions", "logout", "logoutSession", "logoutAllSessions",
+    "userEmailChangeRequest", "userEmailChangeVerify",
+}
+
 
 def _routed(name: str, module, endpoint):
     ROUTES[name] = _route(module, endpoint)
@@ -73,6 +80,7 @@ AccountNotificationSettingPayload = _payload("AccountNotificationSettingPayload"
 AuditEventPayload = _payload("AuditEventPayload", "audit_event")
 DeletedItemPayload = _payload("DeletedItemPayload", "deleted_item")
 DeliveryPayload = _payload("DeliveryPayload", "entity")
+EmailChangePayload = _payload("EmailChangePayload", "email_change")
 DesktopNotificationsPayload = _payload("DesktopNotificationsPayload", "desktop_notifications")
 FavoritePayload = _payload("FavoritePayload", "favorite")
 InboxDisplayPayload = _payload("InboxDisplayPayload", "inbox_display")
@@ -146,6 +154,8 @@ R_WORKSPACE_SLUG = _routed("workspaceSlugCheck", onboarding, onboarding.check_wo
 R_ADMIN_OVERVIEW = _routed("adminOverview", auth, auth.get_admin_overview)
 R_SUPPORT_SESSIONS = _routed("supportSessions", admin_support, admin_support.list_support_sessions)
 R_HEALTH_OVERVIEW = _routed("healthOverview", health, health.health_overview)
+R_VIEWER = _routed("viewer", auth, auth.get_me)
+R_AUTH_SESSIONS = _routed("authenticationSessions", auth, auth.list_web_sessions)
 
 
 @strawberry.type
@@ -159,6 +169,14 @@ class Query:
     @strawberry.field(description="The platform administrator's support sessions, newest first.")
     async def support_sessions(self, info: Info, active_only: bool = True) -> JSON:
         return await run(info, R_SUPPORT_SESSIONS, active_only=active_only)
+
+    @strawberry.field(description="The signed-in user's profile and the workspaces they belong to.")
+    async def viewer(self, info: Info) -> JSON:
+        return await run(info, R_VIEWER)
+
+    @strawberry.field(description="The user's signed-in browsers, most recently used first.")
+    async def authentication_sessions(self, info: Info) -> JSON:
+        return await run(info, R_AUTH_SESSIONS)
 
     @strawberry.field(description="Reliability signals and ad account health of the active workspace.")
     async def health_overview(self, info: Info) -> JSON:
@@ -380,6 +398,11 @@ M_FAVORITE_CREATE = _routed("favoriteCreate", favorites, favorites.add_favorite)
 M_FAVORITE_DELETE = _routed("favoriteDelete", favorites, favorites.remove_favorite)
 M_SUPPORT_SESSION_CREATE = _routed("supportSessionCreate", admin_support, admin_support.create_support_session)
 M_SUPPORT_SESSION_REVOKE = _routed("supportSessionRevoke", admin_support, admin_support.revoke_support_session)
+M_LOGOUT = _routed("logout", auth, auth.logout_user)
+M_LOGOUT_SESSION = _routed("logoutSession", auth, auth.revoke_web_session)
+M_LOGOUT_ALL = _routed("logoutAllSessions", auth, auth.logout_all_web_sessions)
+M_EMAIL_CHANGE_REQUEST = _routed("userEmailChangeRequest", auth, auth.request_email_change)
+M_EMAIL_CHANGE_VERIFY = _routed("userEmailChangeVerify", auth, auth.verify_email_change)
 M_INBOX_DISPLAY = _routed("inboxDisplayUpdate", audit, audit.save_inbox_display)
 M_INBOX_READ = _routed("inboxNotificationRead", audit, audit.mark_inbox_read)
 M_INBOX_DELETE = _routed("inboxNotificationDelete", audit, audit.delete_inbox_notification)
@@ -449,6 +472,28 @@ M_INVITE_LINK_DISABLE = _routed("workspaceInviteLinkDisable", members, members.d
 
 @strawberry.type
 class Mutation:
+    # The signed-in account
+
+    @strawberry.mutation(description="Logs this account out of this browser; the browser's other accounts stay.")
+    async def logout(self, info: Info) -> Optional[SuccessPayload]:
+        return await _mutate(info, SuccessPayload, M_LOGOUT)
+
+    @strawberry.mutation(description="Ends one of the user's sessions.")
+    async def logout_session(self, info: Info, session_id: str) -> Optional[SuccessPayload]:
+        return await _mutate(info, SuccessPayload, M_LOGOUT_SESSION, session_id=session_id)
+
+    @strawberry.mutation(description="Ends every session of the user; with keepCurrent, all but this one.")
+    async def logout_all_sessions(self, info: Info, keep_current: bool = False) -> Optional[SuccessPayload]:
+        return await _mutate(info, SuccessPayload, M_LOGOUT_ALL, keep_current=keep_current)
+
+    @strawberry.mutation(description="Mails a code that attaches or changes the email of the user.")
+    async def user_email_change_request(self, info: Info, input: JSON) -> Optional[EmailChangePayload]:
+        return await _mutate(info, EmailChangePayload, M_EMAIL_CHANGE_REQUEST, req=input)
+
+    @strawberry.mutation(description="Confirms the code and makes the new email the user's own.")
+    async def user_email_change_verify(self, info: Info, input: JSON) -> Optional[EmailChangePayload]:
+        return await _mutate(info, EmailChangePayload, M_EMAIL_CHANGE_VERIFY, req=input)
+
     # Platform administration
 
     @strawberry.mutation(description="Opens a time-limited support session in a workspace for a platform administrator.")

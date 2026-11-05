@@ -43,7 +43,11 @@ export async function send(path: string, init: RequestInit = {}, through: Fetche
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
   const route = currentRoute();
-  if (route.kind === 'workspace' || route.kind === 'welcome') {
+  // An empty X-Workspace-Slug asks for no workspace scope: the profile lists every workspace, so a
+  // URL for one this account may not open must not read as logged out.
+  if (headers.get('X-Workspace-Slug') === '') {
+    headers.delete('X-Workspace-Slug');
+  } else if (route.kind === 'workspace' || route.kind === 'welcome') {
     headers.set('X-Workspace-Slug', route.workspace);
   }
   if (init.body && !(init.body instanceof FormData)) {

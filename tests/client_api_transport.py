@@ -21,7 +21,7 @@ from pydantic.fields import FieldInfo
 from starlette.routing import compile_path
 
 from api.client_api import schema as client_schema
-from api.client_api.schema import ROUTES
+from api.client_api.schema import ALSO_REST, ROUTES
 
 GRAPHQL = "/api/graphql"
 
@@ -127,7 +127,9 @@ def _fields():
     if _FIELDS is None:
         arguments = _arguments_by_field()
         graphql_schema = client_schema._schema
-        _FIELDS = [_Field(name, route, graphql_schema, arguments.get(name, {})) for name, route in ROUTES.items()]
+        # Routes that also stay REST are tested as REST; their fields in test_client_api.py.
+        _FIELDS = [_Field(name, route, graphql_schema, arguments.get(name, {}))
+                   for name, route in ROUTES.items() if name not in ALSO_REST]
     return _FIELDS
 
 
