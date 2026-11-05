@@ -53,6 +53,13 @@ def _sort_key(item: Dict[str, Any]):
     return (order.get(item["outcome"], 3), -item["spend"], item["entity_name"].lower())
 
 
+def _preview_level(rule: Dict[str, Any]) -> str:
+    try:
+        return normalize_rule_level(rule.get("level"))
+    except ValueError:
+        return "adset"
+
+
 async def preview_rule_on_account(
     session,
     account: Account,
@@ -61,20 +68,16 @@ async def preview_rule_on_account(
     now_utc: Optional[datetime] = None,
 ) -> Dict[str, Any]:
     """Entities the rule would check in this account, matched ones first."""
-    try:
-        level = normalize_rule_level(rule.get("level"))
-    except ValueError:
-        level = "adset"
+    level = _preview_level(rule)
     now = now_utc or datetime.now(timezone.utc)
     windows = _window_dates(account, now)
     all_dates = sorted({day for days in windows.values() for day in days})
     # The worker reads lifetime from Meta; the preview only has the days
     # Buyerly stored, which can start after the launch. It sums every stored
     # day and says from when (`lifetime_since`) instead of calling Meta.
-    lifetime = _uses_lifetime(rule)
     date_filter = (
         AnalyticsEntityFact.date <= _local_today(account, now).isoformat()
-        if lifetime
+        if _uses_lifetime(rule)
         else AnalyticsEntityFact.date.in_(all_dates)
     )
 
@@ -88,6 +91,19 @@ async def preview_rule_on_account(
             )
         )
     ).scalars().all()
+    return preview_from_facts(account, rule, rows, now=now)
+
+
+def preview_from_facts(account, rule: Dict[str, Any], rows, *, now: datetime) -> Dict[str, Any]:
+    """The preview from the account's stored daily facts: no I/O.
+
+    server/src/rules/preview.ts is its TypeScript twin; the parity test
+    (server/test/rules/engine.test.ts) feeds both the same facts.
+    """
+    level = _preview_level(rule)
+    windows = _window_dates(account, now)
+    all_dates = sorted({day for days in windows.values() for day in days})
+    lifetime = _uses_lifetime(rule)
     facts_by_entity: Dict[str, List[AnalyticsEntityFact]] = {}
     for row in rows:
         facts_by_entity.setdefault(str(row.entity_id), []).append(row)
