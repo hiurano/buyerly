@@ -1,6 +1,7 @@
 import type { NonEmptyArray } from 'type-graphql';
 import { TeamsResolver } from './teams/teams.resolver.ts';
 import { UsersResolver } from './users/users.resolver.ts';
+import { MembersResolver } from './workspaces/members.resolver.ts';
 import { WorkspacesResolver } from './workspaces/workspaces.resolver.ts';
 
 // Every area's resolvers: the one place a new area is registered. An area
@@ -10,6 +11,7 @@ import { WorkspacesResolver } from './workspaces/workspaces.resolver.ts';
 // (test/graphql/schema.test.ts compares them), and the root fields served
 // here are no longer forwarded to the Python API (graphql/routing.ts).
 export const RESOLVERS: NonEmptyArray<new () => object> = [
+  MembersResolver,
   TeamsResolver,
   UsersResolver,
   WorkspacesResolver,
