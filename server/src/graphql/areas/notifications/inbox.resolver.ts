@@ -172,17 +172,16 @@ export class InboxResolver {
       const filters = [...view, ...filterConditions(params, clauses)];
       let hiddenByFilters = 0;
       if (clauses.length) {
-        const count = async (conditions: string[]): Promise<number> => (await tx.query<{ n: number }[]>(
+        const count = async (conditions: string[]): Promise<number> => (await tx.query<{ n: number }[]>(...params.bind(
           `SELECT count(audit_events.id)::int AS n FROM audit_events ${columns.join} WHERE ${conditions.join(' AND ')}`,
-          params.values,
-        ))[0].n;
+        )))[0].n;
         hiddenByFilters = (await count(view)) - (await count(filters));
       }
       // A notification back from snooze counts from when it came back, as in Linear.
       const direction = order === 'oldest' ? 'ASC' : 'DESC';
       const orderBy = [...(unreadFirst ? [`${columns.isRead} ASC`] : []), `${columns.movedAt} ${direction}`, `audit_events.id ${direction}`];
       const at = params.add(now, '::timestamptz');
-      const rows = await tx.query<(AuditEventRow & { inbox_read: boolean | null; inbox_snoozed: string | null; inbox_unsnoozed: string | null; inbox_kind: string })[]>(
+      const rows = await tx.query<(AuditEventRow & { inbox_read: boolean | null; inbox_snoozed: string | null; inbox_unsnoozed: string | null; inbox_kind: string })[]>(...params.bind(
         `SELECT ${AUDIT_EVENT_COLUMNS}, ${columns.isRead} AS inbox_read,
                 CASE WHEN s.snoozed_until > ${at} THEN ${utcIso('s.snoozed_until')} END AS inbox_snoozed,
                 CASE WHEN ${columns.returned} THEN ${utcIso('s.snoozed_until')} END AS inbox_unsnoozed,
@@ -191,8 +190,7 @@ export class InboxResolver {
           WHERE ${filters.join(' AND ')}
           ORDER BY ${orderBy.join(', ')}
           OFFSET ${params.add(from)} LIMIT ${params.add(size + 1)}`,
-        params.values,
-      );
+      ));
       const page = rows.slice(0, size);
       const items = await serializeAuditEvents(tx, page, { workspaceId: viewer.workspaceId, canWriteWorkspace: !viewer.guest, user });
       items.forEach((item, index) => {
@@ -231,12 +229,11 @@ export class InboxResolver {
       const where = viewFilters(params, viewer, columns, {
         unreadOnly: unreadOnly ?? false, showSnoozed: showSnoozed ?? false, tab, priority,
       }).join(' AND ');
-      const grouped = (column: string, label?: string) => tx.query<{ value: string | null; count: number; label: string | null }[]>(
+      const grouped = (column: string, label?: string) => tx.query<{ value: string | null; count: number; label: string | null }[]>(...params.bind(
         `SELECT ${column} AS value, count(audit_events.id)::int AS count${label ? `, max(${label}) AS label` : ''}
            FROM audit_events ${columns.join} WHERE ${where}
           GROUP BY ${column} ORDER BY count(audit_events.id) DESC, ${column}`,
-        params.values,
-      );
+      ));
       const types = await grouped('audit_events.event_type');
       const statuses = await grouped('audit_events.status');
       const accounts = await grouped('audit_events.account_id', 'audit_events.account_name');
@@ -393,10 +390,9 @@ async function updateState(context: GraphQLContext, eventId: number, change: Sta
       // "Delete all read" or a new read mark cannot flip it.
       const params = new Params();
       const columns = inboxColumns(params, viewer, new Date());
-      const [seen] = await tx.query<{ read: boolean | null }[]>(
+      const [seen] = await tx.query<{ read: boolean | null }[]>(...params.bind(
         `SELECT ${columns.isRead} AS read FROM audit_events ${columns.join} WHERE audit_events.id = ${params.add(eventId)}`,
-        params.values,
-      );
+      ));
       state = tx.create(InboxNotificationStateEntity, { userId: user.id, auditEventId: eventId, isRead: Boolean(seen.read) });
     }
     Object.assign(state, change);

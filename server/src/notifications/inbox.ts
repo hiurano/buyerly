@@ -30,6 +30,19 @@ export class Params {
     this.values.push(value);
     return `$${this.values.length}${cast}`;
   }
+
+  // The statement and its values, renumbered to the parameters it uses:
+  // Postgres refuses a parameter the text never mentions (pieces like the
+  // read mark are built for every query but not every query needs them).
+  bind(sql: string): [string, unknown[]] {
+    const used = new Map<number, number>();
+    const text = sql.replace(/\$(\d+)/g, (_match, index: string) => {
+      const from = Number(index);
+      if (!used.has(from)) used.set(from, used.size + 1);
+      return `$${used.get(from)}`;
+    });
+    return [text, [...used.keys()].map((from) => this.values[from - 1])];
+  }
 }
 
 const quoted = (values: string[]): string => values.map((value) => `'${value}'`).join(', ');
@@ -268,12 +281,11 @@ export async function unreadCounts(tx: EntityManager, viewer: Viewer, priority: 
   const params = new Params();
   const columns = inboxColumns(params, viewer, new Date());
   const inPriority = prioritySql(params, priority);
-  const [row] = await tx.query<{ total: number; priority: number }[]>(
+  const [row] = await tx.query<{ total: number; priority: number }[]>(...params.bind(
     `SELECT count(audit_events.id)::int AS total, coalesce(sum(CASE WHEN ${inPriority} THEN 1 ELSE 0 END), 0)::int AS priority
        FROM audit_events ${columns.join}
       WHERE audit_events.workspace_id = ${params.add(viewer.workspaceId)} AND ${inInboxSql(params, viewer)}
         AND NOT ${columns.deleted} AND NOT ${columns.snoozed} AND NOT ${columns.isRead}`,
-    params.values,
-  );
+  ));
   return { unread_count: row.total, priority_unread_count: row.priority };
 }
