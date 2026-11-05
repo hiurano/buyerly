@@ -10,11 +10,13 @@ import { resendSender, type SendEmail } from './email/send.ts';
 import { ClientAddress } from './http/client-address.ts';
 import { installErrorHandler } from './http/errors.ts';
 import { RateLimiter } from './http/rate-limit.ts';
+import { telegramBot, type TelegramBot } from './notifications/telegram.ts';
 import { authRoutes } from './routes/auth.ts';
 import { graphqlRoutes } from './routes/graphql.ts';
 import { inviteRoutes } from './routes/invites.ts';
 import { syncSocketRoutes } from './routes/sync-socket.ts';
 import { syncRoutes } from './routes/sync.ts';
+import { telegramRoutes } from './routes/telegram.ts';
 import { uploadRoutes } from './routes/uploads.ts';
 import type { SyncTuning } from './sync/hub.ts';
 
@@ -25,6 +27,7 @@ export type { Database } from './database.ts';
 export interface Services {
   sendEmail: SendEmail;
   verifyTurnstile: VerifyTurnstile;
+  telegram: TelegramBot;
 }
 
 // What every route reaches through `app` (or `request.server`); see
@@ -85,6 +88,7 @@ export function buildApp(config: Config, database: Database | null, options: Bui
   app.decorate('services', {
     sendEmail: options.services?.sendEmail ?? resendSender(config, app.log),
     verifyTurnstile: options.services?.verifyTurnstile ?? turnstileVerifier(config.turnstileSecretKey, app.log),
+    telegram: options.services?.telegram ?? telegramBot(config.telegramBotToken, app.log),
   });
   app.decorate('otp', new Otp(config.otpPepper));
   app.decorate('clientAddress', new ClientAddress(config));
@@ -128,6 +132,7 @@ export function buildApp(config: Config, database: Database | null, options: Bui
   void app.register(inviteRoutes);
   void app.register(syncRoutes);
   void app.register(uploadRoutes);
+  void app.register(telegramRoutes);
   void app.register(graphqlRoutes);
   void app.register(syncSocketRoutes, { tuning: options.sync });
 
