@@ -1,4 +1,5 @@
 import { Ctx, Query, Resolver } from 'type-graphql';
+import { pyRound } from '../../../python-numbers.ts';
 import { accountAccess, allowsAccountPk } from '../../../workspaces/account-access.ts';
 import { userWorkspace } from '../../../workspaces/access.ts';
 import type { GraphQLContext } from '../../context.ts';
@@ -16,7 +17,7 @@ const PROBLEM_TOKEN_STATUSES = ['expired', 'needs_reconnect', 'missing_scopes', 
 
 // datetime.isoformat() of a timestamptz as asyncpg reads it (UTC, "+00:00"),
 // microseconds only when there are any.
-function isoformatSql(column: string): string {
+export function isoformatSql(column: string): string {
   return `CASE WHEN ${column} IS NULL THEN NULL ELSE
     to_char(${column} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS')
     || CASE WHEN extract(microseconds FROM ${column})::bigint % 1000000 = 0 THEN ''
@@ -44,10 +45,8 @@ function parseStamp(value: unknown, naiveIsUtc: boolean): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-// Python's round(x, 2) for the values here.
-function round2(value: number): number {
-  return Number(value.toFixed(2));
-}
+// Python's round(x, 2).
+const round2 = (value: number): number => pyRound(value, 2);
 
 // worker_watchdog.cycle_status: a naive finished_at is taken as UTC.
 function cycleStatus(payload: Record<string, unknown>): { status: string; lag: number | null; errors: unknown } {
@@ -69,7 +68,7 @@ interface AccountRow {
   meta_connection_id: number | null;
 }
 
-interface HealthRow {
+export interface HealthRow {
   account_pk: number;
   status: string;
   cause: string;
@@ -83,7 +82,7 @@ interface HealthRow {
 }
 
 // services/account_health.py health_payload.
-function healthPayload(row: HealthRow | undefined): Record<string, unknown> {
+export function healthPayload(row: HealthRow | undefined): Record<string, unknown> {
   if (!row) {
     return {
       status: 'unknown', cause: 'none', signals: {},

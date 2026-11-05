@@ -1,15 +1,19 @@
-import { Arg, Ctx, Mutation, Resolver } from 'type-graphql';
+import { Arg, Ctx, Mutation, Query, Resolver } from 'type-graphql';
 import { rows } from '../../../database.ts';
 import { mutated, type GraphQLContext } from '../../context.ts';
 import { RouteError, invalidInput } from '../../errors.ts';
 import { AccountPayload, type Payload } from '../../payloads.ts';
 import { JSONScalar } from '../../scalars.ts';
 import { accountAccess, allowsAccountPk } from '../../../workspaces/account-access.ts';
-import { actId, ensureWriteAccess, refuseRecorded, scopeOf, writableAccount } from './scope.ts';
+import { actId, ensureWriteAccess, refuseRecorded, scopeOf, visibleAccounts, writableAccount } from './scope.ts';
 import { strip } from './text.ts';
+import { loadActiveRules } from '../../../rules/presets.ts';
+import { healthPayload, isoformatSql, type HealthRow } from '../admin/health.resolver.ts';
+import { normalizeCurrency } from './currency.ts';
+import { latestAccountMetricsById, persistedSummary, todayAccountMetrics } from './summary.ts';
 
 // An ad account's Buyerly-side edits (api/routers/accounts.py): its name and
-// note, its lead, and removing it. Adding accounts reads Meta, so it moves
+// note, its lead, and removing it; and the list of them with their figures. Adding accounts reads Meta, so it moves
 // with the Meta client (stage 4). Python's in-process summary cache can't be
 // cleared from here; it expires on its own (120 s).
 
@@ -60,8 +64,95 @@ function optionalInt(field: unknown): number | null | string {
   return 'Input should be a valid integer';
 }
 
+interface ListedAccount {
+  id: number;
+  account_id: string;
+  name: string;
+  custom_name: string | null;
+  note: string | null;
+  meta_connection_id: number | null;
+  owner_user_id: number | null;
+  lead_user_id: number | null;
+  workspace_id: number | null;
+  batch_name: string | null;
+  timezone_name: string | null;
+  currency: string | null;
+  account_status: number;
+  status_label: string | null;
+  rules_enabled: boolean;
+  is_active: boolean;
+  active_rules: unknown;
+  created_at: string | null;
+}
+
+const LISTED_COLUMNS = `id, account_id, name, custom_name, note, meta_connection_id, owner_user_id, lead_user_id,
+  workspace_id, batch_name, timezone_name, currency, account_status, status_label, rules_enabled, is_active,
+  active_rules, to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI') AS created_at`;
+
 @Resolver()
 export class AccountsResolver {
+  // list_accounts: the saved summary's figures (latest_metrics), today's from
+  // the fact store (today_metrics, only accounts synced today), the health
+  // the worker keeps, and the rules running on each account.
+  @Query(() => JSONScalar, { description: 'Ad accounts of the workspace the member may see, with their latest metrics.' })
+  async accounts(@Ctx() context: GraphQLContext): Promise<unknown> {
+    return context.app.db.transaction(async (tx) => {
+      const scope = await scopeOf(tx, context.user);
+      const accounts = await visibleAccounts<ListedAccount>(tx, context.user, scope, LISTED_COLUMNS);
+      const workspaceId = scope.workspaceId;
+      // get_user_accounts files the caller's legacy accounts under the workspace.
+      for (const account of accounts) {
+        if (account.workspace_id === null && account.owner_user_id === context.user.id) account.workspace_id = workspaceId;
+      }
+      const latest = latestAccountMetricsById(await persistedSummary(tx, workspaceId, context.user.id));
+      const pks = accounts.map((account) => account.id);
+      const healthRows = pks.length && workspaceId !== null
+        ? await rows<HealthRow>(
+          tx,
+          `SELECT account_pk, status, cause, signals, consecutive_failures,
+                  ${isoformatSql('last_success_at')} AS last_success_at, ${isoformatSql('last_error_at')} AS last_error_at,
+                  last_error_code, last_error_message, ${isoformatSql('last_checked_at')} AS last_checked_at
+             FROM account_health WHERE account_pk = ANY($1::int[]) AND workspace_id = $2`,
+          [pks, workspaceId],
+        )
+        : [];
+      const healthOf = new Map(healthRows.map((row) => [row.account_pk, row]));
+      // Read last: Python logs a failure here and lists the rest without today's figures.
+      let today = new Map<string, Record<string, unknown>>();
+      if (accounts.length && workspaceId !== null) {
+        try {
+          today = await todayAccountMetrics(tx, workspaceId, accounts);
+        } catch (error) {
+          context.app.log.error({ err: error }, "Today's account figures are unavailable");
+        }
+      }
+      return accounts.map((account) => ({
+        id: account.id,
+        account_id: account.account_id,
+        name: account.name,
+        custom_name: account.custom_name || '',
+        note: account.note || '',
+        connection_type: account.meta_connection_id ? 'facebook_login' : 'system_user',
+        owner_user_id: account.owner_user_id,
+        lead_user_id: account.lead_user_id,
+        workspace_id: account.workspace_id,
+        owner_id: '',
+        batch_name: account.batch_name || '',
+        timezone_name: account.timezone_name || 'UTC',
+        currency: normalizeCurrency(account.currency),
+        account_status: account.account_status,
+        status_label: account.status_label || 'Active (ACTIVE)',
+        rules_enabled: account.rules_enabled,
+        is_active: account.is_active,
+        active_rules: loadActiveRules(account.active_rules),
+        latest_metrics: latest.get(account.account_id) ?? null,
+        today_metrics: today.get(account.account_id) ?? null,
+        health: healthPayload(healthOf.get(account.id)),
+        created_at: account.created_at ?? '',
+      }));
+    });
+  }
+
   @Mutation(() => AccountPayload, { nullable: true, description: 'Renames an ad account or changes its note.' })
   async accountUpdate(
     @Arg('accountId', () => String) accountId: string,
