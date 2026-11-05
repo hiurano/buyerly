@@ -76,6 +76,14 @@ type MetaOAuthPayload {
 }
 
 type Mutation {
+  """
+  Opens a time-limited support session in a workspace for a platform administrator.
+  """
+  supportSessionCreate(input: JSON!): SupportSessionPayload
+
+  """Ends a support session early."""
+  supportSessionRevoke(id: Int!): SuccessPayload
+
   """Renames an ad account or changes its note."""
   accountUpdate(accountId: String!, input: JSON!): AccountPayload
 
@@ -320,6 +328,17 @@ type OnboardingPayload {
 
 type Query {
   """
+  Every user, workspace, membership and invite, for a platform administrator.
+  """
+  adminOverview: JSON!
+
+  """The platform administrator's support sessions, newest first."""
+  supportSessions(activeOnly: Boolean! = true): JSON!
+
+  """Reliability signals and ad account health of the active workspace."""
+  healthOverview: JSON!
+
+  """
   Ad accounts of the workspace the member may see, with their latest metrics.
   """
   accounts: JSON!
@@ -448,6 +467,12 @@ type RulesPayload {
 type SuccessPayload {
   success: Boolean!
   lastSyncId: Float!
+}
+
+type SupportSessionPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  supportSession: JSON
 }
 
 type TeamDocumentPayload {

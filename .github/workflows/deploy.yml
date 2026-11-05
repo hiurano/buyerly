@@ -315,7 +315,7 @@ jobs:
           npm run lint
           npm test --workspace @buyerly/server
           echo "::group::The same contract tests against the Python API"
-          (cd server && CONTRACT_TARGET=python npx vitest run test/auth test/uploads test/sync test/workspaces test/graphql test/views test/audit test/accounts test/notifications)
+          (cd server && CONTRACT_TARGET=python npx vitest run test/auth test/uploads test/sync test/workspaces test/graphql test/views test/audit test/accounts test/notifications test/admin)
           echo "::endgroup::"
 
       - name: Build the production image

@@ -20,7 +20,7 @@ day-boundary marker is absent after deploy.
 ## Monitoring cycle stalled while the heartbeat is alive
 
 **Signal:** urgent Inbox notification "Rules are not being checked"
-(`WORKER_STALLED`), `/health/worker` returns 503, or `/api/health/overview`
+(`WORKER_STALLED`), `/health/worker` returns 503, or GraphQL `healthOverview`
 shows `worker_cycle_status: critical`. The heartbeat may still be fresh: a
 cycle stuck on an await does not stop the heartbeat job (#199).
 

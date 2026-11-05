@@ -30,7 +30,7 @@ Production: `https://buyerly.app`.
 | `GET /health/worker` | нет | свежесть работы worker: `status` (`ok`, `warning`, `critical`, `unknown`) и `lag_seconds` с последнего завершённого monitoring cycle; `503`, когда цикл старше 360 с (#199) |
 
 Авторизованный обзор надёжности рабочего пространства доступен через
-`GET /api/health/overview`: он возвращает SLI, состояние кабинетов, свежесть
+поле GraphQL `healthOverview` (раньше `GET /api/health/overview`, запись №55): он возвращает SLI, состояние кабинетов, свежесть
 данных, worker lag, Meta quota, synthetic availability/latency и возраст
 последнего backup без секретов и межворкспейсных данных. `signals.worker_cycle_status`
 (`ok` / `warning` / `critical` / `unknown`) учитывается в `overall_status`: устаревший
@@ -52,10 +52,10 @@ monitoring cycle делает обзор `degraded` или `critical`, даже 
 | `DELETE /api/auth/sessions/{session_id}` | — | отзывает выбранную собственную web-сессию |
 | `POST /api/auth/logout-all` | `keep_current?` | отзывает все web-сессии пользователя; с `keep_current=true` текущая остаётся (Revoke all в Settings → Security & access) |
 | `GET /api/me` | — | `username`, `full_name`, `first_name`, `last_name`, `email`, `email_verified`, `unconfirmed_email`, `avatar_url`, `role`, `is_approved`, `active_workspace`, `workspaces` |
-| `GET /api/admin/overview` | — | сводная таблица всех пользователей, воркспейсов и инвайтов (только админ) |
-| `POST /api/admin/support-sessions` | `workspace_id`, `reason`, `duration_minutes?` | создание ограниченной по времени сессии техподдержки администратора платформы (5–240 мин) с обязательным обоснованием |
-| `GET /api/admin/support-sessions` | `active_only?` | список активных или исторических сессий техподдержки администратора платформы |
-| `POST /api/admin/support-sessions/{grant_id}/revoke` | — | досрочный отзыв временной сессии техподдержки администратора |
+| GraphQL `adminOverview` | — | сводная таблица всех пользователей, воркспейсов, участников и инвайтов (только админ платформы) |
+| GraphQL `supportSessionCreate(input)` | `workspace_id`, `reason`, `duration_minutes?` | создание ограниченной по времени сессии техподдержки администратора платформы (5–240 мин) с обязательным обоснованием; событие `SUPPORT_SESSION_GRANTED` в журнале |
+| GraphQL `supportSessions(activeOnly = true)` | — | активные или все сессии техподдержки этого администратора, новые первыми |
+| GraphQL `supportSessionRevoke(id)` | — | досрочный отзыв сессии техподдержки; событие `SUPPORT_SESSION_REVOKED` |
 
 ## Воркспейсы (Workspaces)
 
@@ -330,7 +330,7 @@ Meta возвращает браузер на служебный callback `/api/
 
 ## Клиентский API (GraphQL)
 
-Как `client-api.linear.app/graphql` у Linear (#509): web-клиент читает всё, чего нет в sync, и делает все изменения через один endpoint `POST /api/graphql` (`{"query", "variables"}`). REST клиент использует только для sync (`/api/sync/*`), входа и сессий (`/api/auth/*`, `/api/me`), загрузки файлов (`/api/onboarding/avatar`, `/api/onboarding/workspace/logo`) и публичных ссылок (приглашение в workspace, подключение Facebook по приглашению). Вебхуки Meta и Telegram остаются REST, как и служебные маршруты, которые клиент не вызывает (`/api/admin/*`, `/api/summary`, `/api/settings*`, `/api/health/overview`, `/api/meta/oauth/config` и др.). Маршруты, ставшие полями GraphQL, по HTTP больше не отдаются (#509): ниже они описаны как поведение своих полей.
+Как `client-api.linear.app/graphql` у Linear (#509): web-клиент читает всё, чего нет в sync, и делает все изменения через один endpoint `POST /api/graphql` (`{"query", "variables"}`). REST клиент использует только для sync (`/api/sync/*`), входа и сессий (`/api/auth/*`, `/api/me`), загрузки файлов (`/api/onboarding/avatar`, `/api/onboarding/workspace/logo`) и публичных ссылок (приглашение в workspace, подключение Facebook по приглашению). Вебхуки Meta и Telegram остаются REST, как и служебные маршруты, которые клиент не вызывает (`/api/summary`, `/api/settings*`, `/api/meta/oauth/config` и др.); администрирование платформы и обзор надёжности — поля `adminOverview`, `supportSessions`, `supportSessionCreate`, `supportSessionRevoke`, `healthOverview`. Маршруты, ставшие полями GraphQL, по HTTP больше не отдаются (#509): ниже они описаны как поведение своих полей.
 
 Авторизация та же, что у REST: cookie сессии аккаунта из `X-Buyerly-Account`, `X-CSRF-Token` (запрос всегда POST; GET и GraphiQL выключены) и workspace из `X-Workspace-Slug`. Без сессии — HTTP 401, без CSRF — 403, до выполнения любого поля. Каждое поле вызывает обработчик своего REST-маршрута ([api/client_api/schema.py](../api/client_api/schema.py), `ROUTES`) с теми же проверками прав, rate limit, валидацией и `response_model`, поэтому поле может ровно то же, что маршрут; [tests/test_client_api.py](../tests/test_client_api.py) сравнивает каждое поле с маршрутом для вышедшего, чужого workspace, гостя и участника.
 
