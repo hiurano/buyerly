@@ -135,7 +135,8 @@ export function streamCases(context: SyncContext): void {
       expect(Date.now() - started).toBeLessThan(1000);
       const action = delta.actions.find((item) => item.model === 'Team')!;
       expect([action.action, action.model_id, action.data.name]).toEqual(['update', String(world.teams.public.id), 'Media live']);
-      expect(delta.last_sync_id).toBe(delta.actions[delta.actions.length - 1].sync_id);
+      // Other test files write at the same time, so the log may already be past this delta.
+      expect(delta.last_sync_id).toBeGreaterThanOrEqual(delta.actions[delta.actions.length - 1].sync_id);
     });
 
     it('delivers to every open socket of the workspace', async () => {
