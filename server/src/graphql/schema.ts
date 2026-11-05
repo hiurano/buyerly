@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { GraphQLSchema } from 'graphql';
-import { buildSchemaSync } from 'type-graphql';
+import { buildSchemaSync, getMetadataStorage } from 'type-graphql';
 import { RESOLVERS } from './areas/index.ts';
 import * as payloads from './payloads.ts';
 import { JSONScalar } from './scalars.ts';
@@ -13,7 +13,12 @@ import { JSONScalar } from './scalars.ts';
 let built: GraphQLSchema | null = null;
 
 export function clientSchema(): GraphQLSchema {
-  built ??= buildSchemaSync({
+  if (built) return built;
+  // Parameter decorators run last to first, and TypeGraphQL keeps the order
+  // they ran in: put each field's arguments back in the order they're
+  // declared, which is Python's (only the order within a field matters).
+  getMetadataStorage().params.sort((a, b) => a.index - b.index);
+  built = buildSchemaSync({
     resolvers: RESOLVERS,
     // Payload types no moved field returns yet still belong to the schema.
     orphanedTypes: Object.values(payloads).filter((value) => typeof value === 'function'),
