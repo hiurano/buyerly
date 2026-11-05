@@ -105,20 +105,26 @@ export function literal<T extends string>(choices: readonly T[]): Check<T> {
   };
 }
 
-// list[item] with Field(max_length=…): too long is the only problem reported.
-export function list<T>(item: Check<T>, maxLength?: number): Check<T[]> {
+// list[item] with Field(min_length=…, max_length=…): too long is the only
+// problem reported; too short is reported once the items pass.
+export function list<T>(item: Check<T>, maxLength?: number, minLength?: number): Check<T[]> {
   return (value, issues) => {
     if (!Array.isArray(value)) {
       issues.push('Input should be a valid list');
       return undefined;
     }
     if (maxLength !== undefined && value.length > maxLength) {
-      issues.push(`List should have at most ${maxLength} items after validation, not ${value.length}`);
+      issues.push(`List should have at most ${maxLength} item${maxLength === 1 ? '' : 's'} after validation, not ${value.length}`);
       return undefined;
     }
     const before = issues.length;
     const parsed = value.map((entry) => item(entry, issues));
-    return issues.length === before ? (parsed as T[]) : undefined;
+    if (issues.length !== before) return undefined;
+    if (minLength !== undefined && value.length < minLength) {
+      issues.push(`List should have at least ${minLength} item${minLength === 1 ? '' : 's'} after validation, not ${value.length}`);
+      return undefined;
+    }
+    return parsed as T[];
   };
 }
 
