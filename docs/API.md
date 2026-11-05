@@ -43,15 +43,15 @@ monitoring cycle делает обзор `degraded` или `critical`, даже 
 | `POST /api/auth/request-temporary-password` | `email`, `invite_token?`, `turnstile_token?` | вход и регистрация по почте: любой почте высылает одно письмо с одноразовой ссылкой и кодом. Новой почте без приглашения нужен `turnstile_token` от виджета Cloudflare Turnstile, иначе 400 без письма (проверка выключена, пока на сервере не задан `TURNSTILE_SECRET_KEY`). Недействительное или чужое `invite_token` — 403 |
 | `POST /api/auth/verify-temporary-password` | `email`, `code` | атомарно потребляет общий login credential, повторно проверяет доступ и открывает web-сессию; аккаунт с неподтверждённой почтой не открывает (403) |
 | `POST /api/auth/verify-email-link` | `token` | атомарно потребляет тот же login credential по ссылке; после этого код также недействителен |
-| `POST /api/auth/request-email-change` | `new_email` | высылает 6-значный код подтверждения для привязки нового email |
-| `POST /api/auth/verify-email-change` | `code` | верифицирует OTP и активирует подтверждённый email |
+| GraphQL `userEmailChangeRequest(input)` (REST `POST /api/auth/request-email-change`) | `new_email` | высылает 6-значный код подтверждения для привязки нового email |
+| GraphQL `userEmailChangeVerify(input)` (REST `POST /api/auth/verify-email-change`) | `code` | верифицирует OTP и активирует подтверждённый email |
 | `POST /api/auth/update-profile` | `first_name?`, `last_name?`, `email?`, `avatar_url?`, `full_name?`, `title?` (до 128), `username?` (до 40: буквы, цифры, `-` `_` `.`) | обновляет персональные данные профиля; пустое имя, неверный или занятый username — 400 с текстом Linear |
-| `POST /api/auth/logout` | — | немедленно отзывает текущую web-сессию; другие аккаунты этого браузера остаются |
+| GraphQL `logout` (REST `POST /api/auth/logout` до B4) | — | немедленно отзывает текущую web-сессию; другие аккаунты этого браузера остаются |
 | `GET /api/auth/accounts` | — | аккаунты, вошедшие в этом браузере, в порядке добавления: `id`, `username`, `full_name`, `email`, `avatar_url`, `slot`, `onboarding_completed`, `workspaces`; cookie закончившихся сессий удаляет; без входа — пустой список |
-| `GET /api/auth/sessions` | — | список активных устройств с датами создания, истечения и последней активности и IP-адресом последней активности; `location` — место последней активности от Cloudflare («Helsinki, 18, FI»), пустое без Cloudflare |
-| `DELETE /api/auth/sessions/{session_id}` | — | отзывает выбранную собственную web-сессию |
-| `POST /api/auth/logout-all` | `keep_current?` | отзывает все web-сессии пользователя; с `keep_current=true` текущая остаётся (Revoke all в Settings → Security & access) |
-| `GET /api/me` | — | `username`, `full_name`, `first_name`, `last_name`, `email`, `email_verified`, `unconfirmed_email`, `avatar_url`, `role`, `is_approved`, `active_workspace`, `workspaces` |
+| GraphQL `authenticationSessions` (REST `GET /api/auth/sessions`) | — | список активных устройств с датами создания, истечения и последней активности и IP-адресом последней активности; `location` — место последней активности от Cloudflare («Helsinki, 18, FI»), пустое без Cloudflare |
+| GraphQL `logoutSession(sessionId)` (REST `DELETE /api/auth/sessions/{session_id}`) | — | отзывает выбранную собственную web-сессию |
+| GraphQL `logoutAllSessions(keepCurrent)` (REST `POST /api/auth/logout-all`) | `keep_current?` | отзывает все web-сессии пользователя; с `keep_current=true` текущая остаётся (Revoke all в Settings → Security & access) |
+| GraphQL `viewer` (REST `GET /api/me`; без `X-Workspace-Slug`) | — | `username`, `full_name`, `first_name`, `last_name`, `email`, `email_verified`, `unconfirmed_email`, `avatar_url`, `role`, `is_approved`, `active_workspace`, `workspaces` |
 | GraphQL `adminOverview` | — | сводная таблица всех пользователей, воркспейсов, участников и инвайтов (только админ платформы) |
 | GraphQL `supportSessionCreate(input)` | `workspace_id`, `reason`, `duration_minutes?` | создание ограниченной по времени сессии техподдержки администратора платформы (5–240 мин) с обязательным обоснованием; событие `SUPPORT_SESSION_GRANTED` в журнале |
 | GraphQL `supportSessions(activeOnly = true)` | — | активные или все сессии техподдержки этого администратора, новые первыми |

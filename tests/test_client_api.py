@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import api.routes as api_routes_module
 from api.client_api import schema as client_schema  # the ClientSchema the endpoint serves
-from api.client_api.schema import ROUTES
+from api.client_api.schema import ALSO_REST, ROUTES
 from api.meta_oauth import router as meta_oauth_router
 from api.routers import telegram as telegram_router
 from api.routes import ALL_REST_ROUTERS, rest_only
@@ -81,6 +81,8 @@ CASES = {
         "GET", lambda f, n: "/api/admin/support-sessions?active_only=false", lambda f, n: {"activeOnly": False}
     ),
     "healthOverview": _case("GET", lambda f, n: "/api/health/overview", lambda f, n: {}),
+    "viewer": _case("GET", lambda f, n: "/api/me", lambda f, n: {}),
+    "authenticationSessions": _case("GET", lambda f, n: "/api/auth/sessions", lambda f, n: {}),
     "accountNotificationSetting": _case(
         "GET", lambda f, n: f"/api/accounts/{f.acc[n]}/notifications", lambda f, n: {"accountId": f.acc[n]}
     ),
@@ -147,6 +149,21 @@ CASES = {
         "POST", lambda f, n: "/api/admin/support-sessions",
         lambda f, n: {"input": {"workspace_id": f.ws, "reason": f"Customer asked for help {n}"}},
         lambda f, n: {"workspace_id": f.ws, "reason": f"Customer asked for help {n}"},
+    ),
+    "logout": _case("POST", lambda f, n: "/api/auth/logout", lambda f, n: {}),
+    "logoutSession": _case(
+        "DELETE", lambda f, n: "/api/auth/sessions/no-such-session", lambda f, n: {"sessionId": "no-such-session"}
+    ),
+    "logoutAllSessions": _case(
+        "POST", lambda f, n: "/api/auth/logout-all?keep_current=true", lambda f, n: {"keepCurrent": True}
+    ),
+    "userEmailChangeRequest": _case(
+        "POST", lambda f, n: "/api/auth/request-email-change",
+        lambda f, n: {"input": {"new_email": f"no-at-sign-{n}"}}, lambda f, n: {"new_email": f"no-at-sign-{n}"},
+    ),
+    "userEmailChangeVerify": _case(
+        "POST", lambda f, n: "/api/auth/verify-email-change",
+        lambda f, n: {"input": {"code": "000000"}}, lambda f, n: {"code": "000000"},
     ),
     "supportSessionRevoke": _case(
         "POST", lambda f, n: f"/api/admin/support-sessions/{f.event[n]}/revoke", lambda f, n: {"id": f.event[n]}
@@ -419,6 +436,8 @@ CASES = {
 # Allowed to anyone in the workspace, and the REST request's effect changes what the GraphQL one
 # finds: after leaving there is nothing to leave. The outsider's refusals are still compared.
 CHANGES_THE_PERSON = {"workspaceLeave", "workspaceSwitch"}
+# Signs the actor out, so nothing after it would be compared; tests/test_api.py covers logging out.
+ENDS_THE_SESSION = {"logout"}
 
 
 def _schema_fields() -> dict:
@@ -638,13 +657,14 @@ class TestClientApi(unittest.IsolatedAsyncioTestCase):
         self.assertNotEqual(response.status_code, 200)
 
     async def test_another_workspace_sees_and_changes_nothing(self):
-        self.assertEqual(await self._assert_same_as_rest("outsider"), len(CASES))
+        compared = await self._assert_same_as_rest("outsider", skip=ENDS_THE_SESSION)
+        self.assertEqual(compared, len(CASES) - len(ENDS_THE_SESSION))
 
     async def test_a_guest_off_every_team_is_refused_as_by_rest(self):
-        await self._assert_same_as_rest("guest", skip=CHANGES_THE_PERSON)
+        await self._assert_same_as_rest("guest", skip=CHANGES_THE_PERSON | ENDS_THE_SESSION)
 
     async def test_a_member_may_do_what_rest_lets_a_member_do(self):
-        await self._assert_same_as_rest("member", skip=CHANGES_THE_PERSON)
+        await self._assert_same_as_rest("member", skip=CHANGES_THE_PERSON | ENDS_THE_SESSION)
 
     async def test_reads_return_what_the_routes_return(self):
         for name, case in CASES.items():
@@ -721,6 +741,8 @@ class TestClientApi(unittest.IsolatedAsyncioTestCase):
         production = create_app()
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=production), base_url="http://test") as client:
             for name, route in ROUTES.items():
+                if name in ALSO_REST:
+                    continue
                 path = route.path if route.path.startswith("/api") else "/api" + route.path
                 path = re.sub(r"\{[^}]+\}", "1", path)
                 for method in route.methods:

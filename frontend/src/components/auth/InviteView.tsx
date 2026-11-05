@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { apiRequest } from '@/lib/api';
+import { graphql } from '@/lib/graphql';
 import { acceptInvite } from '@/lib/workspaces';
 import type { InviteInfo, LoginResult, SessionUser } from '@/lib/types';
 import {
@@ -148,7 +149,7 @@ export const InviteView: React.FC<InviteViewProps> = ({
     setBusy(true);
     setError('');
     try {
-      await apiRequest('/api/auth/logout', { method: 'POST', body: JSON.stringify({}) });
+      await graphql('mutation Logout { logout { success } }');
       if (thenLogIn) setShowLogin(true);
       await onSignedOut(thenLogIn);
     } catch (logoutError) {

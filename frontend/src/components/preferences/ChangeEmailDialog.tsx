@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as stylex from '@stylexjs/stylex';
-import { apiRequest } from '@/lib/api';
+import { graphql } from '@/lib/graphql';
 import { Button } from '@/ui/Button';
 import { Input } from '@/ui/Input';
 import { withClassName } from '@/ui/withClassName';
@@ -168,9 +168,8 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
     setBusy(true);
     setError('');
     try {
-      await apiRequest('/api/auth/request-email-change', {
-        method: 'POST',
-        body: JSON.stringify({ new_email: address }),
+      await graphql('mutation UserEmailChangeRequest($input: JSON!) { userEmailChangeRequest(input: $input) { success } }', {
+        input: { new_email: address },
       });
       setStep('code');
     } catch (requestError) {
@@ -185,9 +184,8 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
     setBusy(true);
     setError('');
     try {
-      await apiRequest('/api/auth/verify-email-change', {
-        method: 'POST',
-        body: JSON.stringify({ code: cleanCode }),
+      await graphql('mutation UserEmailChangeVerify($input: JSON!) { userEmailChangeVerify(input: $input) { success } }', {
+        input: { code: cleanCode },
       });
       await onChanged();
       onOpenChange(false);
