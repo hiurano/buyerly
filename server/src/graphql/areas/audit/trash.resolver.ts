@@ -7,7 +7,7 @@ import { JSONScalar } from '../../scalars.ts';
 
 // Recently deleted (api/routers/trash.py list_deleted_items). Restoring an
 // item re-attaches a rule to its ad accounts with the rules' compatibility
-// check, so deletedItemRestore moves with the rules area.
+// check, so deletedItemRestore lives with the rules area (areas/rules).
 
 interface DeletedItemRow {
   id: number;
