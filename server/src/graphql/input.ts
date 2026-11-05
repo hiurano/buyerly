@@ -22,8 +22,13 @@ export function inputSchema<T>(schema: JSONSchemaType<T> | Record<string, unknow
       // A missing input is an empty body, as bridge.py validates None as {}.
       const body = value ?? {};
       if (validate(body)) return body;
+      // pydantic checks the declared fields first and reports unknown keys after them.
       const issues = pydanticIssues(body, validate.errors ?? []);
-      throw invalidInput(issues.map((issue) => issue.msg));
+      const ordered = [
+        ...issues.filter((issue) => issue.type !== 'extra_forbidden'),
+        ...issues.filter((issue) => issue.type === 'extra_forbidden'),
+      ];
+      throw invalidInput(ordered.map((issue) => issue.msg));
     },
   };
 }
