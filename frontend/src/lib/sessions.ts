@@ -28,7 +28,10 @@ export async function revokeSession(id: string): Promise<void> {
 
 /** Linear's Revoke all: every other session ends, this one stays. */
 export async function revokeOtherSessions(): Promise<void> {
-  await graphql('mutation LogoutOtherSessions { logoutAllSessions(keepCurrent: true) { success } }');
+  await graphql(
+    'mutation LogoutOtherSessions($keepCurrent: Boolean!) { logoutAllSessions(keepCurrent: $keepCurrent) { success } }',
+    { keepCurrent: true },
+  );
 }
 
 /**
