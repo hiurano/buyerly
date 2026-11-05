@@ -12,8 +12,10 @@ import { installErrorHandler } from './http/errors.ts';
 import { RateLimiter } from './http/rate-limit.ts';
 import { authRoutes } from './routes/auth.ts';
 import { inviteRoutes } from './routes/invites.ts';
+import { syncSocketRoutes } from './routes/sync-socket.ts';
 import { syncRoutes } from './routes/sync.ts';
 import { uploadRoutes } from './routes/uploads.ts';
+import type { SyncTuning } from './sync/hub.ts';
 
 export type { Database } from './database.ts';
 
@@ -43,6 +45,8 @@ declare module 'fastify' {
 
 export interface BuildOptions {
   services?: Partial<Services>;
+  // The sync stream's batch, poll and heartbeat; tests shorten them.
+  sync?: Partial<SyncTuning>;
   fastify?: FastifyServerOptions;
 }
 
@@ -55,6 +59,7 @@ const NO_DATABASE: Database = {
   ping: async () => { throw new Error('DATABASE_URL is not set'); },
   close: async () => {},
   transaction: async () => { throw new Error('DATABASE_URL is not set'); },
+  listen: async () => { throw new Error('DATABASE_URL is not set'); },
 };
 
 export function buildApp(config: Config, database: Database | null, options: BuildOptions = {}): FastifyInstance {
@@ -122,6 +127,7 @@ export function buildApp(config: Config, database: Database | null, options: Bui
   void app.register(inviteRoutes);
   void app.register(syncRoutes);
   void app.register(uploadRoutes);
+  void app.register(syncSocketRoutes, { tuning: options.sync });
 
   app.addHook('onClose', async () => {
     await database?.close();

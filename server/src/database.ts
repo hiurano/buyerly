@@ -1,3 +1,4 @@
+import pg from 'pg';
 import { DataSource, type DataSourceOptions, type EntityManager } from 'typeorm';
 import { BUYERLY_ENTITIES } from './entities/index.ts';
 
@@ -29,6 +30,10 @@ export interface Database {
   ping(): Promise<void>;
   close(): Promise<void>;
   transaction<T>(work: (tx: EntityManager) => Promise<T>, options?: TransactionOptions): Promise<T>;
+  // LISTEN on a NOTIFY channel over a connection of its own, outside the
+  // pool: `onNotify` for each notification, `onError` once when the
+  // connection is lost. Resolves once listening; the result stops it.
+  listen(channel: string, onNotify: () => void, onError: (error: Error) => void): Promise<() => Promise<void>>;
 }
 
 export interface TransactionOptions {
@@ -64,6 +69,7 @@ export async function rows<T>(tx: EntityManager, sql: string, parameters: unknow
 }
 
 export function databaseOver(dataSource: DataSource): Database {
+  const url = (dataSource.options as { url?: string }).url ?? '';
   // Connect on first use, not at start: the server starts and reports "not
   // ready" while the database is down, then connects once it is up.
   let connecting: Promise<DataSource> | null = null;
@@ -100,6 +106,32 @@ export function databaseOver(dataSource: DataSource): Database {
       } finally {
         await runner.release();
       }
+    },
+    async listen(channel, onNotify, onError) {
+      const client = new pg.Client({ connectionString: url, connectionTimeoutMillis: 3000 });
+      let failed = false;
+      const fail = (error: Error) => {
+        if (failed) return;
+        failed = true;
+        onError(error);
+      };
+      client.on('notification', (message) => {
+        if (message.channel === channel) onNotify();
+      });
+      client.on('error', fail);
+      client.on('end', () => fail(new Error('LISTEN connection ended')));
+      try {
+        await client.connect();
+        await client.query(`LISTEN "${channel.replace(/"/g, '""')}"`);
+      } catch (error) {
+        failed = true;
+        await client.end().catch(() => {});
+        throw error;
+      }
+      return async () => {
+        failed = true;
+        await client.end().catch(() => {});
+      };
     },
   };
 }

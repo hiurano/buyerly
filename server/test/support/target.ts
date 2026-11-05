@@ -4,7 +4,8 @@ import { gunzipSync } from 'node:zlib';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
-import { buildApp, type Services } from '../../src/app.ts';
+import type { AddressInfo } from 'node:net';
+import { buildApp, type BuildOptions, type Services } from '../../src/app.ts';
 import { DEFAULT_UPLOADS_ROOT, readConfig, type Config } from '../../src/config.ts';
 import { connectDatabase } from '../../src/database.ts';
 import type { EmailMessage } from '../../src/email/send.ts';
@@ -48,6 +49,8 @@ export interface Target {
   lastEmail(to: string): Promise<EmailMessage>;
   // Where the server keeps uploaded images.
   uploadsRoot: string;
+  // A ws:// URL of the path on a listening server, for WebSocket tests.
+  socketUrl(path: string): Promise<string>;
   close(): Promise<void>;
 }
 
@@ -73,7 +76,7 @@ function parsed(raw: string): unknown {
 
 // This server, in-process. `services` may be swapped by a test; the mailer
 // records every message by default and Turnstile says yes.
-export async function typescriptTarget(env: Record<string, string> = {}): Promise<InProcessTarget> {
+export async function typescriptTarget(env: Record<string, string> = {}, build: Pick<BuildOptions, 'sync'> = {}): Promise<InProcessTarget> {
   const outbox: EmailMessage[] = [];
   const config = readConfig({
     LOG_LEVEL: 'silent',
@@ -98,6 +101,7 @@ export async function typescriptTarget(env: Record<string, string> = {}): Promis
       sendEmail: (message) => services.sendEmail(message),
       verifyTurnstile: (token, ip) => services.verifyTurnstile(token, ip),
     },
+    ...build,
   });
   await app.ready();
   return {
@@ -133,6 +137,11 @@ export async function typescriptTarget(env: Record<string, string> = {}): Promis
       return message;
     },
     uploadsRoot: config.uploadsRoot,
+    async socketUrl(path) {
+      // Listening only once a test needs a socket: app.inject needs no port.
+      if (!app.server.listening) await app.listen({ port: 0, host: '127.0.0.1' });
+      return `ws://127.0.0.1:${(app.server.address() as AddressInfo).port}${path}`;
+    },
     close: () => app.close(),
   };
 }
@@ -185,6 +194,7 @@ export function pythonTarget(): Target {
     },
     // The API in CI runs from the repository, so it keeps them in uploads/.
     uploadsRoot: process.env.PYTHON_UPLOADS_DIR ?? DEFAULT_UPLOADS_ROOT,
+    socketUrl: async (path) => `${base.replace(/^http/, 'ws')}${path}`,
     close: async () => {},
   };
 }
