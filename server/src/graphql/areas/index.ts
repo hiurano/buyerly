@@ -1,5 +1,7 @@
 import type { NonEmptyArray } from 'type-graphql';
 import { UsersResolver } from './users/users.resolver.ts';
+import { AuditResolver } from './audit/audit.resolver.ts';
+import { TrashResolver } from './audit/trash.resolver.ts';
 import { FavoritesResolver } from './views/favorites.resolver.ts';
 import { ViewsResolver } from './views/views.resolver.ts';
 import { WorkspacesResolver } from './workspaces/workspaces.resolver.ts';
@@ -15,4 +17,6 @@ export const RESOLVERS: NonEmptyArray<new () => object> = [
   WorkspacesResolver,
   ViewsResolver,
   FavoritesResolver,
+  AuditResolver,
+  TrashResolver,
 ];
