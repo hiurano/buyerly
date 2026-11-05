@@ -41,7 +41,7 @@ describe.skipIf(!DATABASE_URL)('the signed-in account over GraphQL', () => {
   async function graphql(browser: Browser, query: string, variables?: Record<string, unknown>) {
     const answer = await browser.post('/api/graphql', { query, variables }, browser.csrf());
     expect(answer.status).toBe(200);
-    return { body: answer.json() as GraphQLAnswer, setCookie: answer.cookieHeader };
+    return { body: answer.json<GraphQLAnswer>(), setCookie: answer.cookieHeader };
   }
 
   function refusal(body: GraphQLAnswer): [number | undefined, string | undefined] {
@@ -63,7 +63,7 @@ describe.skipIf(!DATABASE_URL)('the signed-in account over GraphQL', () => {
 
     expect(refusal((await graphql(laptop, 'mutation { logoutSession(sessionId: "no-such-session") { success } }')).body))
       .toEqual([404, 'Session not found']);
-    const sessions = (await laptop.get('/api/auth/sessions')).json() as { id: string; user_agent: string }[];
+    const sessions = (await laptop.get('/api/auth/sessions')).json<{ id: string; user_agent: string }[]>();
     const tabletId = sessions.find((item) => item.user_agent === 'Tablet')!.id;
     const ended = await graphql(laptop, 'mutation($id: String!) { logoutSession(sessionId: $id) { success lastSyncId } }', { id: tabletId });
     expect((ended.body.data!.logoutSession as { success: boolean }).success).toBe(true);
