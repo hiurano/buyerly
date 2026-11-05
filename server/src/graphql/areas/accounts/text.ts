@@ -3,3 +3,7 @@ const SPACE = '[\\t\\n\\v\\f\\r\\x1c-\\x20\\x85\\xa0\\u1680\\u2000-\\u200a\\u202
 const STRIP = new RegExp(`^${SPACE}+|${SPACE}+$`, 'g');
 
 export const strip = (value: string): string => value.replace(STRIP, '');
+
+// str.split() with no separator: the words between runs of that whitespace.
+const RUNS = new RegExp(`${SPACE}+`);
+export const words = (value: string): string[] => value.split(RUNS).filter(Boolean);
