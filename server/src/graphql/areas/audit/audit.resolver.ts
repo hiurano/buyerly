@@ -33,7 +33,7 @@ function short(value: string | null, max: number): string | null {
 const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:[.,]\d{1,6})?)?(Z|z|[+-]\d{2}(?::?\d{2})?)?)?$/;
 const TIMESTAMP = /^[+-]?\d+(?:\.\d+)?$/;
 
-function datetime(value: string | null): string | null {
+export function datetime(value: string | null): string | null {
   if (value === null) return null;
   const text = value.trim();
   if (TIMESTAMP.test(text)) {

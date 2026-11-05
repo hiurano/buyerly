@@ -12,6 +12,7 @@ import { TrashResolver } from './audit/trash.resolver.ts';
 import { FavoritesResolver } from './views/favorites.resolver.ts';
 import { ViewsResolver } from './views/views.resolver.ts';
 import { NotificationChannelsResolver } from './notifications/channels.resolver.ts';
+import { InboxResolver } from './notifications/inbox.resolver.ts';
 import { DesktopNotificationsResolver } from './notifications/desktop.resolver.ts';
 import { TelegramResolver } from './notifications/telegram.resolver.ts';
 import { WorkspacesResolver } from './workspaces/workspaces.resolver.ts';
@@ -36,6 +37,7 @@ export const RESOLVERS: NonEmptyArray<new () => object> = [
   NotificationChannelsResolver,
   DesktopNotificationsResolver,
   TelegramResolver,
+  InboxResolver,
   AccountsResolver,
   AdSetsResolver,
   AnalyticsResolver,
