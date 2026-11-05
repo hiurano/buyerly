@@ -49,6 +49,8 @@ export const TEAM_COLUMNS = `t.id, t.name, t.key, t.description, t.private,
 
 // Python's " ".join(value.split()): whitespace runs become one space.
 export function cleanName(value: string): string {
+  // \x1c-\x1f are whitespace to Python's str.split(), not to \s.
+  // eslint-disable-next-line no-control-regex
   const name = value.split(/[\s\u001c-\u001f\u0085]+/u).filter(Boolean).join(' ');
   if (!name) throw new RouteError(400, "Team name can't be empty");
   return name;
