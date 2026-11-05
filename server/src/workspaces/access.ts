@@ -12,10 +12,14 @@ import {
 // for platform admins the workspaces with an active support grant. Every area
 // that takes a workspace from the route resolves it here.
 
-async function activeSupportGrant(tx: EntityManager, userId: number, workspaceId: number): Promise<boolean> {
-  return tx.exists(WorkspaceSupportGrantEntity, {
+async function supportGrant(tx: EntityManager, userId: number, workspaceId: number): Promise<WorkspaceSupportGrantEntity | null> {
+  return tx.findOne(WorkspaceSupportGrantEntity, {
     where: { workspaceId, userId, expiresAt: MoreThan(new Date()), revokedAt: IsNull() },
   });
+}
+
+async function activeSupportGrant(tx: EntityManager, userId: number, workspaceId: number): Promise<boolean> {
+  return (await supportGrant(tx, userId, workspaceId)) !== null;
 }
 
 async function isMember(tx: EntityManager, userId: number, workspaceId: number): Promise<boolean> {
@@ -109,4 +113,29 @@ export async function userWorkspacesList(tx: EntityManager, user: UserEntity): P
     // Python's `count or 1`: a workspace always has at least its owner.
     members_count: Number(workspace.members) || 1,
   }));
+}
+
+// Who the member is in a workspace: their membership row, or for a platform
+// admin with a support grant a member that has no row (id null) and the
+// grant's role (api/deps.py get_user_workspace_member).
+export interface ActingMember {
+  id: number | null;
+  workspaceId: number;
+  userId: number;
+  role: string;
+}
+
+export async function userWorkspaceMember(
+  tx: EntityManager,
+  user: UserEntity,
+  options: { workspaceId?: number } = {},
+): Promise<{ workspace: WorkspaceEntity; member: ActingMember } | null> {
+  const workspace = await userWorkspace(tx, user, options);
+  if (!workspace) return null;
+  const member = await tx.findOneBy(WorkspaceMemberEntity, { workspaceId: workspace.id, userId: user.id });
+  if (member) return { workspace, member };
+  if (user.role !== 'admin') return null;
+  const grant = await supportGrant(tx, user.id, workspace.id);
+  if (!grant) return null;
+  return { workspace, member: { id: null, workspaceId: workspace.id, userId: user.id, role: grant.role || 'admin' } };
 }
