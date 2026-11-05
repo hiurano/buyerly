@@ -581,3 +581,17 @@
   * [Senior / Staff Software Engineer, API](https://www.builtinseattle.com/job/senior-staff-software-engineer-api/6399460) — Built In;
   * [Reverse engineering Linear's sync magic](https://marknotfound.com/posts/reverse-engineering-linears-sync-magic/) — протокол bootstrap и delta;
   * [How's Linear so fast?](https://performance.dev/how-is-linear-so-fast-a-technical-breakdown) — сторонний разбор (Redis как шина).
+
+## Запись №55: Всё приложение говорит с сервером через GraphQL, REST — только служебные пути
+* **Дата:** 05.11.2026
+* **Статус:** Принято, часть эпика #611.
+* **Проблема:** Клиент уже почти всё делает через `/api/graphql`, но рядом осталась горсть REST-путей (`/api/auth/*`, `/api/me`, `/api/invites/{token}`, загрузки картинок). Два способа делать одно и то же — два набора типов, ошибок, тестов и правил доступа. При переезде на TypeScript (#611) каждый такой путь пришлось бы переносить и поддерживать отдельно.
+* **Решение:**
+  * Один инструмент для приложения — GraphQL (graphql-yoga + TypeGraphQL, запись №54). Любое чтение и запись данных, вход по коду из письма, сессии, приглашения, профиль, загрузка файлов — запросы и мутации GraphQL, как у Linear (`emailUserAccountAuthChallenge`, `fileUpload` с подписанной ссылкой и т. п.).
+  * Без GraphQL — только закрытый список служебных путей, которые им не сделать:
+    * синхронизация: `/api/sync/bootstrap`, `/api/sync/archived-models`, `/api/sync/delta`, `/api/sync/ws` (отдельный протокол, как у Linear);
+    * OAuth-редиректы и колбэки (Google, Meta) и вебхуки — туда приходит браузер или чужой сервер по URL;
+    * отдача файлов по ссылке (`/uploads/…`) и сам приём байтов файла по подписанной ссылке;
+    * health-проверки (`/health/…`).
+  * Новый путь вне GraphQL появляется только с дополнением этого списка.
+* **Как переходим:** сначала основа GraphQL на TS-сервере (#611, этап 3). Уже перенесённые 1:1 REST-пути (`/api/auth/*`, `/api/me`, `/api/invites/{token}`, загрузки) переводятся на GraphQL отдельными PR после неё: формат меняется не вместе с переездом, чтобы откат через `SERVER_PATHS` оставался простым. Остальные области этапа 3 переносятся сразу резолверами GraphQL.
