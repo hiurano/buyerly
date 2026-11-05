@@ -233,6 +233,8 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn('command: ["node", "server/dist/main.js"]', service)
         self.assertIn("/health/server/ready", service)
         self.assertNotIn("ports:", service)
+        # It writes and serves the uploads the API used to (#611).
+        self.assertIn("- buyerly-uploads:/app/uploads", service)
         self.assertIn("SERVER_URL: http://server:8090", self.compose)
         self.assertEqual(self.script.count("docker compose up -d --no-deps api worker backup server"), 2)
         self.assertIn("wait_for_container buyerly-server", self.script)

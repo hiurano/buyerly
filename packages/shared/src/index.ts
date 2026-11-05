@@ -10,3 +10,4 @@ export * from './json.ts';
 export * from './jsonb.ts';
 export * from './models.ts';
 export * from './sync.ts';
+export * from './uploads.ts';
