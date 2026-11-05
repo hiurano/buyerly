@@ -1,4 +1,5 @@
 import type { NonEmptyArray } from 'type-graphql';
+import { TeamsResolver } from './teams/teams.resolver.ts';
 import { UsersResolver } from './users/users.resolver.ts';
 import { AuditResolver } from './audit/audit.resolver.ts';
 import { TrashResolver } from './audit/trash.resolver.ts';
@@ -13,6 +14,7 @@ import { WorkspacesResolver } from './workspaces/workspaces.resolver.ts';
 // (test/graphql/schema.test.ts compares them), and the root fields served
 // here are no longer forwarded to the Python API (graphql/routing.ts).
 export const RESOLVERS: NonEmptyArray<new () => object> = [
+  TeamsResolver,
   UsersResolver,
   WorkspacesResolver,
   ViewsResolver,
