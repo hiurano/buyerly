@@ -1,0 +1,37 @@
+import 'reflect-metadata';
+import { GraphQLSchema } from 'graphql';
+import { buildSchemaSync } from 'type-graphql';
+import { RESOLVERS } from './areas/index.ts';
+import * as payloads from './payloads.ts';
+import { JSONScalar } from './scalars.ts';
+
+// The client API's schema on this server: TypeGraphQL classes from the areas
+// that have moved (areas/index.ts). Until every area has, it is a part of the
+// Python schema (api/client_api/schema.py), field for field; the rest is
+// answered by the Python API (routing.ts).
+
+let built: GraphQLSchema | null = null;
+
+export function clientSchema(): GraphQLSchema {
+  built ??= buildSchemaSync({
+    resolvers: RESOLVERS,
+    // Payload types no moved field returns yet still belong to the schema.
+    orphanedTypes: Object.values(payloads).filter((value) => typeof value === 'function'),
+    scalarsMap: [],
+    validate: false,
+    // Python's schema has no directives of its own and sorts nothing.
+    emitSchemaFile: false,
+    nullableByDefault: false,
+  });
+  return built;
+}
+
+export { JSONScalar };
+
+// Root fields this server answers, by operation type.
+export function servedRootFields(schema: GraphQLSchema = clientSchema()): { query: Set<string>; mutation: Set<string> } {
+  return {
+    query: new Set(Object.keys(schema.getQueryType()?.getFields() ?? {})),
+    mutation: new Set(Object.keys(schema.getMutationType()?.getFields() ?? {})),
+  };
+}

@@ -122,6 +122,8 @@ services:
       <<: *app-environment
       # File events do not cross the Windows bind mount; tsc polls instead.
       TSC_WATCHFILE: DynamicPriorityPolling
+      # Client API documents not moved yet go back to the API (#611).
+      API_URL: http://api:8080
     volumes:
       - .:/repo
       - buyerly-dev-node-modules:/repo/node_modules

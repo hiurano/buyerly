@@ -40,6 +40,11 @@ _HOP_HEADERS = frozenset(
 # httpx sets these for the forwarded request itself. The response keeps its
 # Content-Length: its body is passed on byte for byte, still encoded.
 _REQUEST_SKIP = _HOP_HEADERS | {"host", "content-length"}
+# Set by the TypeScript server on a request it passes back to this API: the
+# client API documents it does not answer yet (server/src/graphql/forward.ts).
+# Such a request is this app's to answer, never forwarded again. Sending it
+# from outside only reaches the same Python route the path had before.
+SERVER_HOP_HEADER = "x-buyerly-server-hop"
 # The WebSocket handshake of the next hop is its own.
 _SOCKET_SKIP = _HOP_HEADERS | {
     "host",
@@ -222,7 +227,7 @@ def install(app: FastAPI, base_url: str | None = None, paths: str | None = None,
 
     @app.middleware("http")
     async def forward_to_server(request: Request, call_next):
-        if not _owned(request.url.path, prefixes):
+        if not _owned(request.url.path, prefixes) or SERVER_HOP_HEADER in request.headers:
             return await call_next(request)
         upstream_client = client()
         headers = [(k, v) for k, v in request.headers.items() if k.lower() not in _REQUEST_SKIP]

@@ -87,6 +87,7 @@ def _health(path: str, expected_status: str) -> dict:
 
 def _auth_boundary() -> dict:
     protected_paths = (
+        # API -> TypeScript server -> back to the API for a GET (#611): the forwarding both ways.
         "/api/graphql",
         "/api/summary",
         "/api/meta/oauth/config",

@@ -70,6 +70,12 @@ services:
     ports:
       # Loopback only, for checks on the server; visitors come through the tunnel.
       - "127.0.0.1:8080:8080"
+    environment:
+      <<: *app-environment
+      # The TypeScript server passes client API documents it does not answer
+      # yet back to the API (#611), with the visitor's address in
+      # X-Forwarded-For; only its fixed address below is trusted for that.
+      TRUSTED_PROXY_CIDRS: 172.30.0.20/32
     volumes:
       - ./logs:/app/logs:z
       - buyerly-uploads:/app/uploads
@@ -97,10 +103,16 @@ services:
       # visitor's address and place as the API does. Nothing else connects to
       # it: it publishes no port and the tunnel routes to the API alone.
       TRUSTED_PROXY_CIDRS: 172.30.0.0/24
+      # Client API documents not moved yet go back to the API (#611).
+      API_URL: http://api:8080
     # The API's uploads directory (#611): avatars and logos are written and
     # served here now, and both servers read and remove the same files.
     volumes:
       - buyerly-uploads:/app/uploads
+    networks:
+      default:
+        # Fixed, so the API can trust it as a proxy (TRUSTED_PROXY_CIDRS above).
+        ipv4_address: 172.30.0.20
     depends_on:
       db:
         condition: service_healthy
