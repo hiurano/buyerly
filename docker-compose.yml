@@ -97,7 +97,10 @@ services:
       # visitor's address and place as the API does. Nothing else connects to
       # it: it publishes no port and the tunnel routes to the API alone.
       TRUSTED_PROXY_CIDRS: 172.30.0.0/24
-    volumes: []
+    # The API's uploads directory (#611): avatars and logos are written and
+    # served here now, and both servers read and remove the same files.
+    volumes:
+      - buyerly-uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy

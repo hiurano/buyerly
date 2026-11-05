@@ -1,5 +1,5 @@
 import type { FastifyRequest } from 'fastify';
-import { RequestValidationError, type ValidationIssue } from './errors.ts';
+import { ValidationFailed, type ValidationIssue } from './errors.ts';
 
 // Query parameters as FastAPI reads `name: int = Query(...)`: the string is
 // parsed the way pydantic parses an int (whitespace, a sign, `_` between
@@ -46,6 +46,6 @@ export function integerQuery<T extends Record<string, IntegerParameter>>(
       values[name] = value;
     }
   }
-  if (issues.length) throw new RequestValidationError(issues);
+  if (issues.length) throw new ValidationFailed(issues);
   return values as { [K in keyof T]: number };
 }

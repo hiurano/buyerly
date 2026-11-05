@@ -109,7 +109,10 @@ def _socket_headers(scope: Scope) -> list[tuple[str, str]]:
 
 
 async def _refuse(scope: Scope, send: Send, status: int, body: bytes) -> None:
-    if "websocket.http.response" in scope.get("extensions") or {}:
+    # A 403 is what a close before the accept gives anyway, as the API's own
+    # socket refuses another site's page. uvicorn logs "returned without
+    # completing handshake" after an http.response, so it is kept for the rest.
+    if status != 403 and "websocket.http.response" in (scope.get("extensions") or {}):
         await send({
             "type": "websocket.http.response.start",
             "status": status,

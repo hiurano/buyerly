@@ -125,6 +125,8 @@ services:
     volumes:
       - .:/repo
       - buyerly-dev-node-modules:/repo/node_modules
+      # The API's /app/uploads: the same files at <repository>/uploads here.
+      - buyerly-dev-uploads:/repo/uploads
     depends_on:
       deps:
         condition: service_completed_successfully

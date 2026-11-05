@@ -1,9 +1,12 @@
+import { mkdtempSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { gunzipSync } from 'node:zlib';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import type { AddressInfo } from 'node:net';
 import { buildApp, type BuildOptions, type Services } from '../../src/app.ts';
-import { readConfig, type Config } from '../../src/config.ts';
+import { DEFAULT_UPLOADS_ROOT, readConfig, type Config } from '../../src/config.ts';
 import { connectDatabase } from '../../src/database.ts';
 import type { EmailMessage } from '../../src/email/send.ts';
 
@@ -26,6 +29,7 @@ export interface HttpRequest {
   method: 'GET' | 'POST' | 'DELETE';
   path: string;
   headers: Record<string, string>;
+  // JSON, or bytes sent as they are (a multipart form).
   body?: unknown;
 }
 
@@ -33,7 +37,9 @@ export interface HttpResponse {
   status: number;
   headers: Record<string, string>;
   setCookies: string[];
+  // JSON when the answer parses as JSON, otherwise its text.
   body: unknown;
+  raw: Buffer;
 }
 
 export interface Target {
@@ -41,6 +47,8 @@ export interface Target {
   send(request: HttpRequest): Promise<HttpResponse>;
   // The last email sent to the address, once it has been sent.
   lastEmail(to: string): Promise<EmailMessage>;
+  // Where the server keeps uploaded images.
+  uploadsRoot: string;
   // A ws:// URL of the path on a listening server, for WebSocket tests.
   socketUrl(path: string): Promise<string>;
   close(): Promise<void>;
@@ -53,8 +61,17 @@ export interface InProcessTarget extends Target {
   config: Config;
 }
 
-function encode(body: unknown): string | undefined {
-  return body === undefined ? undefined : JSON.stringify(body);
+function encode(body: unknown): string | Buffer | undefined {
+  if (body === undefined || Buffer.isBuffer(body)) return body;
+  return JSON.stringify(body);
+}
+
+function parsed(raw: string): unknown {
+  try {
+    return raw ? (JSON.parse(raw) as unknown) : null;
+  } catch {
+    return raw;
+  }
 }
 
 // This server, in-process. `services` may be swapped by a test; the mailer
@@ -68,6 +85,7 @@ export async function typescriptTarget(env: Record<string, string> = {}, build: 
     // browser's address, so each test browser has its own.
     TRUSTED_PROXY_CIDRS: '127.0.0.1/32',
     WEBAPP_URL: 'https://buyerly.test',
+    SERVER_UPLOADS_DIR: mkdtempSync(join(tmpdir(), 'buyerly-uploads-')),
     ...env,
   });
   const services: Services = {
@@ -109,7 +127,8 @@ export async function typescriptTarget(env: Record<string, string> = {}, build: 
         status: response.statusCode,
         headers,
         setCookies: cookies === undefined ? [] : Array.isArray(cookies) ? cookies : [cookies],
-        body: raw ? (JSON.parse(raw) as unknown) : null,
+        body: parsed(raw),
+        raw: response.rawPayload,
       };
     },
     async lastEmail(to) {
@@ -117,6 +136,7 @@ export async function typescriptTarget(env: Record<string, string> = {}, build: 
       if (!message) throw new Error(`No email was sent to ${to}`);
       return message;
     },
+    uploadsRoot: config.uploadsRoot,
     async socketUrl(path) {
       // Listening only once a test needs a socket: app.inject needs no port.
       if (!app.server.listening) await app.listen({ port: 0, host: '127.0.0.1' });
@@ -143,14 +163,6 @@ async function emailFromLog(path: string, to: string): Promise<EmailMessage | nu
   return found;
 }
 
-function parsed(raw: string): unknown {
-  try {
-    return raw ? (JSON.parse(raw) as unknown) : null;
-  } catch {
-    return raw;
-  }
-}
-
 export function pythonTarget(): Target {
   const base = (process.env.PYTHON_API_URL ?? '').replace(/\/+$/, '');
   const log = process.env.PYTHON_API_LOG ?? '';
@@ -164,12 +176,12 @@ export function pythonTarget(): Target {
         body: encode(request.body),
         redirect: 'manual',
       });
-      const raw = await response.text();
+      const raw = Buffer.from(await response.arrayBuffer());
       const headers: Record<string, string> = {};
       response.headers.forEach((value, name) => {
         if (name !== 'set-cookie') headers[name] = value;
       });
-      return { status: response.status, headers, setCookies: response.headers.getSetCookie(), body: parsed(raw) };
+      return { status: response.status, headers, setCookies: response.headers.getSetCookie(), body: parsed(raw.toString('utf8')), raw };
     },
     async lastEmail(to) {
       // The log is written as the request finishes; give it a moment.
@@ -180,6 +192,8 @@ export function pythonTarget(): Target {
       }
       throw new Error(`No email to ${to} in ${log}`);
     },
+    // The API in CI runs from the repository, so it keeps them in uploads/.
+    uploadsRoot: process.env.PYTHON_UPLOADS_DIR ?? DEFAULT_UPLOADS_ROOT,
     socketUrl: async (path) => `${base.replace(/^http/, 'ws')}${path}`,
     close: async () => {},
   };

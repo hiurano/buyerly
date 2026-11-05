@@ -95,10 +95,15 @@ Compose задаёт сам и в `.env` не нужны: `APP_VERSION`, `DATABA
 `CLOUDFLARE_TUNNEL_CIDRS` (фиксированный адрес `buyerly-tunnel`, `172.30.0.10/32`).
 Значения по умолчанию подходят для `API_HOST`, `API_PORT`, `SERVE_STATIC`,
 `SERVER_PATHS` (префиксы путей, которые API пересылает серверу на TypeScript,
-сейчас `/health/server/,/api/auth/,/api/me/,/api/sync/`; убрать префикс — вернуть область
+сейчас `/health/server/,/api/auth/,/api/me/,/api/onboarding/avatar/,/api/onboarding/workspace/logo/,/uploads/,/api/sync/`; убрать префикс — вернуть область
 Python, её код остаётся на месте до конца переезда; если `SERVER_PATHS` задан в
 `.env` сервера, он заменяет значение по умолчанию и должен перечислять новые
-префиксы сам),
+префиксы сам; WebSocket на этих путях — поток синхронизации `/api/sync/ws` —
+API пересылает отдельным ASGI-слоем [api/server_proxy.py](../api/server_proxy.py):
+открывает сокет к серверу с теми же cookie, `Origin` и `X-Forwarded-*`,
+передаёт кадры в обе стороны и закрывает браузерный сокет с кодом сервера
+(4401, 4403, 4404, 4410, 4429); отказ сервера до рукопожатия браузер получает
+тем же HTTP-статусом, недоступный сервер — 502),
 `CLOUDFLARE_IP_CIDRS`; `CORS_ORIGINS` нужен только для явно разрешённых
 cross-origin клиентов.
 
