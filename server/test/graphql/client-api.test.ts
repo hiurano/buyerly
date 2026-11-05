@@ -136,11 +136,11 @@ describe.skipIf(!DATABASE_URL)('client API', () => {
 
   it.skipIf(!process.env.PYTHON_API_URL)('answers the fields not moved yet as well', async () => {
     const { browser } = await signedIn();
-    const answer = await graphql(browser, '{ favorites workspaces }');
+    const answer = await graphql(browser, '{ inboxUnreadCount workspaces }');
     expect(answer.status).toBe(200);
     const { data, errors } = answer.body as GraphQLAnswer;
     expect(errors).toBeUndefined();
-    expect(data!.favorites).toEqual({ favorites: [] });
+    expect(data!.inboxUnreadCount).toMatchObject({ unread_count: 0 });
     expect(data!.workspaces).toHaveLength(1);
   });
 });
