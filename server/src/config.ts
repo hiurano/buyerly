@@ -22,6 +22,8 @@ export interface Config {
 
   // Public URL of the web app; the login email links back to it.
   webappUrl: string;
+  // Comma-separated origins allowed besides WEBAPP_URL (the sync socket checks them).
+  corsOrigins: string;
   // A browser session ends after this many days without use.
   webSessionIdleDays: number;
   sessionCookieSecure: boolean;
@@ -88,6 +90,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     cloudflareIpCidrs: env.CLOUDFLARE_IP_CIDRS ?? '',
     cloudflareTunnelCidrs: env.CLOUDFLARE_TUNNEL_CIDRS ?? '',
     webappUrl: env.WEBAPP_URL ?? '',
+    corsOrigins: env.CORS_ORIGINS ?? '',
     webSessionIdleDays: envInt('WEB_SESSION_IDLE_DAYS', env.WEB_SESSION_IDLE_DAYS, 90, 1, 365),
     sessionCookieSecure: envBool(env.SESSION_COOKIE_SECURE, true),
     resendApiKey: env.RESEND_API_KEY ?? '',

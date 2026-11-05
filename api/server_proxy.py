@@ -3,16 +3,22 @@
 Cloudflare's tunnel sends every request to this API. Paths the TypeScript
 server already owns (settings.SERVER_PATHS) are passed on to it unchanged,
 before this app's own routes see them; moving an area back is removing its
-prefix. Once every area has moved, the tunnel points at the TypeScript server
+prefix. WebSockets on those paths (the sync stream) are forwarded too,
+frame by frame (SocketForwarder). Once every area has moved, the tunnel points at the TypeScript server
 and this module goes away.
 """
 
+import asyncio
 import logging
+from contextlib import suppress
 
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.background import BackgroundTask
+from starlette.types import ASGIApp, Receive, Scope, Send
+from websockets.asyncio.client import connect as websocket_connect
+from websockets.exceptions import ConnectionClosed, InvalidStatus
 
 from core.config import settings
 
@@ -34,6 +40,15 @@ _HOP_HEADERS = frozenset(
 # httpx sets these for the forwarded request itself. The response keeps its
 # Content-Length: its body is passed on byte for byte, still encoded.
 _REQUEST_SKIP = _HOP_HEADERS | {"host", "content-length"}
+# The WebSocket handshake of the next hop is its own.
+_SOCKET_SKIP = _HOP_HEADERS | {
+    "host",
+    "user-agent",
+    "sec-websocket-key",
+    "sec-websocket-version",
+    "sec-websocket-extensions",
+    "sec-websocket-protocol",
+}
 
 
 def owned_prefixes(paths: str) -> tuple[str, ...]:
@@ -54,6 +69,131 @@ def _owned(path: str, prefixes: tuple[str, ...]) -> bool:
     return any(path.startswith(prefix) or path == prefix[:-1] for prefix in prefixes)
 
 
+class SocketForwarder:
+    """WebSockets on owned paths (the sync stream, /api/sync/ws) go to the server, frame by frame.
+
+    HTTP middleware never sees a WebSocket, so this one wraps the app as ASGI. The browser's
+    handshake is answered with the server's: its Set-Cookie on the accept, its refusal (an HTTP
+    status before the upgrade) as a refusal, its close code and reason as the close.
+    """
+
+    def __init__(self, app: ASGIApp, base_url: str, prefixes: tuple[str, ...]):
+        self.app = app
+        self.base_url = "ws" + base_url.removeprefix("http")
+        self.prefixes = prefixes
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "websocket" or not _owned(scope["path"], self.prefixes):
+            await self.app(scope, receive, send)
+            return
+        await forward_socket(scope, receive, send, self.base_url)
+
+
+def _socket_headers(scope: Scope) -> list[tuple[str, str]]:
+    headers = [
+        (k.decode("latin-1"), v.decode("latin-1"))
+        for k, v in scope["headers"]
+        if k.decode("latin-1").lower() not in _SOCKET_SKIP
+    ]
+    for k, v in scope["headers"]:
+        name = k.decode("latin-1").lower()
+        if name == "user-agent":
+            headers.append(("User-Agent", v.decode("latin-1")))
+        elif name == "host":
+            # The server checks a page's Origin against the host the browser asked for.
+            headers.append(("X-Forwarded-Host", v.decode("latin-1")))
+    if scope.get("client"):
+        headers.append(("X-Forwarded-For", scope["client"][0]))
+    headers.append(("X-Forwarded-Proto", "https" if scope.get("scheme") == "wss" else "http"))
+    return headers
+
+
+async def _refuse(scope: Scope, send: Send, status: int, body: bytes) -> None:
+    if "websocket.http.response" in scope.get("extensions") or {}:
+        await send({
+            "type": "websocket.http.response.start",
+            "status": status,
+            "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())],
+        })
+        await send({"type": "websocket.http.response.body", "body": body})
+    else:
+        # A close before the accept: the server answers the handshake with 403.
+        await send({"type": "websocket.close", "code": 1008})
+
+
+async def forward_socket(scope: Scope, receive: Receive, send: Send, base_url: str) -> None:
+    message = await receive()
+    if message["type"] != "websocket.connect":
+        return
+    query = scope.get("query_string", b"").decode("latin-1")
+    url = f"{base_url}{scope['path']}" + (f"?{query}" if query else "")
+    try:
+        upstream = await websocket_connect(
+            url,
+            additional_headers=_socket_headers(scope),
+            user_agent_header=None,
+            compression=None,
+            proxy=None,
+            # The stream has its own heartbeat; the browser's pings and closes are passed on.
+            ping_interval=None,
+            max_size=None,
+            open_timeout=10,
+        )
+    except InvalidStatus as refusal:
+        response = refusal.response
+        await _refuse(scope, send, response.status_code, bytes(response.body or b""))
+        return
+    except Exception as exc:  # noqa: BLE001 - any failure to reach the server is the same 502
+        # The path only: the query string carries the account and workspace.
+        logger.error("TypeScript server unreachable for WS %s: %s", scope["path"], type(exc).__name__)
+        await _refuse(scope, send, 502, b'{"detail":"Service unavailable"}')
+        return
+
+    cookies = [(b"set-cookie", value.encode("latin-1")) for value in upstream.response.headers.get_all("set-cookie")]
+    await send({"type": "websocket.accept", "headers": cookies})
+
+    async def from_browser() -> None:
+        while True:
+            message = await receive()
+            if message["type"] == "websocket.disconnect":
+                code = message.get("code") or 1000
+                await upstream.close(code if code not in (1005, 1006) else 1000)
+                return
+            if message.get("text") is not None:
+                await upstream.send(message["text"])
+            elif message.get("bytes") is not None:
+                await upstream.send(message["bytes"])
+
+    async def from_server() -> None:
+        try:
+            async for frame in upstream:
+                if isinstance(frame, str):
+                    await send({"type": "websocket.send", "text": frame})
+                else:
+                    await send({"type": "websocket.send", "bytes": frame})
+        except ConnectionClosed:
+            pass
+        code = upstream.close_code
+        # 1005 (no code) and 1006 (dropped) cannot be sent; the browser reconnects after either.
+        await send({
+            "type": "websocket.close",
+            "code": code if code and code not in (1005, 1006) else 1011,
+            "reason": upstream.close_reason or "",
+        })
+
+    browser = asyncio.create_task(from_browser())
+    server = asyncio.create_task(from_server())
+    try:
+        await asyncio.wait({browser, server}, return_when=asyncio.FIRST_COMPLETED)
+    finally:
+        for task in (browser, server):
+            task.cancel()
+            with suppress(asyncio.CancelledError, Exception):
+                await task
+        with suppress(Exception):
+            await upstream.close()
+
+
 def install(app: FastAPI, base_url: str | None = None, paths: str | None = None,
             transport: httpx.AsyncBaseTransport | None = None) -> None:
     """Forward the owned paths to the TypeScript server; nothing when unset."""
@@ -61,6 +201,7 @@ def install(app: FastAPI, base_url: str | None = None, paths: str | None = None,
     prefixes = owned_prefixes(settings.SERVER_PATHS if paths is None else paths)
     if not base_url or not prefixes:
         return
+    app.add_middleware(SocketForwarder, base_url=base_url, prefixes=prefixes)
 
     def client() -> httpx.AsyncClient:
         # Made on first use, so an app that runs its lifespan again (tests)

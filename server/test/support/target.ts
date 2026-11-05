@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { gunzipSync } from 'node:zlib';
 import type { FastifyInstance } from 'fastify';
-import { buildApp, type Services } from '../../src/app.ts';
+import type { AddressInfo } from 'node:net';
+import { buildApp, type BuildOptions, type Services } from '../../src/app.ts';
 import { readConfig, type Config } from '../../src/config.ts';
 import { connectDatabase } from '../../src/database.ts';
 import type { EmailMessage } from '../../src/email/send.ts';
@@ -40,6 +41,8 @@ export interface Target {
   send(request: HttpRequest): Promise<HttpResponse>;
   // The last email sent to the address, once it has been sent.
   lastEmail(to: string): Promise<EmailMessage>;
+  // A ws:// URL of the path on a listening server, for WebSocket tests.
+  socketUrl(path: string): Promise<string>;
   close(): Promise<void>;
 }
 
@@ -56,7 +59,7 @@ function encode(body: unknown): string | undefined {
 
 // This server, in-process. `services` may be swapped by a test; the mailer
 // records every message by default and Turnstile says yes.
-export async function typescriptTarget(env: Record<string, string> = {}): Promise<InProcessTarget> {
+export async function typescriptTarget(env: Record<string, string> = {}, build: Pick<BuildOptions, 'sync'> = {}): Promise<InProcessTarget> {
   const outbox: EmailMessage[] = [];
   const config = readConfig({
     LOG_LEVEL: 'silent',
@@ -80,6 +83,7 @@ export async function typescriptTarget(env: Record<string, string> = {}): Promis
       sendEmail: (message) => services.sendEmail(message),
       verifyTurnstile: (token, ip) => services.verifyTurnstile(token, ip),
     },
+    ...build,
   });
   await app.ready();
   return {
@@ -112,6 +116,11 @@ export async function typescriptTarget(env: Record<string, string> = {}): Promis
       const message = outbox.findLast((item) => item.to === to);
       if (!message) throw new Error(`No email was sent to ${to}`);
       return message;
+    },
+    async socketUrl(path) {
+      // Listening only once a test needs a socket: app.inject needs no port.
+      if (!app.server.listening) await app.listen({ port: 0, host: '127.0.0.1' });
+      return `ws://127.0.0.1:${(app.server.address() as AddressInfo).port}${path}`;
     },
     close: () => app.close(),
   };
@@ -171,6 +180,7 @@ export function pythonTarget(): Target {
       }
       throw new Error(`No email to ${to} in ${log}`);
     },
+    socketUrl: async (path) => `${base.replace(/^http/, 'ws')}${path}`,
     close: async () => {},
   };
 }
