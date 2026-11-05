@@ -140,6 +140,18 @@ export function pydanticIssues(body: unknown, issues: AjvIssue[]): ValidationIss
           ctx: { field_type: 'List', [short ? 'min_length' : 'max_length']: limit, actual_length: actual },
         };
       }
+      case 'minimum':
+      case 'maximum': {
+        const limit = Number(issue.params.limit);
+        const low = issue.keyword === 'minimum';
+        return {
+          type: low ? 'greater_than_equal' : 'less_than_equal',
+          loc: ['body', ...path],
+          msg: `Input should be ${low ? 'greater' : 'less'} than or equal to ${limit}`,
+          input,
+          ctx: { [low ? 'ge' : 'le']: limit },
+        };
+      }
       case 'pattern': {
         const pattern = String(issue.params.pattern);
         return {
