@@ -269,7 +269,12 @@ describe.skipIf(!DATABASE_URL)('workspaces, invites and onboarding', () => {
     expect(member.role).toBe('guest');
     expect((await db.getRepository(UserEntity).findOneByOrFail({ id: daveUser.id })).activeWorkspaceId).toBe(w.ws.id);
     expect(await db.getRepository(WorkspaceInviteEntity).findOneByOrFail({ id: link.id })).toMatchObject({ status: 'accepted', usedCount: 1 });
-    const mail = await target.lastEmail(w.owner.user.email!);
+    // Python sends it as a background task, after answering.
+    let mail = await target.lastEmail(w.owner.user.email!);
+    for (let attempt = 0; attempt < 40 && !mail.text?.includes('joined your'); attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      mail = await target.lastEmail(w.owner.user.email!);
+    }
     expect(mail.text).toBe([
       'Dave New joined your Buyerly workspace', '', 'Invite more teammates to your workspace:',
       `https://buyerly.test/${w.ws.slug}/settings/members`, '', `Unsubscribe: https://buyerly.test/${w.ws.slug}/settings/account/notifications`,
