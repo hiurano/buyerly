@@ -68,6 +68,8 @@ const TYPE_MESSAGES: Record<string, [string, string]> = {
   boolean: ['bool_type', 'Input should be a valid boolean'],
   integer: ['int_type', 'Input should be a valid integer'],
   array: ['list_type', 'Input should be a valid list'],
+  number: ['float_type', 'Input should be a valid number'],
+  object: ['model_type', 'Input should be a valid dictionary or instance of Model'],
 };
 
 // Ajv's findings in pydantic's words. Only the keywords the route schemas use
@@ -161,6 +163,12 @@ export function pydanticIssues(body: unknown, issues: AjvIssue[]): ValidationIss
           input,
           ctx: { pattern },
         };
+      }
+      case 'enum': {
+        // A Literal: "Input should be 'a', 'b' or 'c'".
+        const allowed = (issue.params.allowedValues as unknown[]).map((value) => `'${String(value)}'`);
+        const expected = allowed.length > 1 ? `${allowed.slice(0, -1).join(', ')} or ${allowed[allowed.length - 1]}` : allowed[0];
+        return { type: 'literal_error', loc: ['body', ...path], msg: `Input should be ${expected}`, input, ctx: { expected } };
       }
       default:
         return { type: issue.keyword, loc: ['body', ...path], msg: 'Input should be valid', input };
