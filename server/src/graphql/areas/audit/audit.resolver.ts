@@ -53,16 +53,15 @@ export class AuditResolver {
   @Query(() => JSONScalar, { description: "A page of the workspace's audit log, newest first." })
   async auditEvents(
     @Ctx() { app, user }: GraphQLContext,
-    // TypeGraphQL lists arguments last-declared first: this is Python's order reversed.
-    @Arg('dateTo', () => String, { nullable: true, defaultValue: null }) dateTo: string | null,
-    @Arg('dateFrom', () => String, { nullable: true, defaultValue: null }) dateFrom: string | null,
-    @Arg('search', () => String, { nullable: true, defaultValue: null }) search: string | null,
-    @Arg('ruleId', () => Int, { nullable: true, defaultValue: null }) ruleId: number | null,
-    @Arg('accountId', () => String, { nullable: true, defaultValue: null }) accountId: string | null,
-    @Arg('status', () => String, { nullable: true, defaultValue: null }) status: string | null,
-    @Arg('category', () => String, { nullable: true, defaultValue: null }) category: string | null,
-    @Arg('pageSize', () => Int, { nullable: true, defaultValue: null }) pageSize: number | null,
     @Arg('page', () => Int, { nullable: true, defaultValue: null }) page: number | null,
+    @Arg('pageSize', () => Int, { nullable: true, defaultValue: null }) pageSize: number | null,
+    @Arg('category', () => String, { nullable: true, defaultValue: null }) category: string | null,
+    @Arg('status', () => String, { nullable: true, defaultValue: null }) status: string | null,
+    @Arg('accountId', () => String, { nullable: true, defaultValue: null }) accountId: string | null,
+    @Arg('ruleId', () => Int, { nullable: true, defaultValue: null }) ruleId: number | null,
+    @Arg('search', () => String, { nullable: true, defaultValue: null }) search: string | null,
+    @Arg('dateFrom', () => String, { nullable: true, defaultValue: null }) dateFrom: string | null,
+    @Arg('dateTo', () => String, { nullable: true, defaultValue: null }) dateTo: string | null,
   ): Promise<unknown> {
     const pageNumber = atLeast(page ?? 1, 1);
     const size = atMost(atLeast(pageSize ?? 25, 1), 100);

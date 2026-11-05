@@ -69,9 +69,8 @@ export class ViewsResolver {
 
   @Mutation(() => ViewSettingPayload, { nullable: true, description: "Saves the member's options for a view." })
   async viewSettingUpdate(
-    // TypeGraphQL lists arguments last-declared first: this is Python's (key, input).
-    @Arg('input', () => JSONScalar) input: unknown,
     @Arg('key', () => String) key: string,
+    @Arg('input', () => JSONScalar) input: unknown,
     @Ctx() context: GraphQLContext,
   ): Promise<Payload> {
     const { settings } = VIEW(input);
@@ -104,9 +103,8 @@ export class ViewsResolver {
 
   @Mutation(() => ViewSettingPayload, { nullable: true, description: "Saves a view's options as the workspace's default." })
   async workspaceViewDefaultUpdate(
-    // TypeGraphQL lists arguments last-declared first: this is Python's (key, input).
-    @Arg('input', () => JSONScalar) input: unknown,
     @Arg('key', () => String) key: string,
+    @Arg('input', () => JSONScalar) input: unknown,
     @Ctx() context: GraphQLContext,
   ): Promise<Payload> {
     // Linear's "Set default for everyone": admins and owners only. An empty view clears it.
