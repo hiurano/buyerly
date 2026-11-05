@@ -2,6 +2,8 @@ import type { NonEmptyArray } from 'type-graphql';
 import { TeamsResolver } from './teams/teams.resolver.ts';
 import { UsersResolver } from './users/users.resolver.ts';
 import { MembersResolver } from './workspaces/members.resolver.ts';
+import { FavoritesResolver } from './views/favorites.resolver.ts';
+import { ViewsResolver } from './views/views.resolver.ts';
 import { WorkspacesResolver } from './workspaces/workspaces.resolver.ts';
 
 // Every area's resolvers: the one place a new area is registered. An area
@@ -15,4 +17,6 @@ export const RESOLVERS: NonEmptyArray<new () => object> = [
   TeamsResolver,
   UsersResolver,
   WorkspacesResolver,
+  ViewsResolver,
+  FavoritesResolver,
 ];
