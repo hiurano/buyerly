@@ -76,6 +76,11 @@ PUSH_SUBSCRIPTION = {
 CASES = {
     # Queries
     "accounts": _case("GET", lambda f, n: "/api/accounts", lambda f, n: {}),
+    "adminOverview": _case("GET", lambda f, n: "/api/admin/overview", lambda f, n: {}),
+    "supportSessions": _case(
+        "GET", lambda f, n: "/api/admin/support-sessions?active_only=false", lambda f, n: {"activeOnly": False}
+    ),
+    "healthOverview": _case("GET", lambda f, n: "/api/health/overview", lambda f, n: {}),
     "accountNotificationSetting": _case(
         "GET", lambda f, n: f"/api/accounts/{f.acc[n]}/notifications", lambda f, n: {"accountId": f.acc[n]}
     ),
@@ -138,6 +143,14 @@ CASES = {
         "GET", lambda f, n: f"/api/onboarding/check-slug?slug=free-{n}", lambda f, n: {"slug": f"free-{n}"}
     ),
     # Mutations
+    "supportSessionCreate": _case(
+        "POST", lambda f, n: "/api/admin/support-sessions",
+        lambda f, n: {"input": {"workspace_id": f.ws, "reason": f"Customer asked for help {n}"}},
+        lambda f, n: {"workspace_id": f.ws, "reason": f"Customer asked for help {n}"},
+    ),
+    "supportSessionRevoke": _case(
+        "POST", lambda f, n: f"/api/admin/support-sessions/{f.event[n]}/revoke", lambda f, n: {"id": f.event[n]}
+    ),
     "accountUpdate": _case(
         "PATCH", lambda f, n: f"/api/accounts/{f.acc[n]}/profile",
         lambda f, n: {"accountId": f.acc[n], "input": {"note": f"note {n}"}}, lambda f, n: {"note": f"note {n}"},
@@ -640,6 +653,14 @@ class TestClientApi(unittest.IsolatedAsyncioTestCase):
             variables = case["variables"](self.f, 1)
             rest_status, rest_body = await self._rest("owner", name)
             gql_status, gql_body = await self._graphql("owner", name, variables=variables)
+            if rest_status >= 400:
+                # A refusal (the owner is no platform administrator): same status, same words.
+                self.assertEqual((gql_status, gql_body["message"]), (rest_status, rest_body["detail"]), name)
+                continue
+            # When the answer was made is all two requests may differ in.
+            for body in (rest_body, gql_body):
+                if isinstance(body, dict):
+                    body.pop("generated_at", None)
             self.assertEqual((gql_status, gql_body), (rest_status, rest_body), name)
 
     async def test_a_mutation_returns_its_record_and_the_sync_id_to_wait_for(self):

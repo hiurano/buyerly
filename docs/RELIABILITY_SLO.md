@@ -15,9 +15,9 @@ This document is the operating contract for Buyerly production. All windows use 
 | Account data freshness | successful Meta read within 20 min | 20 min | 45 min | Account owner | `account_health.last_success_at` |
 | Verified backup age | newer than 26 hours | 26 h | 48 h | Platform owner | deploy/backup verifier runtime signal |
 
-The API availability and latency target fields returned by `/api/health/overview` are objectives. The measured `api_synthetic_*` values come from the read-only post-deploy `/health/live` and `/health/ready` probes for the exact release SHA; they are never fabricated from application traffic. Long-window availability remains the responsibility of the external uptime monitor. The verified backup script publishes `last_backup_at`; the API derives `backup_age_hours` from that timestamp. A missing measurement is treated as unknown rather than healthy.
+The API availability and latency target fields returned by GraphQL `healthOverview` are objectives. The measured `api_synthetic_*` values come from the read-only post-deploy `/health/live` and `/health/ready` probes for the exact release SHA; they are never fabricated from application traffic. Long-window availability remains the responsibility of the external uptime monitor. The verified backup script publishes `last_backup_at`; the API derives `backup_age_hours` from that timestamp. A missing measurement is treated as unknown rather than healthy.
 
-Three health signals answer three different questions (#199). Readiness (`/health/ready`) is about the API's own dependencies (database, rate limiter). Liveness of the worker process is its heartbeat file and Docker healthcheck. Freshness of the worker's actual work is the age of the last completed monitoring cycle: `/health/worker` returns 503 once it reaches 360 s, `/api/health/overview` reports `worker_cycle_status` and lets it override `overall_status` (warning: degraded, critical: critical), and the API's watchdog adds one urgent `WORKER_STALLED` Inbox notification to every workspace with an active ad account, then `WORKER_RECOVERED` once cycles finish again. While the worker is stalled the API also runs the Inbox email and Telegram deliveries, which normally run in the worker. A cycle that finishes with errors still counts as finished; its `errors_count` is shown as `worker_cycle_errors_count`.
+Three health signals answer three different questions (#199). Readiness (`/health/ready`) is about the API's own dependencies (database, rate limiter). Liveness of the worker process is its heartbeat file and Docker healthcheck. Freshness of the worker's actual work is the age of the last completed monitoring cycle: `/health/worker` returns 503 once it reaches 360 s, GraphQL `healthOverview` reports `worker_cycle_status` and lets it override `overall_status` (warning: degraded, critical: critical), and the API's watchdog adds one urgent `WORKER_STALLED` Inbox notification to every workspace with an active ad account, then `WORKER_RECOVERED` once cycles finish again. While the worker is stalled the API also runs the Inbox email and Telegram deliveries, which normally run in the worker. A cycle that finishes with errors still counts as finished; its `errors_count` is shown as `worker_cycle_errors_count`.
 
 ## Account health states
 
@@ -46,7 +46,7 @@ Response expectations:
 
 ## Safe API surfaces
 
-- `GET /api/health/overview` returns only the signed-in user's active workspace, aggregate SLI values, alert routes, and safe per-account health.
+- GraphQL `healthOverview` returns only the signed-in user's active workspace, aggregate SLI values, alert routes, and safe per-account health.
 - `GET /api/accounts` embeds the latest safe health object for the account details view.
 
 Error messages are redacted and truncated before storage. The health schema intentionally has no token, cookie, authorization header, or raw Meta response fields.

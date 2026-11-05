@@ -49,6 +49,7 @@ export const OnboardingPayload = payload('OnboardingPayload', 'onboarding');
 export const RulePayload = payload('RulePayload', 'rule');
 export const RuleLabelPayload = payload('RuleLabelPayload', 'ruleLabel');
 export const RulesPayload = payload('RulesPayload', 'rules');
+export const SupportSessionPayload = payload('SupportSessionPayload', 'supportSession');
 export const TeamPayload = payload('TeamPayload', 'team');
 export const TeamDocumentPayload = payload('TeamDocumentPayload', 'teamDocument');
 export const TelegramPayload = payload('TelegramPayload', 'telegram');

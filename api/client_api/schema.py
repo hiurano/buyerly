@@ -22,6 +22,7 @@ from api.client_api.bridge import current_sync_id, route_of, run
 from api.routers import (
     account_notifications,
     accounts,
+    admin_support,
     adsets,
     analytics,
     audit,
@@ -29,6 +30,7 @@ from api.routers import (
     delivery,
     desktop_notifications,
     favorites,
+    health,
     members,
     onboarding,
     rules,
@@ -65,6 +67,7 @@ def _payload(name: str, entity: Optional[str]):
 
 
 SuccessPayload = _payload("SuccessPayload", None)
+SupportSessionPayload = _payload("SupportSessionPayload", "support_session")
 AccountPayload = _payload("AccountPayload", "account")
 AccountNotificationSettingPayload = _payload("AccountNotificationSettingPayload", "account_notification_setting")
 AuditEventPayload = _payload("AuditEventPayload", "audit_event")
@@ -140,10 +143,27 @@ R_WORKSPACE_MEMBERS = _routed("workspaceMembers", members, members.list_workspac
 R_WORKSPACE_INVITES = _routed("workspaceInvites", members, members.list_workspace_invites)
 R_WORKSPACE_INVITE_LINK = _routed("workspaceInviteLink", members, members.get_workspace_invite_link)
 R_WORKSPACE_SLUG = _routed("workspaceSlugCheck", onboarding, onboarding.check_workspace_slug)
+R_ADMIN_OVERVIEW = _routed("adminOverview", auth, auth.get_admin_overview)
+R_SUPPORT_SESSIONS = _routed("supportSessions", admin_support, admin_support.list_support_sessions)
+R_HEALTH_OVERVIEW = _routed("healthOverview", health, health.health_overview)
 
 
 @strawberry.type
 class Query:
+    # Platform administration and reliability
+
+    @strawberry.field(description="Every user, workspace, membership and invite, for a platform administrator.")
+    async def admin_overview(self, info: Info) -> JSON:
+        return await run(info, R_ADMIN_OVERVIEW)
+
+    @strawberry.field(description="The platform administrator's support sessions, newest first.")
+    async def support_sessions(self, info: Info, active_only: bool = True) -> JSON:
+        return await run(info, R_SUPPORT_SESSIONS, active_only=active_only)
+
+    @strawberry.field(description="Reliability signals and ad account health of the active workspace.")
+    async def health_overview(self, info: Info) -> JSON:
+        return await run(info, R_HEALTH_OVERVIEW)
+
     @strawberry.field(description="Ad accounts of the workspace the member may see, with their latest metrics.")
     async def accounts(self, info: Info) -> JSON:
         return await run(info, R_ACCOUNTS)
@@ -358,6 +378,8 @@ M_ENTITY_DELIVERY = _routed("entityDeliveryUpdate", delivery, delivery.set_entit
 M_ENTITY_BUDGET = _routed("entityBudgetUpdate", delivery, delivery.set_entity_budget)
 M_FAVORITE_CREATE = _routed("favoriteCreate", favorites, favorites.add_favorite)
 M_FAVORITE_DELETE = _routed("favoriteDelete", favorites, favorites.remove_favorite)
+M_SUPPORT_SESSION_CREATE = _routed("supportSessionCreate", admin_support, admin_support.create_support_session)
+M_SUPPORT_SESSION_REVOKE = _routed("supportSessionRevoke", admin_support, admin_support.revoke_support_session)
 M_INBOX_DISPLAY = _routed("inboxDisplayUpdate", audit, audit.save_inbox_display)
 M_INBOX_READ = _routed("inboxNotificationRead", audit, audit.mark_inbox_read)
 M_INBOX_DELETE = _routed("inboxNotificationDelete", audit, audit.delete_inbox_notification)
@@ -427,6 +449,16 @@ M_INVITE_LINK_DISABLE = _routed("workspaceInviteLinkDisable", members, members.d
 
 @strawberry.type
 class Mutation:
+    # Platform administration
+
+    @strawberry.mutation(description="Opens a time-limited support session in a workspace for a platform administrator.")
+    async def support_session_create(self, info: Info, input: JSON) -> Optional[SupportSessionPayload]:
+        return await _mutate(info, SupportSessionPayload, M_SUPPORT_SESSION_CREATE, payload=input)
+
+    @strawberry.mutation(description="Ends a support session early.")
+    async def support_session_revoke(self, info: Info, id: int) -> Optional[SuccessPayload]:
+        return await _mutate(info, SuccessPayload, M_SUPPORT_SESSION_REVOKE, grant_id=id)
+
     # Every payload may be null: a refused write is null with its error, and the other writes sent in
     # the same document (the client's transactions, #508) keep their own answers.
     # Ad accounts
