@@ -95,7 +95,7 @@ Compose задаёт сам и в `.env` не нужны: `APP_VERSION`, `DATABA
 `CLOUDFLARE_TUNNEL_CIDRS` (фиксированный адрес `buyerly-tunnel`, `172.30.0.10/32`).
 Значения по умолчанию подходят для `API_HOST`, `API_PORT`, `SERVE_STATIC`,
 `SERVER_PATHS` (префиксы путей, которые API пересылает серверу на TypeScript,
-сейчас `/health/server/,/api/auth/,/api/me/,/api/onboarding/avatar/,/api/onboarding/workspace/logo/,/uploads/,/api/sync/`; убрать префикс — вернуть область
+сейчас `/health/server/,/api/auth/,/api/me/,/api/onboarding/avatar/,/api/onboarding/workspace/logo/,/uploads/,/api/sync/,/api/invites/`; убрать префикс — вернуть область
 Python, её код остаётся на месте до конца переезда; если `SERVER_PATHS` задан в
 `.env` сервера, он заменяет значение по умолчанию и должен перечислять новые
 префиксы сам; WebSocket на этих путях — поток синхронизации `/api/sync/ws` —
