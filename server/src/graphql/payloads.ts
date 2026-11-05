@@ -28,7 +28,7 @@ function payload(name: string, entity: string | null = null): PayloadClass {
     [entity: string]: unknown;
   }
   if (entity) Field(() => JSONScalar, { nullable: true })(Generated.prototype, entity);
-  return Generated as unknown as PayloadClass;
+  return Generated;
 }
 
 export const SuccessPayload = payload('SuccessPayload');

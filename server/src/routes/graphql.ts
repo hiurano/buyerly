@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { GraphQLError, parse } from 'graphql';
+import { GraphQLError, parse, type ExecutionResult, type ParseOptions, type Source } from 'graphql';
 import { createYoga, type Plugin } from 'graphql-yoga';
 import { currentUser } from '../auth/plugin.ts';
 import type { GraphQLContext } from '../graphql/context.ts';
@@ -20,7 +20,8 @@ import { clientSchema, servedRootFields } from '../graphql/schema.ts';
 // The Python API's cap on request bodies (api/server.py).
 const BODY_LIMIT = 6 * 1024 * 1024;
 
-type ServerContext = { request: FastifyRequest; reply: FastifyReply };
+// Yoga keeps its own `request` (the Fetch one) in the context; Fastify's goes in as `http`.
+type ServerContext = { http: FastifyRequest; reply: FastifyReply };
 
 // Errors as the Python bridge words them: a field's refusal keeps its status
 // in `extensions`; anything else is logged and told as REST's 500.
@@ -37,7 +38,7 @@ function maskError(error: unknown): Error {
 function limits(): Plugin<ServerContext> {
   return {
     onParse({ setParseFn }) {
-      setParseFn((source, options) => parse(source, { ...options, maxTokens: MAX_TOKENS }));
+      setParseFn((source: string | Source, options?: ParseOptions) => parse(source, { ...options, maxTokens: MAX_TOKENS }));
     },
     onValidate({ addValidationRule }) {
       addValidationRule(maxDepth);
@@ -46,10 +47,11 @@ function limits(): Plugin<ServerContext> {
     onExecute() {
       return {
         onExecuteDone({ result, args }) {
-          const { request } = args.contextValue as unknown as GraphQLContext;
-          for (const error of 'errors' in result ? (result.errors ?? []) : []) {
+          const { http } = args.contextValue as unknown as GraphQLContext;
+          const errors = 'errors' in result ? ((result as ExecutionResult).errors ?? []) : [];
+          for (const error of errors) {
             if (error.originalError && !asRouteError(error.originalError)) {
-              request.log.error({ err: error.originalError }, 'GraphQL field %s failed', error.path?.join('.'));
+              http.log.error({ err: error.originalError }, 'GraphQL field %s failed', error.path?.join('.'));
             }
           }
         },
@@ -69,12 +71,12 @@ export async function graphqlRoutes(app: FastifyInstance): Promise<void> {
     logging: false,
     maskedErrors: { maskError },
     plugins: [limits()],
-    context: ({ request, reply }) => ({
+    context: ({ http, reply }) => ({
       app,
-      request,
+      http,
       reply,
-      user: request.auth!.user,
-      webSessionId: request.auth!.webSessionId,
+      user: http.auth!.user,
+      webSessionId: http.auth!.webSessionId,
     }),
   });
 
@@ -98,7 +100,7 @@ export async function graphqlRoutes(app: FastifyInstance): Promise<void> {
     const response = await yoga.fetch(
       'http://localhost/api/graphql',
       { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: raw ? new Uint8Array(raw) : undefined },
-      { request, reply },
+      { http: request, reply },
     );
     reply.code(response.status).type('application/json');
     return reply.send(Buffer.from(await response.arrayBuffer()));

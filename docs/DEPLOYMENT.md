@@ -89,10 +89,16 @@ Settings неактивна. Почта отправляется только ч
 
 Compose задаёт сам и в `.env` не нужны: `APP_VERSION`, `DATABASE_URL`,
 `SERVER_URL` (`http://server:8090`, сервер на TypeScript),
-`TRUSTED_PROXY_CIDRS` (пусто: прокси между туннелем и API нет; сервису
+`TRUSTED_PROXY_CIDRS` (пусто; у `api` — только адрес сервера `172.30.0.20/32`, см. ниже; сервису
 `server` — сеть Compose `172.30.0.0/24`, потому что к нему ходит только API и
 дописывает адрес туннеля в `X-Forwarded-For`),
 `CLOUDFLARE_TUNNEL_CIDRS` (фиксированный адрес `buyerly-tunnel`, `172.30.0.10/32`).
+Клиентский API (`/api/graphql`) API тоже пересылает серверу, а тот возвращает API
+документы с полями, которые ещё не перенесены: адрес API у сервера — `API_URL`
+(`http://api:8080`, задаёт Compose), такой запрос несёт `X-Buyerly-Server-Hop`,
+и API отвечает на него сам. Чтобы адрес посетителя и лимиты по нему не
+сменились на адрес сервера, у `server` фиксированный адрес `172.30.0.20`, и
+только ему API доверяет `X-Forwarded-For` (`TRUSTED_PROXY_CIDRS` сервиса `api`).
 Значения по умолчанию подходят для `API_HOST`, `API_PORT`, `SERVE_STATIC`,
 `SERVER_PATHS` (префиксы путей, которые API пересылает серверу на TypeScript,
 сейчас `/health/server/,/api/auth/,/api/me/,/api/onboarding/avatar/,/api/onboarding/workspace/logo/,/uploads/,/api/sync/,/api/invites/,/api/graphql/`; убрать префикс — вернуть область

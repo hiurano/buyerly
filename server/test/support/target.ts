@@ -91,6 +91,8 @@ export async function typescriptTarget(env: Record<string, string> = {}, build: 
     TRUSTED_PROXY_CIDRS: '127.0.0.1/32',
     WEBAPP_URL: 'https://buyerly.test',
     SERVER_UPLOADS_DIR: mkdtempSync(join(tmpdir(), 'buyerly-uploads-')),
+    // Client API documents with fields not moved yet go to the Python API when one runs (CI).
+    API_URL: process.env.PYTHON_API_URL ?? '',
     ...env,
   });
   const services: Services = {

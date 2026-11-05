@@ -27,9 +27,15 @@ export async function forwardToPython(request: FastifyRequest, reply: FastifyRep
     if (value === undefined || REQUEST_SKIP.has(name)) continue;
     for (const item of Array.isArray(value) ? value : [value]) headers.append(name, item);
   }
-  const peer = request.socket.remoteAddress ?? '';
+  // Came through the API (a trusted proxy): its chain already ends at the
+  // tunnel, which the API reads as it did the first time. Otherwise this
+  // server is the first proxy and adds its peer, as any proxy does.
   const forwarded = request.headers['x-forwarded-for'];
-  headers.set('x-forwarded-for', [forwarded, peer].filter(Boolean).join(', '));
+  const chain = request.server.clientAddress.viaTrustedProxy(request)
+    ? [forwarded]
+    : [forwarded, request.socket.remoteAddress];
+  const value = chain.flat().filter(Boolean).join(', ');
+  if (value) headers.set('x-forwarded-for', value);
   headers.set(SERVER_HOP_HEADER, '1');
 
   let upstream: Response;

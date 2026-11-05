@@ -11,7 +11,8 @@ import type { Payload, PayloadClass } from './payloads.ts';
 // is always there, already scoped to that workspace.
 export interface GraphQLContext {
   app: FastifyInstance;
-  request: FastifyRequest;
+  // Fastify's request (Yoga's own `request` is the Fetch one).
+  http: FastifyRequest;
   reply: FastifyReply;
   user: UserEntity;
   webSessionId: string;

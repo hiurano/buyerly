@@ -1,4 +1,4 @@
-import { Kind, parse, type DocumentNode, type FragmentDefinitionNode, type SelectionSetNode } from 'graphql';
+import { Kind, OperationTypeNode, parse, type DocumentNode, type FragmentDefinitionNode, type SelectionSetNode } from 'graphql';
 import { MAX_TOKENS } from './limits.ts';
 
 // Which server answers a client API request while the areas move (#611,
@@ -65,7 +65,7 @@ export function servedHere(body: unknown, served: ServedFields): boolean {
     // Validation covers the whole document, so every operation in it must be ours.
     const fields = new Set<string>();
     rootFields(definition.selectionSet, fragments, fields);
-    const own = definition.operation === 'query' ? served.query : definition.operation === 'mutation' ? served.mutation : null;
+    const own = definition.operation === OperationTypeNode.QUERY ? served.query : definition.operation === OperationTypeNode.MUTATION ? served.mutation : null;
     if (!own) return false;
     for (const field of fields) {
       if (field !== '__typename' && !own.has(field)) return false;

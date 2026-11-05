@@ -1,4 +1,4 @@
-import { Ajv, type ErrorObject, type JSONSchemaType, type ValidateFunction } from 'ajv';
+import { Ajv, type JSONSchemaType, type ValidateFunction } from 'ajv';
 import { pydanticIssues } from '../http/errors.ts';
 import { invalidInput } from './errors.ts';
 
@@ -22,7 +22,7 @@ export function inputSchema<T>(schema: JSONSchemaType<T> | Record<string, unknow
       // A missing input is an empty body, as bridge.py validates None as {}.
       const body = value ?? {};
       if (validate(body)) return body;
-      const issues = pydanticIssues(body, (validate.errors ?? []) as ErrorObject[]);
+      const issues = pydanticIssues(body, validate.errors ?? []);
       throw invalidInput(issues.map((issue) => issue.msg));
     },
   };
