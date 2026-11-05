@@ -37,18 +37,7 @@ export interface LoginResult {
   redirect_url?: string | null;
 }
 
-export interface InviteInfo {
-  valid: boolean;
-  status: string;
-  workspace_name?: string | null;
-  workspace_slug?: string | null;
-  workspace_id?: number | null;
-  workspace_logo_url?: string | null;
-  inviter_name?: string | null;
-  role?: string | null;
-  target_email?: string | null;
-  message?: string | null;
-}
+export type { PublicInviteInfo as InviteInfo } from '@buyerly/shared';
 
 export interface OnboardingStatus {
   onboarding_step: SessionUser['onboarding_step'];
