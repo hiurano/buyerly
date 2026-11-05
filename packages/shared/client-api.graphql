@@ -1,0 +1,505 @@
+type AccountNotificationSettingPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  accountNotificationSetting: JSON
+}
+
+type AccountPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  account: JSON
+}
+
+type AuditEventPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  auditEvent: JSON
+}
+
+type DeletedItemPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  deletedItem: JSON
+}
+
+type DeliveryPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  entity: JSON
+}
+
+type DesktopNotificationsPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  desktopNotifications: JSON
+}
+
+type FavoritePayload {
+  success: Boolean!
+  lastSyncId: Float!
+  favorite: JSON
+}
+
+type InboxDisplayPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  inboxDisplay: JSON
+}
+
+type InboxNotificationPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  inboxNotification: JSON
+}
+
+"""
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf).
+"""
+scalar JSON @specifiedBy(url: "https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf")
+
+type MetaConnectionPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  metaConnection: JSON
+}
+
+type MetaInvitePayload {
+  success: Boolean!
+  lastSyncId: Float!
+  metaInvite: JSON
+}
+
+type MetaOAuthPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  authorization: JSON
+}
+
+type Mutation {
+  """Renames an ad account or changes its note."""
+  accountUpdate(accountId: String!, input: JSON!): AccountPayload
+
+  """Sets or clears an ad account's lead."""
+  accountLeadUpdate(accountId: String!, input: JSON!): AccountPayload
+
+  """Removes an ad account from the workspace."""
+  accountDelete(accountId: String!): AccountPayload
+
+  """Sets the member's notifications for one ad account."""
+  accountNotificationSettingUpdate(accountId: String!, input: JSON!): AccountNotificationSettingPayload
+
+  """Attaches a rule to an ad account."""
+  accountRuleAttach(accountId: String!, input: JSON!): AccountPayload
+
+  """Detaches a rule from an ad account."""
+  accountRuleDetach(accountId: String!, ruleId: Int!): AccountPayload
+
+  """Narrows an attached rule to some campaigns, ad sets or ads."""
+  accountRuleScopeUpdate(accountId: String!, ruleId: Int!, input: JSON!): AccountPayload
+
+  """Turns an ad account's rules on or off."""
+  accountRulesToggle(accountId: String!): AccountPayload
+
+  """Turns a stopped ad set back on in Meta."""
+  adSetReactivate(adSetId: String!): DeliveryPayload
+
+  """Dismisses a stopped ad set from the list."""
+  adSetDismiss(adSetId: String!): DeliveryPayload
+
+  """Turns a campaign, ad set or ad on or off in Meta."""
+  entityDeliveryUpdate(level: String!, entityId: String!, input: JSON!): DeliveryPayload
+
+  """Changes a campaign's or ad set's budget in Meta."""
+  entityBudgetUpdate(level: String!, entityId: String!, input: JSON!): DeliveryPayload
+
+  """Undoes what an audit event did."""
+  auditEventUndo(id: Int!): AuditEventPayload
+
+  """Restores a rule or label from Recently deleted."""
+  deletedItemRestore(id: Int!): DeletedItemPayload
+
+  """
+  Stars a page or record; starring it again returns the favorite it already is.
+  """
+  favoriteCreate(input: JSON!): FavoritePayload
+
+  """Unstars a favorite; succeeds when it was already gone."""
+  favoriteDelete(id: Int!): SuccessPayload
+
+  """Saves the member's options for a view."""
+  viewSettingUpdate(key: String!, input: JSON!): ViewSettingPayload
+
+  """Resets the member's options for a view to the workspace's default."""
+  viewSettingReset(key: String!): SuccessPayload
+
+  """Saves a view's options as the workspace's default."""
+  workspaceViewDefaultUpdate(key: String!, input: JSON!): ViewSettingPayload
+
+  """Saves the member's Inbox display options."""
+  inboxDisplayUpdate(input: JSON!): InboxDisplayPayload
+
+  """Marks an Inbox notification read or unread."""
+  inboxNotificationRead(id: Int!, input: JSON!): InboxNotificationPayload
+
+  """Deletes an Inbox notification for the member."""
+  inboxNotificationDelete(id: Int!): InboxNotificationPayload
+
+  """Snoozes an Inbox notification, or wakes it."""
+  inboxNotificationSnooze(id: Int!, input: JSON!): InboxNotificationPayload
+
+  """Deletes every Inbox notification of the member."""
+  inboxDeleteAll: InboxNotificationPayload
+
+  """Deletes the member's read Inbox notifications."""
+  inboxDeleteAllRead: InboxNotificationPayload
+
+  """Sets where the member's notifications go besides the Inbox."""
+  notificationChannelsUpdate(input: JSON!): NotificationChannelsPayload
+
+  """This browser gets the member's desktop notifications."""
+  desktopNotificationsSubscribe(input: JSON!): DesktopNotificationsPayload
+
+  """This browser stops getting the member's desktop notifications."""
+  desktopNotificationsUnsubscribe(input: JSON!): DesktopNotificationsPayload
+
+  """
+  Creates a one-time link for someone else to connect their Facebook profile.
+  """
+  metaInviteCreate(input: JSON!): MetaInvitePayload
+
+  """Reads a Meta connection's ad accounts from Meta again."""
+  metaConnectionDiscover(connectionId: Int!): MetaConnectionPayload
+
+  """Adds ad accounts of a Meta connection to the workspace."""
+  metaConnectionImport(connectionId: Int!, input: JSON!): MetaConnectionPayload
+
+  """Starts Facebook login; returns the address to send the browser to."""
+  metaOauthStart(returnPath: String = null, reconnectConnectionId: Int = null): MetaOAuthPayload
+
+  """Saves the new user's name."""
+  onboardingPersonalDetailsUpdate(input: JSON!): OnboardingPayload
+
+  """Creates the new user's first workspace."""
+  onboardingWorkspaceCreate(input: JSON!): OnboardingPayload
+
+  """Invites teammates during onboarding."""
+  onboardingInvitesSend(input: JSON!): OnboardingPayload
+
+  """Skips the rest of onboarding."""
+  onboardingSkip: OnboardingPayload
+
+  """Creates a rule."""
+  ruleCreate(input: JSON!): RulePayload
+
+  """Changes a rule."""
+  ruleUpdate(id: Int!, input: JSON!): RulePayload
+
+  """Moves a rule to Recently deleted."""
+  ruleDelete(id: Int!): RulePayload
+
+  """Sets a rule's labels."""
+  ruleLabelsSet(id: Int!, input: JSON!): RulePayload
+
+  """Adds or removes labels on several rules at once."""
+  rulesLabelsChange(input: JSON!): RulesPayload
+
+  """Creates a rule label."""
+  ruleLabelCreate(input: JSON!): RuleLabelPayload
+
+  """Changes a rule label."""
+  ruleLabelUpdate(id: Int!, input: JSON!): RuleLabelPayload
+
+  """Moves a rule label to Recently deleted."""
+  ruleLabelDelete(id: Int!): RuleLabelPayload
+
+  """Creates a team."""
+  teamCreate(workspaceId: Int!, input: JSON!): TeamPayload
+
+  """Changes a team."""
+  teamUpdate(workspaceId: Int!, id: Int!, input: JSON!): TeamPayload
+
+  """Retires a team."""
+  teamRetire(workspaceId: Int!, id: Int!): TeamPayload
+
+  """Brings a retired team back."""
+  teamRestore(workspaceId: Int!, id: Int!): TeamPayload
+
+  """Deletes a team."""
+  teamDelete(workspaceId: Int!, id: Int!): TeamPayload
+
+  """Adds workspace members to a team."""
+  teamMembersAdd(workspaceId: Int!, teamId: Int!, input: JSON!): TeamPayload
+
+  """Takes a member off a team."""
+  teamMemberRemove(workspaceId: Int!, teamId: Int!, userId: Int!): TeamPayload
+
+  """Makes a team member a team owner, or not."""
+  teamMemberUpdate(workspaceId: Int!, teamId: Int!, userId: Int!, input: JSON!): TeamPayload
+
+  """Puts ad accounts on a team."""
+  teamAccountsAdd(workspaceId: Int!, teamId: Int!, input: JSON!): TeamPayload
+
+  """Takes an ad account off a team."""
+  teamAccountRemove(workspaceId: Int!, teamId: Int!, accountId: Int!): TeamPayload
+
+  """Creates a team document."""
+  teamDocumentCreate(workspaceId: Int!, teamId: Int!, input: JSON!): TeamDocumentPayload
+
+  """Changes a team document."""
+  teamDocumentUpdate(workspaceId: Int!, teamId: Int!, id: Int!, input: JSON!): TeamDocumentPayload
+
+  """Deletes a team document."""
+  teamDocumentDelete(workspaceId: Int!, teamId: Int!, id: Int!): TeamDocumentPayload
+
+  """Creates the link that connects the member's Telegram."""
+  telegramLinkCreate: TelegramPayload
+
+  """Disconnects the member's Telegram."""
+  telegramDisconnect: TelegramPayload
+
+  """Changes the user's name or username."""
+  userUpdate(input: JSON!): UserPayload
+
+  """Creates a workspace."""
+  workspaceCreate(input: JSON!): WorkspacePayload
+
+  """Changes a workspace's name, address or logo."""
+  workspaceUpdate(id: Int!, input: JSON!): WorkspacePayload
+
+  """Deletes a workspace."""
+  workspaceDelete(id: Int!): WorkspacePayload
+
+  """Makes a workspace the user's active one."""
+  workspaceSwitch(input: JSON!): WorkspacePayload
+
+  """Leaves a workspace."""
+  workspaceLeave(id: Int!): WorkspacePayload
+
+  """Hands a workspace to another member."""
+  workspaceOwnershipTransfer(id: Int!, input: JSON!): WorkspacePayload
+
+  """Changes a member's role."""
+  workspaceMemberUpdate(workspaceId: Int!, userId: Int!, input: JSON!): WorkspaceMemberPayload
+
+  """Removes a member from the workspace."""
+  workspaceMemberRemove(workspaceId: Int!, userId: Int!): WorkspaceMemberPayload
+
+  """Invites people to the workspace by email."""
+  workspaceInviteCreate(workspaceId: Int!, input: JSON!): WorkspaceInvitePayload
+
+  """Revokes a pending invite."""
+  workspaceInviteDelete(workspaceId: Int!, id: Int!): WorkspaceInvitePayload
+
+  """Sends a pending invite again."""
+  workspaceInviteResend(workspaceId: Int!, id: Int!): WorkspaceInvitePayload
+
+  """Joins a workspace through an invite."""
+  workspaceInviteAccept(token: String!): WorkspaceInvitePayload
+
+  """Turns the workspace's invite link on."""
+  workspaceInviteLinkEnable(workspaceId: Int!): WorkspaceInviteLinkPayload
+
+  """Replaces the workspace's invite link; the old one stops working."""
+  workspaceInviteLinkReset(workspaceId: Int!): WorkspaceInviteLinkPayload
+
+  """Turns the workspace's invite link off."""
+  workspaceInviteLinkDisable(workspaceId: Int!): WorkspaceInviteLinkPayload
+}
+
+type NotificationChannelsPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  notificationChannels: JSON
+}
+
+type OnboardingPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  onboarding: JSON
+}
+
+type Query {
+  """
+  Ad accounts of the workspace the member may see, with their latest metrics.
+  """
+  accounts: JSON!
+
+  """The member's notification settings for one ad account (its bell)."""
+  accountNotificationSetting(accountId: String!): JSON!
+
+  """
+  Campaigns, ad sets or ads under a Meta entity, with their insights for the period.
+  """
+  analyticsHierarchy(parentId: String!, level: String = null, period: String = null, compare: String = null): JSON!
+
+  """
+  Ad account rows with their insights for the period; every visible one when none named.
+  """
+  analyticsAccountsHierarchy(accountIds: String = null, period: String = null): JSON!
+
+  """A page of the workspace's audit log, newest first."""
+  auditEvents(page: Int = null, pageSize: Int = null, category: String = null, status: String = null, accountId: String = null, ruleId: Int = null, search: String = null, dateFrom: String = null, dateTo: String = null): JSON!
+
+  """Recently deleted rules and labels."""
+  deletedItems: JSON!
+
+  """The member's favorites in sidebar order."""
+  favorites: JSON!
+
+  """A page of the member's Inbox."""
+  inbox(offset: Int = null, limit: Int = null, ordering: String = null, unreadOnly: Boolean = null, showSnoozed: Boolean = null, unreadFirst: Boolean = null, tab: String = null, priority: String = null, filter: String = null): JSON!
+
+  """Counts behind the Inbox filter menu."""
+  inboxFacets(unreadOnly: Boolean = null, showSnoozed: Boolean = null, tab: String = null, priority: String = null): JSON!
+
+  """Who sent the member's Inbox notifications."""
+  inboxSenders: JSON!
+
+  """The member's Inbox display options."""
+  inboxDisplay: JSON!
+
+  """Unread Inbox notifications, for the sidebar's badge."""
+  inboxUnreadCount: JSON!
+
+  """Where the member's notifications go besides the Inbox."""
+  notificationChannels: JSON!
+
+  """Whether desktop notifications work here and reach this browser."""
+  desktopNotifications(endpoint: String = null): JSON!
+
+  """The workspace's Meta connections."""
+  metaConnections: JSON!
+
+  """The workspace's rules."""
+  rules: JSON!
+
+  """The workspace's rule labels with their rule counts."""
+  ruleLabels: JSON!
+
+  """What each rule last decided about one campaign, ad set or ad."""
+  ruleStates(entityLevel: String!, entityId: String!): JSON!
+
+  """What one rule last decided about each entity it checks."""
+  ruleEntityStates(ruleId: Int!): JSON!
+
+  """What an attached rule would do on an ad account now."""
+  rulePreview(accountId: String!, ruleId: Int!): JSON!
+
+  """Whether a rule draft is valid, without saving it."""
+  ruleDraftCheck(input: JSON!): JSON!
+
+  """What a rule draft would do on an ad account now."""
+  ruleDraftPreview(accountId: String!, input: JSON!): JSON!
+
+  """
+  Campaigns, ad sets, ads, rules and ad accounts matching a name or Meta ID.
+  """
+  search(q: String!, limit: Int = null, kind: String = null, status: [String!] = null, account: [String!] = null, order: String = null, includeDeleted: Boolean = null): JSON!
+
+  """Ad sets rules stopped, to reactivate or dismiss."""
+  stoppedAdSets: JSON!
+
+  """The member's Telegram connection."""
+  telegramConnection: JSON!
+
+  """The workspace's teams, active or retired."""
+  teams(workspaceId: Int!, status: String = null): JSON!
+
+  """A team's documents."""
+  teamDocuments(workspaceId: Int!, teamId: Int!): JSON!
+
+  """The member's saved view options and the workspace's defaults."""
+  viewSettings: JSON!
+
+  """The workspaces the user belongs to."""
+  workspaces: JSON!
+
+  """A workspace's members."""
+  workspaceMembers(workspaceId: Int!): JSON!
+
+  """A workspace's pending invites."""
+  workspaceInvites(workspaceId: Int!): JSON!
+
+  """A workspace's invite link, when it has one."""
+  workspaceInviteLink(workspaceId: Int!): JSON!
+
+  """Whether a workspace address is free."""
+  workspaceSlugCheck(slug: String!): JSON!
+}
+
+type RuleLabelPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  ruleLabel: JSON
+}
+
+type RulePayload {
+  success: Boolean!
+  lastSyncId: Float!
+  rule: JSON
+}
+
+type RulesPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  rules: JSON
+}
+
+type SuccessPayload {
+  success: Boolean!
+  lastSyncId: Float!
+}
+
+type TeamDocumentPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  teamDocument: JSON
+}
+
+type TeamPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  team: JSON
+}
+
+type TelegramPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  telegram: JSON
+}
+
+type UserPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  user: JSON
+}
+
+type ViewSettingPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  viewSetting: JSON
+}
+
+type WorkspaceInviteLinkPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  workspaceInviteLink: JSON
+}
+
+type WorkspaceInvitePayload {
+  success: Boolean!
+  lastSyncId: Float!
+  workspaceInvite: JSON
+}
+
+type WorkspaceMemberPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  workspaceMember: JSON
+}
+
+type WorkspacePayload {
+  success: Boolean!
+  lastSyncId: Float!
+  workspace: JSON
+}

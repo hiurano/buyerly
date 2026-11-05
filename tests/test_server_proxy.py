@@ -89,6 +89,11 @@ class ServerProxyTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("keep-alive", response.headers.get("connection", ""))
         self.assertEqual(response.headers["content-length"], str(len(b'{"from":"server"}')))
 
+    async def test_a_request_the_server_passed_back_stays_with_python(self):
+        response = await self.client.get("/health/server/live", headers={"x-buyerly-server-hop": "1"})
+        self.assertEqual(response.json(), {"from": "python"})
+        self.assertEqual(self.seen, [])
+
     async def test_other_paths_stay_with_python(self):
         response = await self.client.get("/health/live")
         self.assertEqual(response.json(), {"from": "python"})

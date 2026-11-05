@@ -11,6 +11,7 @@ import { ClientAddress } from './http/client-address.ts';
 import { installErrorHandler } from './http/errors.ts';
 import { RateLimiter } from './http/rate-limit.ts';
 import { authRoutes } from './routes/auth.ts';
+import { graphqlRoutes } from './routes/graphql.ts';
 import { syncSocketRoutes } from './routes/sync-socket.ts';
 import { syncRoutes } from './routes/sync.ts';
 import { uploadRoutes } from './routes/uploads.ts';
@@ -125,6 +126,7 @@ export function buildApp(config: Config, database: Database | null, options: Bui
   void app.register(authRoutes);
   void app.register(syncRoutes);
   void app.register(uploadRoutes);
+  void app.register(graphqlRoutes);
   void app.register(syncSocketRoutes, { tuning: options.sync });
 
   app.addHook('onClose', async () => {
