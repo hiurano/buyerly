@@ -653,6 +653,10 @@ class TestClientApi(unittest.IsolatedAsyncioTestCase):
             variables = case["variables"](self.f, 1)
             rest_status, rest_body = await self._rest("owner", name)
             gql_status, gql_body = await self._graphql("owner", name, variables=variables)
+            if rest_status >= 400:
+                # A refusal (the owner is no platform administrator): same status, same words.
+                self.assertEqual((gql_status, gql_body["message"]), (rest_status, rest_body["detail"]), name)
+                continue
             # When the answer was made is all two requests may differ in.
             for body in (rest_body, gql_body):
                 if isinstance(body, dict):
