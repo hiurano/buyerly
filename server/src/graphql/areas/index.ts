@@ -4,7 +4,9 @@ import { AdSetsResolver } from './accounts/adsets.resolver.ts';
 import { AnalyticsResolver } from './accounts/analytics.resolver.ts';
 import { TeamsResolver } from './teams/teams.resolver.ts';
 import { UsersResolver } from './users/users.resolver.ts';
+import { InvitesResolver } from './workspaces/invites.resolver.ts';
 import { MembersResolver } from './workspaces/members.resolver.ts';
+import { OnboardingResolver } from './onboarding/onboarding.resolver.ts';
 import { AuditResolver } from './audit/audit.resolver.ts';
 import { TrashResolver } from './audit/trash.resolver.ts';
 import { FavoritesResolver } from './views/favorites.resolver.ts';
@@ -19,6 +21,8 @@ import { WorkspacesResolver } from './workspaces/workspaces.resolver.ts';
 // here are no longer forwarded to the Python API (graphql/routing.ts).
 export const RESOLVERS: NonEmptyArray<new () => object> = [
   MembersResolver,
+  InvitesResolver,
+  OnboardingResolver,
   TeamsResolver,
   UsersResolver,
   WorkspacesResolver,

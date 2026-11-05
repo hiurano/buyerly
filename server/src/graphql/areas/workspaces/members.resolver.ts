@@ -31,20 +31,20 @@ interface WorkspaceRow {
   owner_user_id: number;
 }
 
-async function workspace(tx: EntityManager, id: number): Promise<WorkspaceRow> {
+export async function workspace(tx: EntityManager, id: number): Promise<WorkspaceRow> {
   const [found] = await rows<WorkspaceRow>(tx, 'SELECT id, name, owner_user_id FROM workspaces WHERE id = $1', [id]);
   if (!found) throw new RouteError(404, 'Workspace not found');
   return found;
 }
 
 // The caller's role, or the blocked attempt recorded and refused.
-async function roleOrRefuse(tx: EntityManager, user: UserEntity, workspaceId: number, action: string): Promise<string> {
+export async function roleOrRefuse(tx: EntityManager, user: UserEntity, workspaceId: number, action: string): Promise<string> {
   const role = await callerRole(tx, user, workspaceId);
   if (!role) return refuseAndRecord(tx, user, workspaceId, 'You do not have access to this workspace', action, { id: String(workspaceId) });
   return role;
 }
 
-const isAdmin = (role: string) => role === 'owner' || role === 'admin';
+export const isAdmin = (role: string) => role === 'owner' || role === 'admin';
 
 // WorkspaceMemberItem (api/schemas/members.py).
 const MEMBER_COLUMNS = `m.id, u.id AS user_id, coalesce(u.username, '') AS username,
@@ -52,7 +52,7 @@ const MEMBER_COLUMNS = `m.id, u.id AS user_id, coalesce(u.username, '') AS usern
   coalesce(u.first_name, '') AS first_name, coalesce(u.last_name, '') AS last_name,
   u.email, coalesce(u.avatar_url, '') AS avatar_url, m.role, coalesce(${isoUtc('m.joined_at')}, '') AS joined_at`;
 
-function inviteUrl(webappUrl: string, token: string): string {
+export function inviteUrl(webappUrl: string, token: string): string {
   const base = webappUrl.replace(/\/+$/, '');
   return base ? `${base}/invite/${token}` : `/invite/${token}`;
 }
