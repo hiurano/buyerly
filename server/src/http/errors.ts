@@ -164,6 +164,18 @@ export function pydanticIssues(body: unknown, issues: AjvIssue[]): ValidationIss
           ctx: { pattern },
         };
       }
+      case 'exclusiveMinimum':
+      case 'exclusiveMaximum': {
+        const limit = Number(issue.params.limit);
+        const low = issue.keyword === 'exclusiveMinimum';
+        return {
+          type: low ? 'greater_than' : 'less_than',
+          loc: ['body', ...path],
+          msg: `Input should be ${low ? 'greater' : 'less'} than ${limit}`,
+          input,
+          ctx: { [low ? 'gt' : 'lt']: limit },
+        };
+      }
       case 'enum': {
         // A Literal: "Input should be 'a', 'b' or 'c'".
         const allowed = (issue.params.allowedValues as unknown[]).map((value) => `'${String(value)}'`);

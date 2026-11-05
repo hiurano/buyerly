@@ -18,6 +18,7 @@ import { TelegramResolver } from './notifications/telegram.resolver.ts';
 import { WorkspacesResolver } from './workspaces/workspaces.resolver.ts';
 import { RuleLabelsResolver } from './rules/labels.resolver.ts';
 import { RulesResolver } from './rules/rules.resolver.ts';
+import { RuleAttachmentsResolver } from './rules/attachments.resolver.ts';
 
 // Every area's resolvers: the one place a new area is registered. An area
 // lives in its own folder (areas/<area>/<area>.resolver.ts, plus whatever
@@ -45,4 +46,5 @@ export const RESOLVERS: NonEmptyArray<new () => object> = [
   AnalyticsResolver,
   RuleLabelsResolver,
   RulesResolver,
+  RuleAttachmentsResolver,
 ];
