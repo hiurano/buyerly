@@ -124,7 +124,11 @@ export function buildWorker(config: Config, dataSource: DataSource, services: Pa
   const db = databaseOver(dataSource);
   const vapid = vapidKey(config.vapidPrivateKey, app.log);
   const { jobs, unknown } = parseJobList(config.tsWorkerJobs);
-  if (unknown.length) throw new Error(`TS_WORKER_JOBS names unknown jobs: ${unknown.join(', ')}`);
+  // As core/worker_jobs.py: a name this release does not know is skipped, not
+  // fatal. A rollback keeps the newer TS_WORKER_JOBS default, and an older
+  // worker that refused to start would leave the jobs it knows run by no
+  // one, since the older Python worker still skips them.
+  if (unknown.length) app.log.warn(`TS_WORKER_JOBS names jobs this worker does not know: ${unknown.join(', ')}`);
   const context: WorkerContext = {
     config,
     db,
