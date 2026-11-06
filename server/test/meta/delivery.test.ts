@@ -27,6 +27,7 @@ const PROOF = createHmac('sha256', META_TEST_ENV.META_APP_SECRET).update(TOKEN).
 const DELIVERY = 'mutation D($level: String!, $id: String!, $input: JSON!) { entityDeliveryUpdate(level: $level, entityId: $id, input: $input) { success lastSyncId entity } }';
 const BUDGET = 'mutation B($level: String!, $id: String!, $input: JSON!) { entityBudgetUpdate(level: $level, entityId: $id, input: $input) { success lastSyncId entity } }';
 const REACTIVATE = 'mutation R($id: String!) { adSetReactivate(adSetId: $id) { success lastSyncId entity } }';
+const UNDO = 'mutation U($id: Int!) { auditEventUndo(id: $id) { success lastSyncId auditEvent } }';
 
 const digits = (length: number): string => Array.from({ length }, (_, index) => (index === 0 ? 1 + Math.floor(Math.random() * 9) : Math.floor(Math.random() * 10))).join('');
 
@@ -239,5 +240,85 @@ describe.skipIf(!DATABASE_URL)('manual Meta writes, on both servers', () => {
 
     const missing = await world.call(REACTIVATE, { id: digits(16) });
     expect(missing.errors?.[0]).toMatchObject({ message: 'No record found for the stopped ad set.', extensions: { statusCode: 404 } });
+  });
+
+  it('undoes a pause once, and refuses when Meta no longer shows its result', async () => {
+    const adset = digits(16);
+    meta.answer([
+      ['GET', adset, { body: { id: adset, account_id: world.number, name: 'Retarget', status: 'ACTIVE', daily_budget: '2000' } }],
+      ['POST', adset, { body: { success: true } }],
+    ]);
+    const paused = (await world.call(DELIVERY, { level: 'adset', id: adset, input: { account_id: world.account.accountId, status: 'PAUSED' } })).data!.entityDeliveryUpdate!.entity as Row;
+    const pauseId = paused.audit_event_id as number;
+
+    meta.answer([
+      ['GET', adset, { body: { id: adset, account_id: world.number, name: 'Retarget', status: 'PAUSED', effective_status: 'PAUSED', daily_budget: '2000' } }],
+      ['POST', adset, { body: { success: true } }],
+    ]);
+    const answer = await world.call(UNDO, { id: pauseId });
+    expect(answer.errors).toBeUndefined();
+    const undone = answer.data!.auditEventUndo!.auditEvent as Row;
+    expect(undone).toEqual({
+      success: true, already_reverted: false, original_event_id: pauseId, reversal_event_id: expect.any(Number) as number,
+      message: 'Action undone and confirmed by Meta.',
+    });
+    expect(meta.requests).toEqual([
+      read(adset, ADSET_FIELDS),
+      { method: 'POST', path: adset, params: { status: 'ACTIVE', access_token: TOKEN, appsecret_proof: PROOF } },
+    ]);
+    const reversal = await event(undone.reversal_event_id);
+    expect(reversal).toMatchObject({
+      event_type: 'UNDO_ACTION', status: 'SUCCESS', category: 'MANUAL_ACTION', action: 'UNDO_SET_ENTITY_DELIVERY', reverts_event_id: pauseId,
+      message: `Action #${pauseId} was undone safely.`, entity_level: 'adset', entity_id: adset, entity_name: 'Retarget', adset_id: adset, adset_name: 'Retarget',
+      after_state: { status: 'ACTIVE' },
+      details: { original_event_id: pauseId, original_event_type: 'MANUAL_PAUSE', reconciled_after_restart: false, currency: 'EUR' },
+    });
+    expect(reversal.before_state).toMatchObject({ account_id: world.number, status: 'PAUSED', daily_budget: 20, currency: 'EUR' });
+    expect(await query(db, 'SELECT status, attempt_count, correlation_id FROM action_undo_states WHERE original_event_id = $1', [pauseId])).toEqual([
+      { status: 'SUCCESS', attempt_count: 1, correlation_id: reversal.correlation_id },
+    ]);
+
+    meta.answer([]);
+    const again = await world.call(UNDO, { id: pauseId });
+    expect(again.data!.auditEventUndo!.auditEvent).toMatchObject({ success: true, already_reverted: true, reversal_event_id: undone.reversal_event_id });
+    expect(meta.requests).toEqual([]);
+
+    // A second pause, then someone turns it on in Ads Manager: the undo would undo nothing.
+    meta.answer([
+      ['GET', adset, { body: { id: adset, account_id: world.number, name: 'Retarget', status: 'ACTIVE', daily_budget: '2000' } }],
+      ['POST', adset, { body: { success: true } }],
+    ]);
+    const second = (await world.call(DELIVERY, { level: 'adset', id: adset, input: { account_id: world.account.accountId, status: 'PAUSED' } })).data!.entityDeliveryUpdate!.entity as Row;
+    meta.answer([['GET', adset, { body: { id: adset, account_id: world.number, name: 'Retarget', status: 'ACTIVE', daily_budget: '2000' } }]]);
+    const differs = await world.call(UNDO, { id: second.audit_event_id });
+    expect(differs.errors?.[0]).toMatchObject({ message: "Meta's current state already differs from the result of the original action.", extensions: { statusCode: 409 } });
+    expect(meta.requests.map((request) => request.method)).toEqual(['GET']);
+    expect(await query(db, 'SELECT status, last_error FROM action_undo_states WHERE original_event_id = $1', [second.audit_event_id])).toEqual([
+      { status: 'ERROR', last_error: 'Meta state no longer matches the original action' },
+    ]);
+  });
+
+  it('undoes a budget change back to the exact previous budget', async () => {
+    const campaign = digits(16);
+    meta.answer([
+      ['GET', campaign, { body: { id: campaign, account_id: world.number, name: 'Main', status: 'ACTIVE', daily_budget: '5000' } }],
+      ['POST', campaign, { body: { success: true } }],
+    ]);
+    const raised = (await world.call(BUDGET, { level: 'campaign', id: campaign, input: { account_id: world.account.accountId, daily_budget: 80 } })).data!.entityBudgetUpdate!.entity as Row;
+    meta.answer([
+      ['GET', campaign, { body: { id: campaign, account_id: world.number, name: 'Main', status: 'ACTIVE', daily_budget: '8000' } }],
+      ['POST', campaign, { body: { success: true } }],
+    ]);
+    const answer = await world.call(UNDO, { id: raised.audit_event_id });
+    expect(answer.errors).toBeUndefined();
+    expect(meta.requests).toEqual([
+      read(campaign, ADSET_FIELDS),
+      { method: 'POST', path: campaign, params: { daily_budget: '5000', access_token: TOKEN, appsecret_proof: PROOF } },
+    ]);
+    const reversal = await event((answer.data!.auditEventUndo!.auditEvent as Row).reversal_event_id);
+    expect(reversal).toMatchObject({ action: 'UNDO_SET_ENTITY_BUDGET', adset_id: '', adset_name: '', entity_level: 'campaign', after_state: { daily_budget: 50 } });
+
+    const missing = await world.call(UNDO, { id: 2_000_000_000 });
+    expect(missing.errors?.[0]).toMatchObject({ message: 'Event not found.', extensions: { statusCode: 404 } });
   });
 });

@@ -1,14 +1,15 @@
-import { Arg, Ctx, Int, Query, Resolver } from 'type-graphql';
+import { Arg, Ctx, Int, Mutation, Query, Resolver } from 'type-graphql';
 import { AUDIT_EVENT_COLUMNS, serializeAuditEvents, type AuditEventRow } from '../../../audit/events.ts';
 import { accountAccess } from '../../../workspaces/account-access.ts';
 import { userWorkspaceMember } from '../../../workspaces/access.ts';
-import type { GraphQLContext } from '../../context.ts';
+import { undoAuditEvent } from '../../../meta/undo.ts';
+import { mutated, type GraphQLContext } from '../../context.ts';
 import { invalidInput } from '../../errors.ts';
+import { AuditEventPayload, type Payload } from '../../payloads.ts';
 import { JSONScalar } from '../../scalars.ts';
 
 // The workspace's audit log, the Activity page (api/routers/audit.py
-// list_audit_events). auditEventUndo stays Python's until the Meta client
-// moves: undoing an action changes the entity on Meta.
+// list_audit_events), and undoing one of its Meta changes (meta/undo.ts).
 
 // Query(..., ge=, le=, max_length=) as pydantic words a failure; each argument
 // is checked on its own, in the route's order, and the first failure answers.
@@ -50,6 +51,11 @@ export function datetime(value: string | null): string | null {
 
 @Resolver()
 export class AuditResolver {
+  @Mutation(() => AuditEventPayload, { nullable: true, description: 'Undoes what an audit event did.' })
+  async auditEventUndo(@Arg('id', () => Int) id: number, @Ctx() context: GraphQLContext): Promise<Payload> {
+    return mutated(context, AuditEventPayload, await undoAuditEvent(context.app, context.user, id));
+  }
+
   @Query(() => JSONScalar, { description: "A page of the workspace's audit log, newest first." })
   async auditEvents(
     @Ctx() { app, user }: GraphQLContext,
