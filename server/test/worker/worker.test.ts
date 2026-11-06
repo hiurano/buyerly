@@ -59,9 +59,10 @@ describe('job ownership (TS_WORKER_JOBS)', () => {
     }
   });
 
-  it('refuses to start with a job it cannot run yet', () => {
-    const config = readConfig({ TS_WORKER_JOBS: 'sync_log_compaction,no_such_job', REDIS_URL: 'redis://localhost:1' });
-    expect(() => buildWorker(config, { options: {} } as unknown as DataSource)).toThrow(/no_such_job/);
+  it('skips a job name it does not know, as the Python worker does', () => {
+    // A rollback keeps the newer TS_WORKER_JOBS default; the jobs this release knows must still run.
+    const config = readConfig({ TS_WORKER_JOBS: 'sync_log_compaction,no_such_job', REDIS_URL: 'redis://localhost:1', LOG_LEVEL: 'silent' });
+    expect(buildWorker(config, { options: {} } as unknown as DataSource).owned).toEqual(['sync_log_compaction']);
   });
 });
 

@@ -26,12 +26,11 @@ class TestOwnership(unittest.TestCase):
         source = (ROOT / "services" / "worker.py").read_text()
         self.assertIn("if job_id in owned_by_ts:", source)
         self.assertIn("exclusive(job_id, run)", source)
-        for job_id in ("inbox_email", "inbox_telegram", "inbox_push", "sync_log_compaction"):
+        for job_id in ("inbox_email", "inbox_telegram", "inbox_push", "sync_log_compaction", "account_day_boundary"):
             self.assertIn(f'("{job_id}", ', source)
         # Jobs that call Meta stay here until the TypeScript Meta client lands.
         self.assertNotIn('"monitoring"', worker_jobs.SHARED_JOBS)
         self.assertIn('id="monitoring_job"', source)
-        self.assertIn('id="account_day_boundary_job"', source)
 
     def test_the_typescript_worker_uses_the_same_lock_numbers(self):
         source = (ROOT / "server" / "src" / "worker" / "jobs.ts").read_text()
