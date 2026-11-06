@@ -120,6 +120,7 @@ const FIELDS = String.raw`({
   logoutAllSessions: (v) => ['POST', '/api/auth/logout-all' + qs({ keep_current: v.keepCurrent }), {}],
   userEmailChangeRequest: (v) => ['POST', '/api/auth/request-email-change', v.input],
   userEmailChangeVerify: (v) => ['POST', '/api/auth/verify-email-change', v.input],
+  fileUpload: (v) => ['POST', '/api/onboarding/file-upload', v.input],
   availableUsers: () => ['GET', '/api/auth/accounts'],
   workspaceInviteDetails: (v) => ['GET', '/api/invites/' + enc(v.token)],
   emailUserAccountAuthChallenge: (v) => ['POST', '/api/auth/request-temporary-password', v.input],

@@ -20,6 +20,7 @@ from core.config import settings
 from core.workspace_slugs import RESERVED_WORKSPACE_SLUGS
 from database.db import async_session_maker
 from services import worker_watchdog
+from api.routers.onboarding import signed_uploads_router
 from services.image_uploads import UPLOADS_ROOT, cleanup_stale_workspace_logos
 from meta_api.client import MetaClient
 from services.inventory_cache import PostgreSQLInventoryCache
@@ -143,6 +144,8 @@ def create_app() -> FastAPI:
     # API routes
     app.include_router(api_router)
     app.include_router(rest_only(meta_oauth_router))
+    # The byte upload to a fileUpload link (decision 55), before /uploads is mounted.
+    app.include_router(signed_uploads_router)
 
     @app.get("/health/live", include_in_schema=False)
     async def health_live():

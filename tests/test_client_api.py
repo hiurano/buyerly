@@ -164,6 +164,11 @@ CASES = {
         "POST", lambda f, n: "/api/auth/request-email-change",
         lambda f, n: {"input": {"new_email": f"no-at-sign-{n}"}}, lambda f, n: {"new_email": f"no-at-sign-{n}"},
     ),
+    "fileUpload": _case(
+        "POST", lambda f, n: "/api/onboarding/file-upload",
+        lambda f, n: {"input": {"purpose": "avatar", "content_type": "image/png", "filename": "a.png", "size": 10**8}},
+        lambda f, n: {"purpose": "avatar", "content_type": "image/png", "filename": "a.png", "size": 10**8},
+    ),
     "emailUserAccountAuthChallenge": _case(
         "POST", lambda f, n: "/api/auth/request-temporary-password",
         lambda f, n: {"input": {"email": f"no-at-sign-{n}"}}, lambda f, n: {"email": f"no-at-sign-{n}"},

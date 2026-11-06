@@ -68,7 +68,7 @@ export class Browser {
   }
 
   async request(
-    method: 'GET' | 'POST' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
     path: string,
     options: { headers?: Record<string, string>; json?: unknown; body?: Buffer } = {},
   ): Promise<Response> {
