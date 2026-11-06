@@ -20,6 +20,9 @@ name: Ops drill (manual)
 #                     what the account sync wrote per hour (facts, health,
 #                     events), to compare the hours before and after it moves
 #                     between the Python and the TypeScript worker (#611).
+#   rules-shadow-report  scripts/rules_shadow_report.sh: read-only match
+#                     statistics of the rules engine's shadow run (#611):
+#                     counts and field names, no ids or amounts.
 #
 # None of them writes to the production database or the uploads volume.
 
@@ -38,6 +41,7 @@ on:
           - uploads
           - worker-stall
           - account-sync-report
+          - rules-shadow-report
       confirm:
         description: Type the drill name again to confirm
         type: string
@@ -91,6 +95,7 @@ jobs:
               uploads) cmd="bash scripts/drill_uploads.sh" ;;
               worker-stall) cmd="bash scripts/drill_worker_stall.sh" ;;
               account-sync-report) cmd="bash scripts/account_sync_report.sh" ;;
+              rules-shadow-report) cmd="bash scripts/rules_shadow_report.sh" ;;
               *) echo "Unknown drill"; exit 1 ;;
             esac
             if [ "$(id -u)" -ne 0 ]; then cmd="sudo -n ${cmd}"; fi
