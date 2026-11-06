@@ -37,6 +37,7 @@ from core.timezones import (
 )
 from meta_api.client import MetaClient
 from core.metrics import meta_date_preset, normalize_rule_level
+from rules.shadow import start_capture as start_shadow_capture
 from rules.engine import (
     RULE_ACTION_BY_TYPE,
     RuleAction,
@@ -2293,6 +2294,21 @@ class MonitoringWorker:
                         entities,
                         now=now,
                     )
+                    # The TypeScript engine decides beside this one on the
+                    # same inputs before it may act (#611, rules/shadow.py).
+                    shadow = await start_shadow_capture(
+                        session,
+                        cycle_id=self._current_cycle_id,
+                        account=acc,
+                        now=now,
+                        stop_confirmation_minutes=stop_confirmation_minutes,
+                        critical_interval=critical_interval,
+                        due_rules=due_rules,
+                        entities=entities,
+                        entity_windows=entity_windows,
+                        undone_actions=undone_actions,
+                        manual_enables=manual_enables,
+                    )
                     for held_id in manual_enables:
                         undone_actions.setdefault(held_id, set()).add(RuleAction.STOP.value)
 
@@ -2521,6 +2537,9 @@ class MonitoringWorker:
                                         },
                                     )
                                 continue
+
+                            if shadow is not None:
+                                shadow.acted(eval_res, observed_state, desired_state)
 
                             # STOP the ad set
                             if eval_res.action == RuleAction.STOP:
@@ -2794,6 +2813,8 @@ class MonitoringWorker:
                                     ),
                                 )
 
+                    if shadow is not None:
+                        shadow.finish(rule_outcomes, stopped_early=token_error is not None)
                     await self._save_rule_states(
                         session,
                         acc,
