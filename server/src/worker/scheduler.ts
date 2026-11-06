@@ -1,4 +1,5 @@
-import { Queue, Worker, type ConnectionOptions } from 'bullmq';
+import { Queue, Worker } from 'bullmq';
+import { Redis } from 'ioredis';
 import type { FastifyBaseLogger } from 'fastify';
 import type { DataSource } from 'typeorm';
 import { withJobLock, type JobId } from './jobs.ts';
@@ -32,10 +33,12 @@ export interface RunRecord {
 
 export const queueName = (job: JobId): string => `job-${job}`;
 
-// The connection a Redis URL gives BullMQ; workers block on Redis, so they
-// must not give up on a command while it reconnects.
-export function redisConnection(url: string): ConnectionOptions {
-  return { url, maxRetriesPerRequest: null };
+// BullMQ's connection: a client of our own, since in an ES module BullMQ
+// cannot load ioredis from connection options. Workers block on Redis, so
+// they must not give up on a command while it reconnects; BullMQ duplicates
+// it for each worker's blocking connection.
+export function redisConnection(url: string): Redis {
+  return new Redis(url, { maxRetriesPerRequest: null });
 }
 
 export interface Scheduler {
@@ -43,7 +46,7 @@ export interface Scheduler {
 }
 
 export interface SchedulerOptions {
-  connection: ConnectionOptions;
+  redisUrl: string;
   dataSource: DataSource;
   log: FastifyBaseLogger;
   owned: ReadonlyMap<JobId, JobDefinition>;
@@ -56,7 +59,8 @@ export interface SchedulerOptions {
 }
 
 export async function startScheduler(options: SchedulerOptions): Promise<Scheduler> {
-  const { connection, dataSource, log, owned, notOwned, recordRun } = options;
+  const { redisUrl, dataSource, log, owned, notOwned, recordRun } = options;
+  const connection = redisConnection(redisUrl);
   const prefix = options.prefix ?? QUEUE_PREFIX;
   const queues: Queue[] = [];
   const workers: Worker[] = [];
@@ -116,6 +120,7 @@ export async function startScheduler(options: SchedulerOptions): Promise<Schedul
     async close() {
       await Promise.all(workers.map((worker) => worker.close()));
       await Promise.all(queues.map((queue) => queue.close()));
+      await connection.quit();
     },
   };
 }

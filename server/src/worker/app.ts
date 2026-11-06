@@ -5,7 +5,7 @@ import type { Config } from '../config.ts';
 import { databaseOver, type Database } from '../database.ts';
 import { compactSyncLog } from '../sync/compaction.ts';
 import { SHARED_JOBS, parseJobList, type JobId } from './jobs.ts';
-import { RUNS_KEY, redisConnection, startScheduler, type JobDefinition, type RunRecord, type Scheduler } from './scheduler.ts';
+import { RUNS_KEY, startScheduler, type JobDefinition, type RunRecord, type Scheduler } from './scheduler.ts';
 
 // The TypeScript worker (#611 stage 4): Compose service `worker-ts`, from the
 // same image as the server (`node server/dist/worker/main.js`). It runs the
@@ -89,7 +89,7 @@ export function buildWorker(config: Config, dataSource: DataSource): BuiltWorker
     async start() {
       await redis.connect();
       scheduler = await startScheduler({
-        connection: redisConnection(config.redisUrl),
+        redisUrl: config.redisUrl,
         dataSource,
         log: app.log,
         owned,

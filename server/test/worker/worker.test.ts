@@ -10,7 +10,7 @@ import { compactedThrough, lastSyncId, needsBootstrap } from '../../src/sync/log
 import { readConfig } from '../../src/config.ts';
 import { buildWorker, jobDefinitions } from '../../src/worker/app.ts';
 import { LOCK_NAMESPACE, SHARED_JOBS, parseJobList, withJobLock } from '../../src/worker/jobs.ts';
-import { redisConnection, startScheduler, type RunRecord } from '../../src/worker/scheduler.ts';
+import { startScheduler, type RunRecord } from '../../src/worker/scheduler.ts';
 import { testDatabase } from '../support/db.ts';
 import { DATABASE_URL } from '../support/target.ts';
 
@@ -133,7 +133,7 @@ describe.skipIf(!DATABASE_URL || !REDIS_URL)('the BullMQ scheduler', () => {
     let runs = 0;
     const records: RunRecord[] = [];
     const scheduler = await startScheduler({
-      connection: redisConnection(REDIS_URL),
+      redisUrl: REDIS_URL,
       dataSource,
       log: Fastify({ logger: false }).log,
       prefix,

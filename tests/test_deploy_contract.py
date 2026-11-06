@@ -450,7 +450,8 @@ class TestDeployContract(unittest.TestCase):
             self.dockerfile,
         )
         # Started with every release and every rollback.
-        self.assertEqual(self.script.count("docker compose up -d --no-deps api worker backup"), 2)
+        self.assertIn("docker compose up -d --no-deps api worker worker-ts backup server", self.script)
+        self.assertIn("local services=(api worker backup server)", self.script)
 
     def test_empty_database_is_restored_from_offsite_before_migrations(self):
         restore = self.script.index("if ! restore_empty_server; then")

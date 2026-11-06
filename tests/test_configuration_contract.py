@@ -37,7 +37,12 @@ class TestConfigurationContract(unittest.TestCase):
         example_names = env_example_names()
 
         self.assertEqual(len(example_names), len(set(example_names)))
-        self.assertEqual(runtime_names - set(example_names), set())
+        # docker-compose.yml interpolates TS_WORKER_JOBS with its own default, so
+        # an uncommented line in a copied .env would replace it: the example
+        # keeps it commented out.
+        compose_defaulted = {"TS_WORKER_JOBS"}
+        self.assertIn("#TS_WORKER_JOBS=", (ROOT / ".env.example").read_text())
+        self.assertEqual(runtime_names - set(example_names) - compose_defaulted, set())
         self.assertEqual(set(example_names) - runtime_names, {"POSTGRES_PASSWORD"})
         self.assertFalse(any(name.startswith("SMTP_") for name in runtime_names))
 
