@@ -5,7 +5,7 @@
 # sign-in (`docker compose -f compose.dev.yaml logs server`, the line with
 # "[DEV EMAIL]").
 # Everything here is local test data; nothing reaches production or Meta:
-# Meta is the fake from scripts/fake_meta.py, with invented ad accounts.
+# Meta is the fake from server/src/scripts/fake-meta.ts, with invented ad accounts.
 name: buyerly-dev
 
 x-app-environment: &app-environment
@@ -44,21 +44,27 @@ services:
   # Invented ad accounts whose numbers grow through the day; rules can pause
   # and rebudget them. Its state (who paused what, when) is in buyerly-dev-meta.
   fake-meta:
-    image: buyerly-app:dev
-    command: ["uvicorn", "scripts.fake_meta:app", "--host", "0.0.0.0", "--port", "8090"]
+    image: node:24-slim
+    working_dir: /repo/server
+    command: ["node", "--watch", "dist/scripts/fake-meta.js"]
+    # dist/ appears once the server's first compile is done: retry until then.
+    restart: unless-stopped
     environment:
       FAKE_META_STATE: /data/fake-meta.json
+      FAKE_META_PORT: "8090"
     volumes:
-      - .:/app
+      - .:/repo
+      - buyerly-dev-node-modules:/repo/node_modules
       - buyerly-dev-meta:/data
     depends_on:
-      - api
+      server:
+        condition: service_started
 
   # The API restarts by itself when Python code changes.
   api:
     build: .
     image: buyerly-app:dev
-    command: ["sh", "-c", "python -m services.database && python -m scripts.dev_seed && exec uvicorn services.api:app --host 0.0.0.0 --port 8080 --reload --reload-dir api --reload-dir core --reload-dir database --reload-dir meta_api --reload-dir rules --reload-dir scheduler --reload-dir services"]
+    command: ["sh", "-c", "python -m services.database && exec uvicorn services.api:app --host 0.0.0.0 --port 8080 --reload --reload-dir api --reload-dir core --reload-dir database --reload-dir meta_api --reload-dir rules --reload-dir scheduler --reload-dir services"]
     environment: *app-environment
     volumes:
       - .:/app
@@ -135,6 +141,23 @@ services:
     depends_on:
       deps:
         condition: service_completed_successfully
+      db:
+        condition: service_healthy
+
+  # The dev user, the Dev workspace and the fake Meta's ad accounts (#611):
+  # added once the API has migrated the database (it retries until then).
+  seed:
+    image: node:24-slim
+    working_dir: /repo/server
+    command: ["node", "dist/scripts/dev-seed.js"]
+    restart: on-failure
+    environment: *app-environment
+    volumes:
+      - .:/repo
+      - buyerly-dev-node-modules:/repo/node_modules
+    depends_on:
+      server:
+        condition: service_started
       db:
         condition: service_healthy
 

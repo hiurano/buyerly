@@ -48,7 +48,7 @@ class Settings(BaseSettings):
         default="https://graph.facebook.com",
         description=(
             "Graph API origin. Only compose.dev.yaml changes it, to the local fake "
-            "Meta (scripts/fake_meta.py); production always talks to Meta."
+            "Meta (server/src/scripts/fake-meta.ts); production always talks to Meta."
         ),
     )
     META_APP_ID: str = Field(default="", description="Meta application ID")
