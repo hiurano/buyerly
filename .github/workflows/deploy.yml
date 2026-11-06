@@ -314,10 +314,38 @@ jobs:
           cat /tmp/python-api.out
           exit 1
 
+      # A second Python API whose Meta client talks to the Meta the tests
+      # answer (server/test/support/meta-recorder.ts, META_TEST_ENV in
+      # target.ts): the Meta write tests prove both servers send Meta the
+      # same requests and record the same history.
+      - name: Start a Python API with Meta answered by the tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://buyerly:buyerly_secret@localhost:5432/buyerly_schema
+          API_HOST: 127.0.0.1
+          API_PORT: "18081"
+          OTP_PEPPER: contract-test-otp-pepper
+          TRUSTED_PROXY_CIDRS: 127.0.0.1/32
+          WEBAPP_URL: https://buyerly.test
+          DEV_EMAIL_LOG: "true"
+          VAPID_PRIVATE_KEY: Jktq3k5UFfBTLFB_MT7QCFPhMZvJyZiQvLJvTJ-D51Y
+          SERVER_URL: ""
+          META_GRAPH_BASE_URL: http://127.0.0.1:18094
+          META_APP_SECRET: contract-meta-secret
+          META_TOKEN_ENCRYPTION_KEY: CKOJW1eA4PLOe59rNqizKftdfj0lN17_CIFSpe7ihLw=
+        run: |
+          nohup python -m services.api > /tmp/python-meta-api.out 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18081/health/ready; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/python-meta-api.out
+          exit 1
+
       - name: Typecheck, lint and test
         env:
           SCHEMA_DATABASE_URL: postgresql://buyerly:buyerly_secret@localhost:5432/buyerly_schema
           PYTHON_API_URL: http://127.0.0.1:18080
+          PYTHON_META_API_URL: http://127.0.0.1:18081
           PYTHON_API_LOG: ${{ github.workspace }}/logs/api.log
           REDIS_URL: redis://127.0.0.1:6379/1
         run: |
@@ -326,7 +354,7 @@ jobs:
           npm run lint
           npm test --workspace @buyerly/server
           echo "::group::The same contract tests against the Python API"
-          (cd server && CONTRACT_TARGET=python npx vitest run test/auth test/uploads test/sync test/workspaces test/graphql test/views test/audit test/accounts test/notifications test/rules test/admin test/meta/connections.test.ts)
+          (cd server && CONTRACT_TARGET=python npx vitest run test/auth test/uploads test/sync test/workspaces test/graphql test/views test/audit test/accounts test/notifications test/rules test/admin test/meta/connections.test.ts test/meta/connection-accounts.test.ts test/meta/delivery.test.ts)
           echo "::endgroup::"
 
       - name: Build the production image

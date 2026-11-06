@@ -10,7 +10,7 @@ import { pyInt } from '../rules/engine.ts';
 import { pyStr, pyStrip } from '../rules/validation.ts';
 import { joinDefaultTeam } from '../workspaces/default-team.ts';
 import type { ActingMember } from '../workspaces/access.ts';
-import { MetaClient } from './client.ts';
+import { metaClient } from './app-client.ts';
 import { oauthClient } from './connections.ts';
 import { evaluateMetaConnectionHealth, MetaOAuthRemoteError, REQUIRED_META_SCOPES } from './oauth.ts';
 import { get, isRecord, strOr, truthy, type Json } from './python.ts';
@@ -284,17 +284,6 @@ export function requestedAccountIds(accountIds: string[]): string[] {
     if (!requested.includes(accountId)) requested.push(accountId);
   }
   return requested;
-}
-
-// The API's Meta client (api/server.py _create_meta_client).
-export function metaClient(app: FastifyInstance): MetaClient {
-  return new MetaClient({
-    graphVersion: app.config.metaGraphVersion,
-    baseUrl: app.config.metaGraphBaseUrl,
-    appSecret: app.config.metaAppSecret,
-    fetch: app.services.metaFetch,
-    log: app.log,
-  });
 }
 
 // Python's RuntimeError inside the import of one ad account.
