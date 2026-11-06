@@ -1,7 +1,6 @@
 import { toast } from '@/ui/toast';
 import { pool } from '@/models/pool';
 import { localDatabase } from '@/models/localDatabase';
-import { apiRequest } from './api';
 import { graphql } from './graphql';
 import { chooseAccount, getCurrentAccountId, getKnownAccounts, homeWorkspace, setCurrentAccountId, setKnownAccounts, type BrowserAccount } from './accounts';
 
@@ -53,7 +52,7 @@ export async function logOut(): Promise<boolean> {
   let destination = '/login';
   let stillSignedIn = false;
   try {
-    setKnownAccounts(await apiRequest<BrowserAccount[]>('/api/auth/accounts'));
+    setKnownAccounts(await graphql<BrowserAccount[]>('query AvailableUsers { availableUsers }'));
     const next = chooseAccount(getKnownAccounts());
     if (next) {
       stillSignedIn = true;

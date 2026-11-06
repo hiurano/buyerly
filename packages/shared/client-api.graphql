@@ -99,6 +99,20 @@ type Mutation {
   """Confirms the code and makes the new email the user's own."""
   userEmailChangeVerify(input: JSON!): EmailChangePayload
 
+  """A signed link to PUT a file to: an avatar or a workspace logo."""
+  fileUpload(input: JSON!): UploadPayload
+
+  """
+  Mails a sign-in code and link; a new address without an invite passes Turnstile first.
+  """
+  emailUserAccountAuthChallenge(input: JSON!): JSON!
+
+  """Signs in with the emailed code, creating the account on first sign-in."""
+  emailTokenUserAccountAuth(input: JSON!): JSON!
+
+  """Signs in with the emailed one-time link."""
+  emailLinkUserAccountAuth(input: JSON!): JSON!
+
   """
   Opens a time-limited support session in a workspace for a platform administrator.
   """
@@ -364,6 +378,12 @@ type Query {
   """The user's signed-in browsers, most recently used first."""
   authenticationSessions: JSON!
 
+  """Every account signed in to this browser, in the order they were added."""
+  availableUsers: JSON!
+
+  """What an invite link offers, for the page shown before signing in."""
+  workspaceInviteDetails(token: String!): JSON!
+
   """Reliability signals and ad account health of the active workspace."""
   healthOverview: JSON!
 
@@ -520,6 +540,12 @@ type TelegramPayload {
   success: Boolean!
   lastSyncId: Float!
   telegram: JSON
+}
+
+type UploadPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  uploadFile: JSON
 }
 
 type UserPayload {

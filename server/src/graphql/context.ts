@@ -8,7 +8,8 @@ import type { Payload, PayloadClass } from './payloads.ts';
 // cookie of the account in X-Buyerly-Account, the CSRF token on this POST,
 // and the workspace in X-Workspace-Slug (auth/plugin.ts currentUser). A
 // request failing any of these never reaches a resolver (401/403), so `user`
-// is always there, already scoped to that workspace.
+// is always there, already scoped to that workspace, except in the public
+// fields of signing in (public.ts), which never read it.
 export interface GraphQLContext {
   app: FastifyInstance;
   // Fastify's request (Yoga's own `request` is the Fetch one).

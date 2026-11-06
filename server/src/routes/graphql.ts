@@ -2,10 +2,12 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { GraphQLError, parse, type ExecutionResult, type ParseOptions, type Source } from 'graphql';
 import { createYoga, type Plugin } from 'graphql-yoga';
 import { currentUser } from '../auth/plugin.ts';
+import type { UserEntity } from '../entities/index.ts';
 import type { GraphQLContext } from '../graphql/context.ts';
 import { INTERNAL_ERROR, asRouteError } from '../graphql/errors.ts';
 import { forwardToPython } from '../graphql/forward.ts';
 import { MAX_TOKENS, maxAliases, maxDepth } from '../graphql/limits.ts';
+import { isPublicRequest } from '../graphql/public.ts';
 import { servedHere } from '../graphql/routing.ts';
 import { clientSchema, servedRootFields } from '../graphql/schema.ts';
 
@@ -75,8 +77,9 @@ export async function graphqlRoutes(app: FastifyInstance): Promise<void> {
       app,
       http,
       reply,
-      user: http.auth!.user,
-      webSessionId: http.auth!.webSessionId,
+      // A public request has no session: its fields never read these.
+      user: http.auth?.user as UserEntity,
+      webSessionId: http.auth?.webSessionId ?? '',
     }),
   });
 
@@ -96,7 +99,7 @@ export async function graphqlRoutes(app: FastifyInstance): Promise<void> {
     }
     if (!servedHere(parsed, served)) return forwardToPython(request, reply, raw);
 
-    await currentUser(request, reply);
+    if (!isPublicRequest(parsed)) await currentUser(request, reply);
     const response = await yoga.fetch(
       'http://localhost/api/graphql',
       { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: raw ? new Uint8Array(raw) : undefined },
