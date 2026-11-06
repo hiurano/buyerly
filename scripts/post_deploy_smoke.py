@@ -264,6 +264,10 @@ def main() -> int:
         "checks": checks,
     }
     result_path = _write_result(payload)
+    # One line per failed check, in the form the deploy workflow surfaces.
+    for item in checks:
+        if not item["ok"]:
+            print(f"[ERROR] Smoke check {item['name']} failed: {item['error']}")
     print(json.dumps({
         "ok": payload["ok"],
         "release_sha": EXPECTED_SHA,
