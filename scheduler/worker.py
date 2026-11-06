@@ -2240,8 +2240,11 @@ class MonitoringWorker:
         stats["facts_stored"] = sync["facts_stored"]
         return stats
 
-    async def run_rule_cycle(self) -> dict:
-        """The rules half of the monitoring cycle: due rule checks and their Meta actions."""
+    async def run_rule_cycle(self, account_ids: Optional[list[str]] = None) -> dict:
+        """The rules half of the monitoring cycle: due rule checks and their Meta actions.
+
+        ``account_ids`` limits it to those accounts (the TypeScript parity test's).
+        """
         cycle_started = time.perf_counter()
         started_at = datetime.now(timezone.utc).isoformat()
         self._current_cycle_id = uuid.uuid4().hex
@@ -2268,7 +2271,9 @@ class MonitoringWorker:
         async with async_session_maker() as session:
             # 1. Load every active account
             stmt = select(Account).where(Account.is_active == True)
-            result = await session.execute(stmt)
+            if account_ids is not None:
+                stmt = stmt.where(Account.account_id.in_(account_ids))
+            result = await session.execute(stmt.order_by(Account.id))
             accounts = result.scalars().all()
             if not accounts:
                 await self._persist_runtime_state(

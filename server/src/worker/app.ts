@@ -13,6 +13,7 @@ import { SHARED_JOBS, parseJobList, withJobLock, type JobId } from './jobs.ts';
 import { runDayBoundaryCycle } from './day-boundary.ts';
 import { runRulesShadow } from '../rules/shadow.ts';
 import { AccountSync } from './account-sync.ts';
+import { RuleCycle } from './rule-cycle.ts';
 import { MetaClient } from '../meta/client.ts';
 import { PostgresInventoryCache } from '../meta/inventory-cache.ts';
 import { CHECK_INTERVAL_MS, checkOnce } from './watchdog.ts';
@@ -54,24 +55,23 @@ export type WorkerServices = Pick<WorkerContext, 'sendEmail' | 'telegram' | 'sen
 // that names it fails and rolls back instead of leaving it run by no one.
 export function jobDefinitions(context: WorkerContext): Partial<Record<JobId, JobDefinition>> {
   const { db, log, config } = context;
+  // One Meta client for both halves of the monitoring cycle, so one usage
+  // budget paces them, as in Python's worker.
+  let metaShared: MetaClient | null = null;
+  const meta = (): MetaClient =>
+    (metaShared ??= new MetaClient({
+      graphVersion: config.metaGraphVersion,
+      baseUrl: config.metaGraphBaseUrl,
+      appSecret: config.metaAppSecret,
+      log,
+      ...(context.metaFetch ? { fetch: context.metaFetch } : {}),
+      cacheProvider: new PostgresInventoryCache(db, log),
+    }));
   // One sync for the worker's life: it remembers which closed days it re-read.
   let sync: AccountSync | null = null;
-  const accountSync = (): AccountSync => {
-    sync ??= new AccountSync({
-      db,
-      log,
-      tokenEncryptionKey: config.metaTokenEncryptionKey,
-      meta: new MetaClient({
-        graphVersion: config.metaGraphVersion,
-        baseUrl: config.metaGraphBaseUrl,
-        appSecret: config.metaAppSecret,
-        log,
-        ...(context.metaFetch ? { fetch: context.metaFetch } : {}),
-        cacheProvider: new PostgresInventoryCache(db, log),
-      }),
-    });
-    return sync;
-  };
+  const accountSync = (): AccountSync => (sync ??= new AccountSync({ db, log, tokenEncryptionKey: config.metaTokenEncryptionKey, meta: meta() }));
+  let rules: RuleCycle | null = null;
+  const ruleCycle = (): RuleCycle => (rules ??= new RuleCycle({ db, log, tokenEncryptionKey: config.metaTokenEncryptionKey, meta: meta() }));
   const delivery = { db, log, webappUrl: config.webappUrl };
   const deliveries = {
     inbox_email: {
@@ -124,6 +124,15 @@ export function jobDefinitions(context: WorkerContext): Partial<Record<JobId, Jo
       run: async () => {
         const stats = await accountSync().run();
         if (stats.accounts_synced || stats.errors.length) log.info({ ...stats, errors: stats.errors.length }, 'Account sync cycle');
+      },
+    },
+    // Every minute: due rule checks, the Meta reads they need and the writes
+    // they call for (the rules half of the monitoring cycle, rule-cycle.ts).
+    monitoring: {
+      everyMs: 60_000,
+      run: async () => {
+        const stats = await ruleCycle().run();
+        if (stats.accounts_checked || stats.errors.length) log.info({ ...stats, errors: stats.errors.length }, 'Rule cycle');
       },
     },
     // The rules engine's shadow run (#611 stage 4): the TypeScript engine

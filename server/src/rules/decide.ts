@@ -36,6 +36,7 @@ const ruleActionOf = (value: unknown): RuleAction | undefined => {
 
 export interface DecisionAccount {
   account_id: string;
+  owner_user_id?: number | null;
   workspace_id: number | null;
   currency: unknown;
   rules_enabled: boolean;
@@ -52,6 +53,16 @@ export interface ExecutionState {
   last_success_at: number | null;
   after_state: unknown;
   details: unknown;
+  // The rest of the row, which the decision writes but never reads (absent
+  // in the shadow captures).
+  before_state?: unknown;
+  correlation_id?: string;
+  owner_user_id?: number | null;
+  entity_level?: string;
+  adset_id?: string;
+  rule_key?: string;
+  // Not stored yet: the cycle inserts it.
+  is_new?: boolean;
 }
 
 export interface DecisionInput {
@@ -158,15 +169,15 @@ export function executionKey(accountId: string, evaluation: RuleEvaluationResult
 
 const offsetAt = (zone: string, ms: number): number => localNow(zone, new Date(ms)).offsetMinutes * 60_000;
 
-// MonitoringWorker._account_day_end: the midnight that ends the ad account's
-// current day, as zoneinfo resolves a local midnight (fold=0: the earlier
-// offset when the clock repeats or skips it).
-export function accountDayEnd(timezoneName: string | null, now: number): number {
+// The instant a local midnight falls on, as zoneinfo resolves it (fold=0:
+// the earlier offset when the clock repeats or skips it). `dayOffset` 0 is
+// the account's current day, 1 the next.
+function accountMidnight(timezoneName: string | null, now: number, dayOffset: number): number {
   const clock = accountClock(timezoneName);
   const zone = clock?.canonical ?? 'UTC';
   const today = localNow(zone, new Date(now * 1000)).date;
   const [year, month, day] = today.split('-').map(Number);
-  const naive = Date.UTC(year, month - 1, day + 1);
+  const naive = Date.UTC(year, month - 1, day + dayOffset);
   const before = offsetAt(zone, naive - 36 * 3600_000);
   const after = offsetAt(zone, naive + 36 * 3600_000);
   let instant = naive - before;
@@ -176,6 +187,12 @@ export function accountDayEnd(timezoneName: string | null, now: number): number 
   }
   return instant / 1000;
 }
+
+// MonitoringWorker._account_day_end: the midnight that ends the ad account's current day.
+export const accountDayEnd = (timezoneName: string | null, now: number): number => accountMidnight(timezoneName, now, 1);
+
+// MonitoringWorker._account_day_start: the midnight that began it.
+export const accountDayStart = (timezoneName: string | null, now: number): number => accountMidnight(timezoneName, now, 0);
 
 // ---------------------------------------------------------------------------
 // The decision
@@ -193,7 +210,7 @@ function jsonDict(value: unknown): Record<string, unknown> {
 }
 
 // MonitoringWorker._state_matches
-function stateMatches(observed: Record<string, unknown>, desired: Record<string, unknown>): boolean {
+export function stateMatches(observed: Record<string, unknown>, desired: Record<string, unknown>): boolean {
   if ('status' in desired) return pyStr(observed.status ?? '').toUpperCase() === pyStr(desired.status).toUpperCase();
   if ('daily_budget' in desired) {
     try {
@@ -213,7 +230,51 @@ const nonNegativeInt = (value: unknown): number => Math.max(0, value === null ||
 
 const isPyInt = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value);
 
+// One entity's turn in the cycle: its rules' outcomes and the evaluations
+// that may act on it, in order (_entity_actions_to_run).
+export interface EntityPlan {
+  entity: Record<string, unknown>;
+  entity_id: string;
+  outcomes: Map<number, RuleOutcome>;
+  evaluations: RuleEvaluationResult[];
+}
+
+// What one evaluation comes to: nothing (skipped, a history entry, or an
+// action claimed for the Meta write. A claimed action leaves its slot PENDING
+// until `settle` says how the write went.
+export type DecisionStep = { kind: 'skipped' } | { kind: 'event'; event: DecisionEvent } | { kind: 'act'; action: IntendedAction };
+
+// The decision taken one step at a time, so the cycle can act on Meta between
+// the steps in the order Python's run_cycle does (the slots a step touches
+// are written before the next one, as Python commits them).
+export interface Decider {
+  plan(entity: Record<string, unknown>): EntityPlan;
+  step(plan: EntityPlan, evaluation: RuleEvaluationResult): DecisionStep;
+  // _finish_execution and the outcome it leaves: null for a write that landed.
+  settle(plan: EntityPlan, action: IntendedAction, error: string | null): void;
+  // The slots touched since the last call.
+  takeDirty(): ExecutionState[];
+  readonly outcomes: RuleOutcome[];
+  readonly events: DecisionEvent[];
+  readonly actions: IntendedAction[];
+  readonly touched: Map<string, ExecutionState>;
+  readonly stats: Decision['stats'];
+}
+
 export function decide(input: DecisionInput): Decision {
+  const decider = createDecider(input);
+  for (const entity of input.entities) {
+    const plan = decider.plan(entity);
+    for (const evaluation of plan.evaluations) {
+      const step = decider.step(plan, evaluation);
+      // As if the write lands: the slot succeeds now.
+      if (step.kind === 'act') decider.settle(plan, step.action, null);
+    }
+  }
+  return { outcomes: decider.outcomes, actions: decider.actions, events: decider.events, states: decider.touched, stats: decider.stats };
+}
+
+export function createDecider(input: DecisionInput): Decider {
   const { account, now } = input;
   const accountId = account.account_id;
   const engineAccount = { rules_enabled: account.rules_enabled, workspace_id: account.workspace_id, currency: account.currency };
@@ -224,14 +285,35 @@ export function decide(input: DecisionInput): Decision {
 
   const states = new Map<string, ExecutionState>(input.execution_states.map((row) => [row.execution_key, { ...row }]));
   const touched = new Map<string, ExecutionState>();
+  const dirty = new Map<string, ExecutionState>();
+  const touch = (state: ExecutionState): void => {
+    touched.set(state.execution_key, state);
+    dirty.set(state.execution_key, state);
+  };
   const slot = (evaluation: RuleEvaluationResult): { key: string; ruleKey: string; state: ExecutionState } => {
     const { key, ruleKey } = executionKey(accountId, evaluation);
     let state = states.get(key);
     if (!state) {
-      state = { execution_key: key, entity_id: pyStr(evaluation.entity_id), action: evaluation.action, status: 'IDLE', last_attempt_at: 0, last_success_at: null, after_state: {}, details: {} };
+      state = {
+        execution_key: key,
+        entity_id: pyStr(evaluation.entity_id),
+        action: evaluation.action,
+        status: 'IDLE',
+        last_attempt_at: 0,
+        last_success_at: null,
+        after_state: {},
+        details: {},
+        before_state: {},
+        correlation_id: '',
+        owner_user_id: account.owner_user_id ?? null,
+        entity_level: evaluation.entity_level,
+        adset_id: evaluation.entity_level === 'adset' ? pyStr(evaluation.entity_id) : '',
+        rule_key: ruleKey,
+        is_new: true,
+      };
       states.set(key, state);
     }
-    touched.set(key, state);
+    touch(state);
     return { key, ruleKey, state };
   };
   const existing = (evaluation: RuleEvaluationResult): ExecutionState | undefined => states.get(executionKey(accountId, evaluation).key);
@@ -347,8 +429,9 @@ export function decide(input: DecisionInput): Decision {
       if (state.entity_id !== entityId || state.action !== 'STOP' || state.status !== 'STOP_CONFIRMING') continue;
       if (keepKey && state.execution_key === keepKey) continue;
       state.status = 'IDLE';
+      state.correlation_id = input.cycle_id;
       state.details = { cancelled_at: now, reason: 'stop_condition_no_longer_matched' };
-      touched.set(state.execution_key, state);
+      touch(state);
     }
   };
 
@@ -373,7 +456,10 @@ export function decide(input: DecisionInput): Decision {
     const continuous = state.status === 'STOP_CONFIRMING' && firstSeenAt > 0 && lastSeenAt > 0 && now >= lastSeenAt && now - lastSeenAt <= Math.max(1, maxGapSeconds);
     if (!continuous) {
       state.status = 'STOP_CONFIRMING';
+      state.owner_user_id = account.owner_user_id ?? null;
+      state.correlation_id = input.cycle_id;
       state.last_attempt_at = now;
+      state.before_state = { status: 'ACTIVE' };
       state.after_state = { status: 'PAUSED' };
       state.details = { first_seen_at: now, last_seen_at: now, observations: 1, confirmation_seconds: stopConfirmationSeconds };
       return { confirmed: false, reason: 'started', state };
@@ -405,8 +491,11 @@ export function decide(input: DecisionInput): Decision {
     if (cooldownSeconds > 0 && state.last_success_at !== null && now - state.last_success_at < cooldownSeconds) {
       return { claimed: false, reason: 'cooldown', state };
     }
+    state.owner_user_id = account.owner_user_id ?? null;
     state.status = 'PENDING';
+    state.correlation_id = input.cycle_id;
     state.last_attempt_at = now;
+    state.before_state = observed;
     state.after_state = desired;
     state.details = {};
     return { claimed: true, reason: 'claimed', state };
@@ -417,7 +506,7 @@ export function decide(input: DecisionInput): Decision {
   const events: DecisionEvent[] = [];
   const stats = { actions_skipped: 0, actions_reconciled: 0, stop_confirmations_waiting: 0 };
 
-  for (const entity of input.entities) {
+  const plan = (entity: Record<string, unknown>): EntityPlan => {
     const entityId = pyStr(entity.entity_id);
     const windows = input.entity_windows[entityId] ?? {};
     const held = undone.get(entityId);
@@ -427,95 +516,116 @@ export function decide(input: DecisionInput): Decision {
     allOutcomes.push(...outcomes.values());
     if (!entityActions.length) {
       if (stopRulesDue) resetStopConfirmations(entityId, null);
-      continue;
-    }
-    if (stopRulesDue) {
+    } else if (stopRulesDue) {
       const keep = entityActions[0].action === 'STOP' ? executionKey(accountId, entityActions[0]).key : null;
       resetStopConfirmations(entityId, keep);
     }
+    return { entity, entity_id: entityId, outcomes, evaluations: entityActions };
+  };
 
-    for (const evaluation of entityActions) {
-      const currentBudget = floatOr0(entity.daily_budget ?? 0);
-      const status = 'status' in entity ? entity.status : 'UNKNOWN';
-      let observed: Record<string, unknown>;
-      let desired: Record<string, unknown>;
-      if (evaluation.action === 'STOP') {
-        observed = { status };
-        desired = { status: 'PAUSED' };
-      } else if (evaluation.action === 'AUTO_REACTIVATE') {
-        observed = { status };
-        desired = { status: 'ACTIVE' };
-      } else if (evaluation.action === 'INCREASE_BUDGET' || evaluation.action === 'DECREASE_BUDGET') {
-        if (currentBudget <= 0 || evaluation.budget_change_percent <= 0) {
-          stats.actions_skipped += 1;
-          note(outcomes, evaluation, 'skipped', { detail: 'No daily budget to change at this level' });
-          continue;
-        }
-        let newBudget: number;
-        if (evaluation.action === 'INCREASE_BUDGET') {
-          newBudget = currentBudget * (1 + evaluation.budget_change_percent / 100.0);
-          if (evaluation.budget_max_daily > 0) newBudget = Math.min(newBudget, evaluation.budget_max_daily);
-        } else {
-          newBudget = Math.max(currentBudget * (1 - evaluation.budget_change_percent / 100.0), 1.0);
-        }
-        observed = { daily_budget: currentBudget };
-        desired = { daily_budget: newBudget };
+  const step = ({ entity, outcomes }: EntityPlan, evaluation: RuleEvaluationResult): DecisionStep => {
+    const currentBudget = floatOr0(entity.daily_budget ?? 0);
+    const status = 'status' in entity ? entity.status : 'UNKNOWN';
+    let observed: Record<string, unknown>;
+    let desired: Record<string, unknown>;
+    if (evaluation.action === 'STOP') {
+      observed = { status };
+      desired = { status: 'PAUSED' };
+    } else if (evaluation.action === 'AUTO_REACTIVATE') {
+      observed = { status };
+      desired = { status: 'ACTIVE' };
+    } else if (evaluation.action === 'INCREASE_BUDGET' || evaluation.action === 'DECREASE_BUDGET') {
+      if (currentBudget <= 0 || evaluation.budget_change_percent <= 0) {
+        stats.actions_skipped += 1;
+        note(outcomes, evaluation, 'skipped', { detail: 'No daily budget to change at this level' });
+        return { kind: 'skipped' };
+      }
+      let newBudget: number;
+      if (evaluation.action === 'INCREASE_BUDGET') {
+        newBudget = currentBudget * (1 + evaluation.budget_change_percent / 100.0);
+        if (evaluation.budget_max_daily > 0) newBudget = Math.min(newBudget, evaluation.budget_max_daily);
       } else {
-        observed = { status };
-        desired = { ...observed };
+        newBudget = Math.max(currentBudget * (1 - evaluation.budget_change_percent / 100.0), 1.0);
       }
+      observed = { daily_budget: currentBudget };
+      desired = { daily_budget: newBudget };
+    } else {
+      observed = { status };
+      desired = { ...observed };
+    }
 
-      const until = cooldownUntil(evaluation);
-      if (until !== null) {
+    const until = cooldownUntil(evaluation);
+    if (until !== null) {
+      stats.actions_skipped += 1;
+      note(outcomes, evaluation, 'cooldown', { wait_until: until });
+      return { kind: 'skipped' };
+    }
+
+    if (evaluation.action === 'STOP') {
+      const confirmation = confirmStop(evaluation);
+      if (!confirmation.confirmed) {
         stats.actions_skipped += 1;
-        note(outcomes, evaluation, 'cooldown', { wait_until: until });
-        continue;
-      }
-
-      if (evaluation.action === 'STOP') {
-        const confirmation = confirmStop(evaluation);
-        if (!confirmation.confirmed) {
-          stats.actions_skipped += 1;
-          stats.stop_confirmations_waiting += 1;
-          const since = confirmation.state ? jsonDict(confirmation.state.details).first_seen_at : undefined;
-          note(outcomes, evaluation, 'confirming', {
-            wait_until: typeof since === 'number' ? since + input.stop_confirmation_minutes * 60 : null,
-          });
-          if (confirmation.reason === 'started' && confirmation.state) {
-            events.push({ event_type: 'STOP_CONFIRMATION_STARTED', evaluation, execution_key: confirmation.state.execution_key, observed_state: observed, desired_state: desired });
-          }
-          continue;
+        stats.stop_confirmations_waiting += 1;
+        const since = confirmation.state ? jsonDict(confirmation.state.details).first_seen_at : undefined;
+        note(outcomes, evaluation, 'confirming', {
+          wait_until: typeof since === 'number' ? since + input.stop_confirmation_minutes * 60 : null,
+        });
+        if (confirmation.reason === 'started' && confirmation.state) {
+          const event: DecisionEvent = { event_type: 'STOP_CONFIRMATION_STARTED', evaluation, execution_key: confirmation.state.execution_key, observed_state: observed, desired_state: desired };
+          events.push(event);
+          return { kind: 'event', event };
         }
+        return { kind: 'skipped' };
       }
+    }
 
-      const claimed = claim(evaluation, observed, desired);
-      if (!claimed.claimed) {
-        stats.actions_skipped += 1;
-        if (claimed.reason === 'reconciled') {
-          stats.actions_reconciled += 1;
-          note(outcomes, evaluation, 'fired', { acted_at: claimed.state.last_success_at });
-        } else if (claimed.reason === 'cooldown') {
-          note(outcomes, evaluation, 'cooldown', { wait_until: (claimed.state.last_success_at || now) + nonNegativeInt(evaluation.cooldown_minutes) * 60 });
-        } else {
-          note(outcomes, evaluation, 'pending');
-        }
-        const eventType = claimed.reason === 'reconciled' ? 'RULE_ACTION_RECONCILED' : claimed.reason === 'cooldown' ? 'RULE_ACTION_COOLDOWN' : 'RULE_ACTION_PENDING';
-        events.push({ event_type: eventType, evaluation, execution_key: claimed.state.execution_key, observed_state: observed, desired_state: desired });
-        continue;
+    const claimed = claim(evaluation, observed, desired);
+    if (!claimed.claimed) {
+      stats.actions_skipped += 1;
+      if (claimed.reason === 'reconciled') {
+        stats.actions_reconciled += 1;
+        note(outcomes, evaluation, 'fired', { acted_at: claimed.state.last_success_at });
+      } else if (claimed.reason === 'cooldown') {
+        note(outcomes, evaluation, 'cooldown', { wait_until: (claimed.state.last_success_at || now) + nonNegativeInt(evaluation.cooldown_minutes) * 60 });
+      } else {
+        note(outcomes, evaluation, 'pending');
       }
+      const eventType = claimed.reason === 'reconciled' ? 'RULE_ACTION_RECONCILED' : claimed.reason === 'cooldown' ? 'RULE_ACTION_COOLDOWN' : 'RULE_ACTION_PENDING';
+      const event: DecisionEvent = { event_type: eventType, evaluation, execution_key: claimed.state.execution_key, observed_state: observed, desired_state: desired };
+      events.push(event);
+      return { kind: 'event', event };
+    }
 
-      const { ruleKey } = executionKey(accountId, evaluation);
-      actions.push({ evaluation, execution_key: claimed.state.execution_key, rule_key: ruleKey, observed_state: observed, desired_state: desired, entity });
-      // As if the write lands: the slot succeeds now.
-      claimed.state.status = 'SUCCESS';
-      claimed.state.last_success_at = now;
-      claimed.state.details = {};
+    const { ruleKey } = executionKey(accountId, evaluation);
+    const action: IntendedAction = { evaluation, execution_key: claimed.state.execution_key, rule_key: ruleKey, observed_state: observed, desired_state: desired, entity };
+    actions.push(action);
+    return { kind: 'act', action };
+  };
+
+  const settle = ({ outcomes }: EntityPlan, action: IntendedAction, error: string | null): void => {
+    const state = states.get(action.execution_key)!;
+    const { evaluation } = action;
+    if (error === null) {
+      state.status = 'SUCCESS';
+      state.last_success_at = now;
+      state.details = {};
       const cooldownSeconds = nonNegativeInt(evaluation.cooldown_minutes) * 60;
       note(outcomes, evaluation, 'fired', { acted_at: now, wait_until: cooldownSeconds ? now + cooldownSeconds : null });
+    } else {
+      state.status = 'ERROR';
+      state.details = { error };
+      note(outcomes, evaluation, 'error', { detail: error || 'Meta rejected the action' });
     }
-  }
+    touch(state);
+  };
 
-  return { outcomes: allOutcomes, actions, events, states: touched, stats };
+  const takeDirty = (): ExecutionState[] => {
+    const taken = [...dirty.values()];
+    dirty.clear();
+    return taken;
+  };
+
+  return { plan, step, settle, takeDirty, outcomes: allOutcomes, events, actions, touched, stats };
 }
 
 // str(x or fallback)

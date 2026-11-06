@@ -7,9 +7,9 @@ import type { DataSource } from 'typeorm';
 // from the list and restarting both workers.
 //
 // `account_sync` is the data half of the monitoring cycle (account details,
-// analytics facts, the inventory cache, account health). The rules half
-// (`monitoring_job` in Python) is not here: it stays on Python until the
-// side-by-side comparison of both rules engines.
+// analytics facts, the inventory cache, account health), `monitoring` the
+// rules half (scheduler id `monitoring_job` in Python): due rule checks and the Meta
+// writes they call for.
 
 // The advisory lock each run holds, pg_try_advisory_lock(namespace, number).
 // The same numbers as core/worker_jobs.py SHARED_JOBS: a job is never run by
@@ -26,6 +26,8 @@ export const SHARED_JOBS = {
   // TypeScript only: the rules engine's shadow run (rules/shadow.ts). It
   // compares what Python's monitoring cycle decided; nothing to move back.
   rules_shadow: 8,
+  // The rules half of the monitoring cycle (scheduler id `monitoring_job` in Python).
+  monitoring: 9,
 } as const;
 
 export type JobId = keyof typeof SHARED_JOBS;

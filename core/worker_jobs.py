@@ -35,9 +35,12 @@ SHARED_JOBS = {
     "account_day_boundary": 6,
     "account_sync": 7,
     # TypeScript only: the rules engine's shadow run (server/src/rules/shadow.ts)
-    # compares the decisions of monitoring_job, which stays here; Python never
-    # schedules it.
+    # compares the decisions of Python's monitoring job while that job runs
+    # here; Python never schedules it.
     "rules_shadow": 8,
+    # The rules half of the monitoring cycle (MonitoringWorker.run_rule_cycle,
+    # scheduler id monitoring_job; server/src/worker/rule-cycle.ts).
+    "monitoring": 9,
 }
 
 
