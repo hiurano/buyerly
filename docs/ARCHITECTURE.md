@@ -114,3 +114,64 @@ Chrome не сверяет аргументы агента со схемой и 
 ## Эксплуатация
 
 Тесты и сборка выполняются только в GitHub Actions. Деплой main зависит от успешных тестов и выполняет серверные проверки. Подробности: [DEPLOYMENT.md](DEPLOYMENT.md), [INCIDENT_RUNBOOKS.md](INCIDENT_RUNBOOKS.md), [RELIABILITY_SLO.md](RELIABILITY_SLO.md).
+
+## Карта тестов Python → TypeScript (#611, этап 5)
+
+Перед этапом 6 (удаление Python и `tests/`) каждый файл `tests/` сопоставлен с тем, что проверяет то же поведение на TS-сервере. `server/test/…` — Vitest (HTTP/GraphQL-контракт, парные `*_parity.py` сравнивают с Python); `scripts/*-browser.mjs` — браузерные проверки; «порт» — тест добавлен в этой серии PR (#663). «Есть» поставлено по сопоставлению имён и областей тестов; пофайловая сверка отдельных кейсов — перед этапом 6. Статусы: **есть** — покрыто TS-тестом; **порт** — перенесено; **TS-кода нет** — поведение пока живёт только в Python (нужен порт кода, потом тестов); **удалить** — проверяет код, который этап 6 удаляет без TS-аналога; **не Python** — проверяет shell/YAML/документы/фронтенд, нужен перенос в другой вид проверки.
+
+| `tests/` | Тестов | Чем покрыто | Статус |
+|---|---|---|---|
+| test_account_health | 4 | `worker/account-health.test.ts` (порт); `normalize_synthetic_metrics` — только `post_deploy_smoke.py` | порт; synthetic — удалить |
+| test_account_notifications | 5 | `notifications/notifications.test.ts` | есть |
+| test_analytics_fact_store | 14 | `accounts/analytics.test.ts`, `accounts/clock.test.ts` (порт), `worker/account-sync.test.ts`, `meta/client.test.ts`; `cleanup_expired_facts` не вызывается нигде, кроме теста | есть; cleanup — удалить |
+| test_api | 73 | сессии/вход/email: `auth/*`; health: `health.test.ts`; правила/метки/превью: `rules/*`; аудит/undo: `audit`, `meta/delivery`; аккаунты: `accounts/*`; изображения: `uploads/*`; summary-ветка (`summary_*`, 9) — запись снимка делает цикл мониторинга | есть; summary-запись — TS-кода нет (цикл мониторинга) |
+| test_api_meta_lifecycle | 4 | жизненный цикл Python-клиента Meta в приложении | удалить |
+| test_backup_env | 27 | `scripts/backup_*.sh`, `restore_*.sh` | не Python (shell): нужен Vitest над скриптами |
+| test_batch_schedule_loading | 2 | кэш Python-загрузчика расписаний | удалить |
+| test_changelog | 6 | `scripts/build_changelog.py`, страницы | не Python (сайт) |
+| test_client_api | 13 | `graphql/client-api.test.ts`, `graphql/schema.test.ts`, тесты областей | есть |
+| test_client_api_sdl | 1 | `graphql/schema.test.ts` (схема совпадает) | есть |
+| test_configuration_contract | 3 | `.env.example`/docs | не Python (документы) |
+| test_datetime_contract | 1 | `schema.test.ts` (типы колонок) | есть |
+| test_db_guard, test_db_helper | 4 + 0 | защита тестовой БД Python | удалить |
+| test_deploy_contract | 41 | `deploy.yml`, `scripts/deploy.sh`, Dockerfile | не Python (YAML/shell): нужен Vitest над файлами |
+| test_dev_sign_in | 4 | вход по email и лог кода — `email.test.ts`; `scripts/dev_seed.py` без TS-аналога | есть; dev_seed — удалить или переписать |
+| test_documentation | 6 | ссылки и состав `docs/` | не Python (документы) |
+| test_fake_meta | 7 | `meta/fake-meta.test.ts` | есть |
+| test_favorites | 5 | `views/views.test.ts`, `favorites-browser.mjs` | есть |
+| test_inbox | 24 | `notifications/inbox.test.ts`, `model.test.ts` | есть |
+| test_inbox_email | 14 | `worker/delivery.test.ts` (+4 порта: прочитано/удалено/отложено, свои действия, переключатели, priority-only), `email.test.ts` | порт |
+| test_inbox_push | 12 | `worker/delivery.test.ts`, `notifications/notifications.test.ts` | есть |
+| test_inbox_telegram | 9 | `worker/delivery.test.ts`, `notifications/notifications.test.ts` | есть |
+| test_integration | 50 | цикл мониторинга: решения — `rules/decide.test.ts`, `engine.test.ts`; сам цикл ещё на Python (теневой прогон, этап 4) | TS-кода нет: тесты переносит сессия цикла мониторинга |
+| test_legal_pages | 6 | статические страницы сайта | не Python (сайт) |
+| test_logging | 6 | `meta/connection-accounts.test.ts` (редакция токенов), `meta/redact.ts` | есть |
+| test_meta_client | 21 | `meta/client.test.ts` (+parity) | есть |
+| test_meta_error_subcodes | 5 | `meta/client.test.ts`, `worker/account-sync.test.ts` | есть |
+| test_meta_invites | 22 | `meta/connections.test.ts`, `workspaces/public-invite.test.ts` | есть |
+| test_meta_oauth, test_meta_oauth_api | 5 + 15 | `meta/connections.test.ts`, `meta/connection-accounts.test.ts`, `meta/client.test.ts` | есть |
+| test_meta_tokens | 8 | `meta/tokens.test.ts` (+parity) | есть |
+| test_metrics_golden | 2 | `accounts/summary.test.ts` (+parity) | есть |
+| test_migrations | 14 | `schema.test.ts` проверяет итоговую схему; данные миграций 0012–0047 — Alembic | удалить вместе с Alembic или оставить миграции |
+| test_open_signup | 14 | `auth/sign-in.test.ts`, `sign-in-graphql.test.ts`, `email.test.ts` | есть |
+| test_public_repo_hygiene | 2 | сканирование репозитория | не Python |
+| test_rate_limit | 10 | `client-address.test.ts`, `auth/sign-in.test.ts`, `workspaces/public-invite.test.ts`, `uploads/images.test.ts` (лимит тела) | есть |
+| test_react_frontend_contract | 33 | поиск строк в исходниках фронтенда | не Python (фронтенд): часть закрыта `scripts/*-browser.mjs` |
+| test_restore_check | 16 | `scripts/restore_db.sh`, `drill_restore.sh` | не Python (shell) |
+| test_rule_examples | 9 | `rules/labels.test.ts`, `rules/rules.test.ts` (примеры раз на workspace) | есть |
+| test_rule_simulator | 14 | `scripts/rule_simulator.py` — инструмент разработчика | удалить или переписать |
+| test_rule_validation | 9 | `rules/validation.test.ts` (+parity) | есть |
+| test_rules | 64 | `rules/engine.test.ts` (+`engine_parity.py`) | есть: после этапа 6 parity нужно заморозить в фикстуры |
+| test_rules_shadow | 3 | `rules/decide.test.ts` | есть |
+| test_server_proxy | 13 | прокси Python → TS | удалить |
+| test_service_worker | 4 | `scripts/service-worker-browser.mjs` | не Python (фронтенд) |
+| test_sync_bootstrap, test_sync_log, test_sync_stream | 12 + 10 + 31 | `sync/*.cases.ts`, `sync/log.test.ts` (порт), `worker/worker.test.ts` (компактация) | порт |
+| test_teams | 10 | `workspaces/teams.test.ts` | есть |
+| test_timezones | 3 | `accounts/clock.test.ts` (порт), `worker/day-boundary.test.ts` | порт |
+| test_turnstile | 4 | `email.test.ts` | есть |
+| test_view_settings | 12 | `views/views.test.ts` | есть |
+| test_worker_jobs, test_worker_liveness, test_worker_watchdog | 7 + 3 + 14 | `worker/worker.test.ts`, `worker/watchdog.test.ts` | есть (liveness-файл Python — удалить) |
+| test_workspace_isolation_security, test_workspace_search | 9 + 17 | `workspaces/*`, `accounts/search.test.ts`, `admin/admin.test.ts`, `audit/audit.test.ts` | есть |
+| test_workspaces | 18 | `workspaces/workspaces.test.ts`, `members.test.ts`, `public-invite.test.ts` | есть |
+
+Что осталось до безопасного удаления `tests/`: перенос кода и тестов цикла мониторинга (`test_integration`, summary-запись), решение по shell/YAML/документным проверкам («не Python» — ~170 тестов) и заморозка `*_parity.py` в фикстуры, когда пропадёт Python-эталон.

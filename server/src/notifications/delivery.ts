@@ -131,7 +131,7 @@ export async function dueInboxEvents(
   tx: EntityManager,
   { member, user, workspace }: Recipient,
   channel: Channel,
-  window: { since: Date; until: Date; limit: number },
+  window: { since: Date; until: Date; limit: number; now?: Date },
 ): Promise<InboxEvent[]> {
   const params = new Params();
   const wanted = channelCondition(params, member, channel);
@@ -144,7 +144,7 @@ export async function dueInboxEvents(
     access: await accountAccess(tx, member, workspace.id),
     guest: member.role === 'guest',
   };
-  const columns = inboxColumns(params, viewer, new Date());
+  const columns = inboxColumns(params, viewer, window.now ?? new Date());
   const sql = `SELECT audit_events.id, audit_events.event_type, audit_events.action, audit_events.category,
       audit_events.entity_name, audit_events.adset_name, audit_events.account_name, audit_events.entity_id,
       audit_events.adset_id, audit_events.account_id, audit_events.message
@@ -233,6 +233,7 @@ export async function deliverInboxEmails(
           since: new Date(now.getTime() - EMAIL_DELAY_MS - EMAIL_LOOKBACK_MS),
           until: new Date(now.getTime() - EMAIL_DELAY_MS),
           limit: MAX_PER_RUN - sent,
+          now,
         }),
       );
     } catch (error) {
@@ -308,7 +309,7 @@ export async function deliverInboxTelegram(
     let events: InboxEvent[];
     try {
       events = await db.transaction((tx) =>
-        dueInboxEvents(tx, person, 'telegram', { since: new Date(now.getTime() - TELEGRAM_LOOKBACK_MS), until: now, limit: MAX_PER_RUN - sent }),
+        dueInboxEvents(tx, person, 'telegram', { since: new Date(now.getTime() - TELEGRAM_LOOKBACK_MS), until: now, limit: MAX_PER_RUN - sent, now }),
       );
     } catch (error) {
       log.error({ err: error, memberId: person.member.id }, 'Could not pick Telegram notifications for a member');
@@ -398,7 +399,7 @@ export async function deliverInboxPush(context: DeliveryContext & { sendPush: Se
     let events: InboxEvent[];
     try {
       events = await db.transaction((tx) =>
-        dueInboxEvents(tx, person, 'desktop', { since: new Date(now.getTime() - PUSH_LOOKBACK_MS), until: now, limit: MAX_PER_RUN - sent }),
+        dueInboxEvents(tx, person, 'desktop', { since: new Date(now.getTime() - PUSH_LOOKBACK_MS), until: now, limit: MAX_PER_RUN - sent, now }),
       );
     } catch (error) {
       log.error({ err: error, memberId: person.member.id }, 'Could not pick desktop notifications for a member');

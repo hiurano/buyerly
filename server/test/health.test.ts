@@ -15,6 +15,8 @@ describe('health', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ status: 'alive', version: 'abc123' });
     expect(response.headers['x-content-type-options']).toBe('nosniff');
+    expect(response.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
+    expect(response.headers['x-xss-protection']).toBe('1; mode=block');
     await app.close();
   });
 
