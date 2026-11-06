@@ -132,6 +132,8 @@ export function buildWorker(config: Config, dataSource: DataSource, services: Pa
     app,
     owned: [...owned.keys()],
     async start() {
+      // Connect now: the job locks open connections of their own (jobs.ts).
+      await db.ping();
       await redis.connect();
       scheduler = await startScheduler({
         redisUrl: config.redisUrl,
