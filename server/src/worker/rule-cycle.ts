@@ -342,7 +342,7 @@ export class RuleCycle {
       tx,
       `SELECT undo.entity_id, source.event_type FROM audit_events undo JOIN audit_events source ON undo.reverts_event_id = source.id
        WHERE undo.workspace_id = $1 AND undo.account_id = $2 AND undo.event_type = 'UNDO_ACTION' AND undo.status = 'SUCCESS'
-         AND undo.created_at >= to_timestamp($3) AND source.category = 'RULE_ACTION' AND source.actor_type = 'system'`,
+         AND undo.created_at >= to_timestamp($3::float8) AND source.category = 'RULE_ACTION' AND source.actor_type = 'system'`,
       [account.workspace_id, String(account.account_id), accountDayStart(account.timezone_name, now)],
     );
     const undone: Record<string, Set<string>> = {};
@@ -357,7 +357,7 @@ export class RuleCycle {
       tx,
       `SELECT entity_id, event_type, category, actor_type FROM audit_events
        WHERE workspace_id = $1 AND account_id = $2 AND status = 'SUCCESS' AND event_type = ANY($3)
-         AND created_at >= to_timestamp($4) AND created_at < to_timestamp($5)
+         AND created_at >= to_timestamp($4::float8) AND created_at < to_timestamp($5::float8)
        ORDER BY id`,
       [account.workspace_id, String(account.account_id), STATUS_EVENT_TYPES, accountDayStart(account.timezone_name, now), accountDayEnd(account.timezone_name, now)],
     );
