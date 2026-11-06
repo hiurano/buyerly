@@ -31,7 +31,7 @@ x-app: &app
     # them (core/worker_jobs.py). Moving one back to Python is
     # TS_WORKER_JOBS=<the rest> in .env (an empty value moves all of them)
     # and `docker compose up -d worker worker-ts api`.
-    TS_WORKER_JOBS: ${TS_WORKER_JOBS-sync_log_compaction,inbox_email,inbox_telegram,inbox_push,worker_watchdog,account_day_boundary,rules_shadow}
+    TS_WORKER_JOBS: ${TS_WORKER_JOBS-sync_log_compaction,inbox_email,inbox_telegram,inbox_push,worker_watchdog,account_day_boundary,rules_shadow,account_sync}
     # The rules engine's shadow run (#611 stage 4): the Python worker leaves
     # what its monitoring cycle saw and decided here, worker-ts compares.
     RULES_SHADOW_DIR: /app/logs/rules-shadow
