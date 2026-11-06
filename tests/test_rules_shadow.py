@@ -328,20 +328,29 @@ class RulesShadowCaptureTests(unittest.IsolatedAsyncioTestCase):
                     )
                 )
             ).scalars().all()
+            reverted = set(
+                (
+                    await session.execute(
+                        select(AuditEvent.reverts_event_id).where(AuditEvent.reverts_event_id.is_not(None))
+                    )
+                ).scalars()
+            )
+            actions = [action for action in actions if action.id not in reverted]
             if not actions:
                 return
             source = rng.choice(actions)
+            undo = rng.random() < 0.5
             session.add(
                 AuditEvent(
                     workspace_id=workspace_id,
                     account_id=account_id,
                     entity_id=source.entity_id,
-                    event_type=rng.choice(["UNDO_ACTION", "MANUAL_REACTIVATE"]),
+                    event_type="UNDO_ACTION" if undo else "MANUAL_REACTIVATE",
                     category="MANUAL_ACTION",
                     actor_type="user",
                     actor_id="1",
                     status="SUCCESS",
-                    reverts_event_id=source.id,
+                    reverts_event_id=source.id if undo else None,
                 )
             )
             await session.commit()
