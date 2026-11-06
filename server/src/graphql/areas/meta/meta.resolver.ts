@@ -1,18 +1,20 @@
-import { Arg, Ctx, Int, Mutation, Resolver } from 'type-graphql';
+import { Arg, Ctx, Int, Mutation, Query, Resolver } from 'type-graphql';
 import type { EntityManager } from 'typeorm';
 import { rows } from '../../../database.ts';
 import type { UserEntity } from '../../../entities/index.ts';
+import { connectionAssets, discoverAccounts, importAccounts, listConnections, requestedAccountIds } from '../../../meta/connection-accounts.ts';
 import { createMetaInvite, INVITE_DEFAULT_TTL_HOURS, MetaNotConfigured, oauthClient, startOAuth } from '../../../meta/connections.ts';
 import { userWorkspaceMember, type ActingMember } from '../../../workspaces/access.ts';
 import { mutated, type GraphQLContext } from '../../context.ts';
 import { RouteError } from '../../errors.ts';
 import { inputSchema } from '../../input.ts';
-import { MetaInvitePayload, MetaOAuthPayload, type Payload } from '../../payloads.ts';
+import { MetaConnectionPayload, MetaInvitePayload, MetaOAuthPayload, type Payload } from '../../payloads.ts';
 import { limitField } from '../../rate-limit.ts';
 import { JSONScalar } from '../../scalars.ts';
 
-// Meta connections (api/meta_oauth.py, #611 stage 4): invite links and the
-// start of Facebook login. The callback and the invite landing page stay
+// Meta connections (api/meta_oauth.py, #611 stage 4): the list, reading a
+// connection's ad accounts and adding them, invite links and the start of
+// Facebook login. The callback and the invite landing page stay
 // REST (routes/meta-oauth.ts).
 
 interface CreateInvite {
@@ -27,6 +29,16 @@ const CREATE_INVITE = inputSchema<CreateInvite>({
   properties: {
     label: { type: 'string', maxLength: 100 },
     expires_in_hours: { type: 'integer', minimum: 1, maximum: 168 },
+  },
+});
+
+// MetaAccountImportRequest.
+const IMPORT = inputSchema<{ account_ids: string[] }>({
+  type: 'object',
+  additionalProperties: false,
+  required: ['account_ids'],
+  properties: {
+    account_ids: { type: 'array', minItems: 1, maxItems: 500, items: { type: 'string' } },
   },
 });
 
@@ -62,6 +74,54 @@ const notConfigured = (error: unknown): never => {
 
 @Resolver()
 export class MetaResolver {
+  @Query(() => JSONScalar, { description: "The workspace's Meta connections." })
+  async metaConnections(@Ctx() { app, user }: GraphQLContext): Promise<unknown> {
+    return app.db.transaction(async (tx) => {
+      const found = await userWorkspaceMember(tx, user);
+      return listConnections(tx, user, found ? { workspaceId: found.workspace.id, member: found.member } : null);
+    });
+  }
+
+  @Mutation(() => MetaConnectionPayload, { nullable: true, description: "Reads a Meta connection's ad accounts from Meta again." })
+  async metaConnectionDiscover(@Arg('connectionId', () => Int) connectionId: number, @Ctx() context: GraphQLContext): Promise<Payload> {
+    const { app, user } = context;
+    await app.db.transaction(async (tx) => {
+      const scope = await writableWorkspace(tx, user, 'changing the Meta connection');
+      await workspaceConnection(tx, user, connectionId, scope);
+      try {
+        await discoverAccounts(app, tx, connectionId);
+      } catch (error) {
+        notConfigured(error);
+      }
+    });
+    // As Python, the list is read again after the discovery is committed.
+    const assets = await app.db.transaction(async (tx) => {
+      const found = await userWorkspaceMember(tx, user);
+      if (!found) throw new RouteError(404, 'Workspace not found');
+      const scope = { workspaceId: found.workspace.id, member: found.member };
+      await workspaceConnection(tx, user, connectionId, scope);
+      return connectionAssets(tx, user, connectionId, scope);
+    });
+    return mutated(context, MetaConnectionPayload, assets);
+  }
+
+  @Mutation(() => MetaConnectionPayload, { nullable: true, description: 'Adds ad accounts of a Meta connection to the workspace.' })
+  async metaConnectionImport(
+    @Arg('connectionId', () => Int) connectionId: number,
+    @Arg('input', () => JSONScalar) input: unknown,
+    @Ctx() context: GraphQLContext,
+  ): Promise<Payload> {
+    const request = IMPORT.parse(input);
+    const requested = requestedAccountIds(request.account_ids);
+    const { app, user } = context;
+    const result = await app.db.transaction(async (tx) => {
+      const scope = await writableWorkspace(tx, user, 'changing the Meta connection');
+      await workspaceConnection(tx, user, connectionId, scope);
+      return importAccounts(app, tx, user, connectionId, scope, requested);
+    });
+    return mutated(context, MetaConnectionPayload, result);
+  }
+
   @Mutation(() => MetaInvitePayload, { nullable: true, description: 'Creates a one-time link for someone else to connect their Facebook profile.' })
   async metaInviteCreate(@Arg('input', () => JSONScalar) input: unknown, @Ctx() context: GraphQLContext): Promise<Payload> {
     limitField(context, 'meta_invite_create', 20);
