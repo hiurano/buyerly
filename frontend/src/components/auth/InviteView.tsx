@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
-import { apiRequest } from '@/lib/api';
 import { graphql } from '@/lib/graphql';
 import { acceptInvite } from '@/lib/workspaces';
 import type { InviteInfo, LoginResult, SessionUser } from '@/lib/types';
@@ -107,7 +106,7 @@ export const InviteView: React.FC<InviteViewProps> = ({
 
   useEffect(() => {
     let active = true;
-    apiRequest<InviteInfo>(`/api/invites/${encodeURIComponent(token)}`)
+    graphql<InviteInfo>('query WorkspaceInviteDetails($token: String!) { workspaceInviteDetails(token: $token) }', { token })
       .then((result) => {
         if (active) setInvite(result);
       })

@@ -63,12 +63,13 @@ try {
       const path = new URL(request.url()).pathname;
       const verb = request.method();
       if (verb !== 'GET') {
-        const body = path.endsWith('/logo') ? 'file' : request.postDataJSON();
+        const body = path.endsWith('/file-upload') ? request.postDataJSON().purpose : request.postDataJSON();
         writes.push({ verb, path, body });
       }
       if (verb === 'GET' && path === '/api/me') return route.fulfill({ json: me() });
-      if (verb === 'POST' && path === '/api/onboarding/workspace/logo') {
-        return route.fulfill({ json: { status: 'ok', logo_url: '/uploads/workspaces/logo_1_new.png' } });
+      // fileUpload: a signed link, then the bytes PUT to it (decision 55).
+      if (verb === 'POST' && path === '/api/onboarding/file-upload') {
+        return route.fulfill({ json: { upload_url: '/uploads/signed?token=test-token', headers: { 'Content-Type': 'image/png' } } });
       }
       if (path === `/api/workspaces/${workspace.id}` && verb === 'PATCH') {
         const body = request.postDataJSON();
@@ -114,6 +115,10 @@ try {
       return route.fulfill({ status: 404, json: { detail: 'Unexpected test request' } });
     });
     await context.route('**/uploads/**', route => route.fulfill({ body: PNG, contentType: 'image/png' }));
+    await context.route((url) => url.pathname === '/uploads/signed', (route) => {
+      writes.push({ verb: route.request().method(), path: new URL(route.request().url()).pathname, body: 'file' });
+      return route.fulfill({ json: { asset_url: '/uploads/workspaces/logo_1_new.png' } });
+    });
     const assertNoOverflow = async (what) => assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true,
       `${what} at ${width}px: document overflow`,
@@ -260,7 +265,8 @@ try {
 
       const expected = [
         ['PATCH', '/api/workspaces/7', { name: 'Alpha Media' }],
-        ['POST', '/api/onboarding/workspace/logo', 'file'],
+        ['POST', '/api/onboarding/file-upload', 'workspace_logo'],
+        ['PUT', '/uploads/signed', 'file'],
         ['PATCH', '/api/workspaces/7', { logo_url: '/uploads/workspaces/logo_1_new.png' }],
         ['PATCH', '/api/workspaces/7', { slug: 'beta' }],
         ['PATCH', '/api/workspaces/7', { slug: 'alpha-media' }],

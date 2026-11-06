@@ -40,14 +40,14 @@ monitoring cycle делает обзор `degraded` или `critical`, даже 
 
 | Метод и путь | Тело | Результат |
 |---|---|---|
-| `POST /api/auth/request-temporary-password` | `email`, `invite_token?`, `turnstile_token?` | вход и регистрация по почте: любой почте высылает одно письмо с одноразовой ссылкой и кодом. Новой почте без приглашения нужен `turnstile_token` от виджета Cloudflare Turnstile, иначе 400 без письма (проверка выключена, пока на сервере не задан `TURNSTILE_SECRET_KEY`). Недействительное или чужое `invite_token` — 403 |
-| `POST /api/auth/verify-temporary-password` | `email`, `code` | атомарно потребляет общий login credential, повторно проверяет доступ и открывает web-сессию; аккаунт с неподтверждённой почтой не открывает (403) |
-| `POST /api/auth/verify-email-link` | `token` | атомарно потребляет тот же login credential по ссылке; после этого код также недействителен |
+| GraphQL `emailUserAccountAuthChallenge(input)`, без входа (REST `POST /api/auth/request-temporary-password`) | `email`, `invite_token?`, `turnstile_token?` | вход и регистрация по почте: любой почте высылает одно письмо с одноразовой ссылкой и кодом. Новой почте без приглашения нужен `turnstile_token` от виджета Cloudflare Turnstile, иначе 400 без письма (проверка выключена, пока на сервере не задан `TURNSTILE_SECRET_KEY`). Недействительное или чужое `invite_token` — 403 |
+| GraphQL `emailTokenUserAccountAuth(input)`, без входа (REST `POST /api/auth/verify-temporary-password`) | `email`, `code` | атомарно потребляет общий login credential, повторно проверяет доступ и открывает web-сессию; аккаунт с неподтверждённой почтой не открывает (403) |
+| GraphQL `emailLinkUserAccountAuth(input)`, без входа (REST `POST /api/auth/verify-email-link`) | `token` | атомарно потребляет тот же login credential по ссылке; после этого код также недействителен |
 | GraphQL `userEmailChangeRequest(input)` (REST `POST /api/auth/request-email-change`) | `new_email` | высылает 6-значный код подтверждения для привязки нового email |
 | GraphQL `userEmailChangeVerify(input)` (REST `POST /api/auth/verify-email-change`) | `code` | верифицирует OTP и активирует подтверждённый email |
 | `POST /api/auth/update-profile` | `first_name?`, `last_name?`, `email?`, `avatar_url?`, `full_name?`, `title?` (до 128), `username?` (до 40: буквы, цифры, `-` `_` `.`) | обновляет персональные данные профиля; пустое имя, неверный или занятый username — 400 с текстом Linear |
 | GraphQL `logout` (REST `POST /api/auth/logout` до B4) | — | немедленно отзывает текущую web-сессию; другие аккаунты этого браузера остаются |
-| `GET /api/auth/accounts` | — | аккаунты, вошедшие в этом браузере, в порядке добавления: `id`, `username`, `full_name`, `email`, `avatar_url`, `slot`, `onboarding_completed`, `workspaces`; cookie закончившихся сессий удаляет; без входа — пустой список |
+| GraphQL `availableUsers`, без входа (REST `GET /api/auth/accounts`) | — | аккаунты, вошедшие в этом браузере, в порядке добавления: `id`, `username`, `full_name`, `email`, `avatar_url`, `slot`, `onboarding_completed`, `workspaces`; cookie закончившихся сессий удаляет; без входа — пустой список |
 | GraphQL `authenticationSessions` (REST `GET /api/auth/sessions`) | — | список активных устройств с датами создания, истечения и последней активности и IP-адресом последней активности; `location` — место последней активности от Cloudflare («Helsinki, 18, FI»), пустое без Cloudflare |
 | GraphQL `logoutSession(sessionId)` (REST `DELETE /api/auth/sessions/{session_id}`) | — | отзывает выбранную собственную web-сессию |
 | GraphQL `logoutAllSessions(keepCurrent)` (REST `POST /api/auth/logout-all`) | `keep_current?` | отзывает все web-сессии пользователя; с `keep_current=true` текущая остаётся (Revoke all в Settings → Security & access) |
@@ -118,7 +118,7 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 | `POST /api/workspaces/{id}/invite-link` | — | owner/admin: включает ссылку (уже включённая не меняется), отдаёт `invite_url`; этой же ссылкой делится онбординг |
 | `POST /api/workspaces/{id}/invite-link/reset` | — | owner/admin: «Reset invite link», как у Linear — старая ссылка перестаёт работать, отдаётся новая |
 | `DELETE /api/workspaces/{id}/invite-link` | — | owner/admin: выключает ссылку, вступить по ней больше нельзя; `{"invite_url": null}` |
-| `GET /api/invites/{token}` | — | публичная проверка валидности токена приглашения перед вступлением |
+| GraphQL `workspaceInviteDetails(token)`, без входа (REST `GET /api/invites/{token}`) | — | публичная проверка валидности токена приглашения перед вступлением |
 | `POST /api/invites/{token}/accept` | — | атомарное принятие инвайта и добавление в команду; повтор уже вступившего пользователя идемпотентен |
 
 ## Онбординг (Onboarding Flow)
@@ -126,6 +126,7 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 | Метод и путь | Тело | Назначение |
 |---|---|---|
 | `POST /api/onboarding/personal-details` | `first_name`, `last_name?` | сохранение отображаемого имени после создания или принятия workspace; поле Title отсутствует; почту здесь не меняют |
+| GraphQL `fileUpload(input)` | `purpose` (`avatar` или `workspace_logo`), `content_type`, `filename`, `size` | подписанная ссылка на 10 минут (`uploadFile.upload_url`, `headers`), как `fileUpload` у Linear. Браузер кладёт байты файла `PUT`-ом на ссылку (без сессии: ссылка и есть разрешение) и получает `asset_url`; аватар берёт его через `userUpdate`, логотип — через обновление воркспейса. Больше 5 МБ — 400 |
 | `POST /api/onboarding/avatar` | `file` (multipart) | проверка реального содержимого и загрузка фотографии профиля (PNG, JPG, WEBP до 5 МБ) |
 | `DELETE /api/onboarding/avatar` | — | удаление аватара и возврат к инициальному бейджу |
 | `GET /api/onboarding/check-slug` | `slug` (query) | живая проверка доступности слага воркспейса в реальном времени |
@@ -197,7 +198,8 @@ Meta возвращает браузер на служебный callback `/api/
 Ручной импорт System User Token использует тот же шифрованный storage: открытое
 значение проверяется через Meta только в памяти и не сохраняется в PostgreSQL.
 После добавления первичного ключа ротация всех OAuth- и ручных токенов выполняется
-командой `python -m scripts.rotate_meta_tokens` внутри API-контейнера.
+командой `python -m scripts.rotate_meta_tokens` внутри API-контейнера или её портом
+`node server/dist/meta/rotate-tokens.js` в контейнере `server` (#611): оба шифруют одинаково.
 
 Обнаружение возвращает все рекламные аккаунты, доступные вошедшему Facebook-профилю, и группирует их по полю Business Manager. Импорт принимает только ID из последнего обнаружения этого подключения, не переносит кабинет между владельцами и никогда автоматически не включает правила. После OAuth кабинет хранит только ссылку на подключение; расшифрованный access token существует в памяти на время серверного запроса.
 

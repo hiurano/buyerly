@@ -47,6 +47,7 @@ export const MetaInvitePayload = payload('MetaInvitePayload', 'metaInvite');
 export const MetaOAuthPayload = payload('MetaOAuthPayload', 'authorization');
 export const NotificationChannelsPayload = payload('NotificationChannelsPayload', 'notificationChannels');
 export const OnboardingPayload = payload('OnboardingPayload', 'onboarding');
+export const UploadPayload = payload('UploadPayload', 'uploadFile');
 export const RulePayload = payload('RulePayload', 'rule');
 export const RuleLabelPayload = payload('RuleLabelPayload', 'ruleLabel');
 export const RulesPayload = payload('RulesPayload', 'rules');

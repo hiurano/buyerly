@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { apiRequest } from '@/lib/api';
+import { graphql } from '@/lib/graphql';
 import type { LoginResult } from '@/lib/types';
 import { AuthFrame, AuthLoading, BuyerlyBrand } from './AuthFrame';
 
@@ -29,9 +29,8 @@ export const VerifyEmailLinkView: React.FC<VerifyEmailLinkViewProps> = ({
       return;
     }
 
-    apiRequest<LoginResult>('/api/auth/verify-email-link', {
-      method: 'POST',
-      body: JSON.stringify({ token }),
+    graphql<LoginResult>('mutation EmailLinkUserAccountAuth($input: JSON!) { emailLinkUserAccountAuth(input: $input) }', {
+      input: { token },
     })
       .then(onAuthenticated)
       .catch((verifyError) => {

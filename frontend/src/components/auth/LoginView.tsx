@@ -1,6 +1,7 @@
 import React, { FormEvent, useEffect, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { ApiError, apiRequest } from '@/lib/api';
+import { ApiError } from '@/lib/api';
+import { graphql } from '@/lib/graphql';
 import type { LoginResult } from '@/lib/types';
 import { AuthFrame, BuyerlyBrand } from './AuthFrame';
 import { TurnstileWidget, loadTurnstile } from './TurnstileWidget';
@@ -90,13 +91,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const sendCode = async (address: string, turnstileToken?: string) => {
     setBusy(true);
     setError('');
-    const body = JSON.stringify({
+    const input = {
       email: address,
       ...(inviteToken ? { invite_token: inviteToken } : {}),
       ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
-    });
+    };
     try {
-      await apiRequest('/api/auth/request-temporary-password', { method: 'POST', body });
+      await graphql('mutation EmailUserAccountAuthChallenge($input: JSON!) { emailUserAccountAuthChallenge(input: $input) }', { input });
       setCode('');
       setStage('check');
     } catch (requestError) {
@@ -140,10 +141,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
     setBusy(true);
     setError('');
     try {
-      const result = await apiRequest<LoginResult>('/api/auth/verify-temporary-password', {
-        method: 'POST',
-        body: JSON.stringify({ email, code }),
-      });
+      const result = await graphql<LoginResult>(
+        'mutation EmailTokenUserAccountAuth($input: JSON!) { emailTokenUserAccountAuth(input: $input) }',
+        { input: { email, code } },
+      );
       await onAuthenticated(result);
     } catch (verifyError) {
       setError(verifyError instanceof Error ? verifyError.message : 'Please enter a valid verification code.');

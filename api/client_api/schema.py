@@ -55,6 +55,16 @@ ROUTES = {}
 ALSO_REST = {
     "viewer", "authenticationSessions", "logout", "logoutSession", "logoutAllSessions",
     "userEmailChangeRequest", "userEmailChangeVerify",
+    "availableUsers", "workspaceInviteDetails",
+    "emailUserAccountAuthChallenge", "emailTokenUserAccountAuth", "emailLinkUserAccountAuth",
+}
+
+# Fields a browser asks for before anyone has signed in: signing in and the invite page. A request
+# whose every root field is one of these runs without a session (api/client_api/__init__.py);
+# server/src/graphql/public.ts keeps the same list.
+PUBLIC_FIELDS = {
+    "availableUsers", "workspaceInviteDetails",
+    "emailUserAccountAuthChallenge", "emailTokenUserAccountAuth", "emailLinkUserAccountAuth",
 }
 
 
@@ -90,6 +100,7 @@ MetaInvitePayload = _payload("MetaInvitePayload", "meta_invite")
 MetaOAuthPayload = _payload("MetaOAuthPayload", "authorization")
 NotificationChannelsPayload = _payload("NotificationChannelsPayload", "notification_channels")
 OnboardingPayload = _payload("OnboardingPayload", "onboarding")
+UploadPayload = _payload("UploadPayload", "upload_file")
 RulePayload = _payload("RulePayload", "rule")
 RuleLabelPayload = _payload("RuleLabelPayload", "rule_label")
 RulesPayload = _payload("RulesPayload", "rules")
@@ -156,6 +167,8 @@ R_SUPPORT_SESSIONS = _routed("supportSessions", admin_support, admin_support.lis
 R_HEALTH_OVERVIEW = _routed("healthOverview", health, health.health_overview)
 R_VIEWER = _routed("viewer", auth, auth.get_me)
 R_AUTH_SESSIONS = _routed("authenticationSessions", auth, auth.list_web_sessions)
+R_AVAILABLE_USERS = _routed("availableUsers", auth, auth.list_browser_accounts)
+R_INVITE_DETAILS = _routed("workspaceInviteDetails", members, members.get_public_invite_info)
 
 
 @strawberry.type
@@ -177,6 +190,14 @@ class Query:
     @strawberry.field(description="The user's signed-in browsers, most recently used first.")
     async def authentication_sessions(self, info: Info) -> JSON:
         return await run(info, R_AUTH_SESSIONS)
+
+    @strawberry.field(description="Every account signed in to this browser, in the order they were added.")
+    async def available_users(self, info: Info) -> JSON:
+        return await run(info, R_AVAILABLE_USERS)
+
+    @strawberry.field(description="What an invite link offers, for the page shown before signing in.")
+    async def workspace_invite_details(self, info: Info, token: str) -> JSON:
+        return await run(info, R_INVITE_DETAILS, token=token)
 
     @strawberry.field(description="Reliability signals and ad account health of the active workspace.")
     async def health_overview(self, info: Info) -> JSON:
@@ -403,6 +424,10 @@ M_LOGOUT_SESSION = _routed("logoutSession", auth, auth.revoke_web_session)
 M_LOGOUT_ALL = _routed("logoutAllSessions", auth, auth.logout_all_web_sessions)
 M_EMAIL_CHANGE_REQUEST = _routed("userEmailChangeRequest", auth, auth.request_email_change)
 M_EMAIL_CHANGE_VERIFY = _routed("userEmailChangeVerify", auth, auth.verify_email_change)
+M_FILE_UPLOAD = _routed("fileUpload", onboarding, onboarding.request_file_upload)
+M_AUTH_CHALLENGE = _routed("emailUserAccountAuthChallenge", auth, auth.request_temporary_password)
+M_AUTH_CODE = _routed("emailTokenUserAccountAuth", auth, auth.verify_temporary_password)
+M_AUTH_LINK = _routed("emailLinkUserAccountAuth", auth, auth.verify_email_link)
 M_INBOX_DISPLAY = _routed("inboxDisplayUpdate", audit, audit.save_inbox_display)
 M_INBOX_READ = _routed("inboxNotificationRead", audit, audit.mark_inbox_read)
 M_INBOX_DELETE = _routed("inboxNotificationDelete", audit, audit.delete_inbox_notification)
@@ -493,6 +518,26 @@ class Mutation:
     @strawberry.mutation(description="Confirms the code and makes the new email the user's own.")
     async def user_email_change_verify(self, info: Info, input: JSON) -> Optional[EmailChangePayload]:
         return await _mutate(info, EmailChangePayload, M_EMAIL_CHANGE_VERIFY, req=input)
+
+    @strawberry.mutation(description="A signed link to PUT a file to: an avatar or a workspace logo.")
+    async def file_upload(self, info: Info, input: JSON) -> Optional[UploadPayload]:
+        return await _mutate(info, UploadPayload, M_FILE_UPLOAD, req=input)
+
+    # Signing in
+
+    @strawberry.mutation(
+        description="Mails a sign-in code and link; a new address without an invite passes Turnstile first."
+    )
+    async def email_user_account_auth_challenge(self, info: Info, input: JSON) -> JSON:
+        return await run(info, M_AUTH_CHALLENGE, req=input)
+
+    @strawberry.mutation(description="Signs in with the emailed code, creating the account on first sign-in.")
+    async def email_token_user_account_auth(self, info: Info, input: JSON) -> JSON:
+        return await run(info, M_AUTH_CODE, req=input)
+
+    @strawberry.mutation(description="Signs in with the emailed one-time link.")
+    async def email_link_user_account_auth(self, info: Info, input: JSON) -> JSON:
+        return await run(info, M_AUTH_LINK, req=input)
 
     # Platform administration
 

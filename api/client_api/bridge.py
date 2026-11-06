@@ -158,6 +158,9 @@ def _content(route: APIRoute, result: Any) -> Any:
 async def run(info: Info, route: APIRoute, /, **values: Any) -> Any:
     """The route's response to these arguments, as JSON; its refusals as `RouteError`s."""
     try:
+        # A route's rate limit counts the account its body names (core/rate_limit.py): here the
+        # field's input is that body.
+        info.context["request"].state.field_input = values.get("req")
         for dependency in route.dependencies:
             await _dependency(info, dependency.dependency)
         try:

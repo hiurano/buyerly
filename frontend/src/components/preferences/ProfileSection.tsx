@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
-import { apiRequest } from '@/lib/api';
 import { graphql } from '@/lib/graphql';
+import { uploadFile } from '@/lib/uploads';
 import { fetchWorkspaceMembers } from '@/models/queries';
 import type { SessionUser, Workspace } from '@/lib/types';
 import { Input } from '@/ui/Input';
@@ -160,12 +160,15 @@ const ProfileAvatar: React.FC<{ user: SessionUser; onUserChanged: () => void | P
   const [busy, setBusy] = useState(false);
   const hasPhoto = Boolean(user.avatar_url);
 
+  const setAvatar = (avatarUrl: string) =>
+    graphql('mutation UserUpdate($input: JSON!) { userUpdate(input: $input) { success lastSyncId } }', {
+      input: { avatar_url: avatarUrl },
+    });
+
   const upload = async (file: File) => {
-    const body = new FormData();
-    body.append('file', file);
     setBusy(true);
     try {
-      await apiRequest('/api/onboarding/avatar', { method: 'POST', body });
+      await setAvatar(await uploadFile(file, 'avatar'));
       await onUserChanged();
     } catch (error) {
       showSaveError(error);
@@ -176,7 +179,7 @@ const ProfileAvatar: React.FC<{ user: SessionUser; onUserChanged: () => void | P
   const remove = async () => {
     setBusy(true);
     try {
-      await apiRequest('/api/onboarding/avatar', { method: 'DELETE' });
+      await setAvatar('');
       await onUserChanged();
     } catch (error) {
       showSaveError(error);

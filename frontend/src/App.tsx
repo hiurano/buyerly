@@ -9,7 +9,7 @@ import { TooltipProvider } from '@/ui/Tooltip';
 import { ToastRegion } from '@/ui/ToastRegion';
 import { useUndoShortcuts } from '@/lib/undoHistory';
 import { useNewVersionNotice } from '@/lib/appVersion';
-import { ApiError, apiRequest } from '@/lib/api';
+import { ApiError } from '@/lib/api';
 import { graphql } from '@/lib/graphql';
 import type { LoginResult, SessionUser, Workspace } from '@/lib/types';
 import {
@@ -398,7 +398,7 @@ export const App: React.FC = () => {
   const navigate = useAppNavigate();
 
   const loadAccounts = useCallback(async () => {
-    setKnownAccounts(await apiRequest<BrowserAccount[]>('/api/auth/accounts'));
+    setKnownAccounts(await graphql<BrowserAccount[]>('query AvailableUsers { availableUsers }'));
     const list = getKnownAccounts();
     // Unchanged accounts keep their identity, so a refresh re-renders nothing.
     setAccounts((previous) => (JSON.stringify(previous) === JSON.stringify(list) ? previous : list));
