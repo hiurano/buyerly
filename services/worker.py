@@ -28,6 +28,10 @@ async def _run_day_boundary_tick(worker: MonitoringWorker) -> None:
 async def main() -> None:
     logger = configure_logging("worker")
     monitoring_worker = MonitoringWorker()
+    # The data half of the monitoring cycle runs as a job of its own so it can
+    # move to the TypeScript worker apart from the rules (#611 stage 4); it
+    # shares the Meta client, so one usage budget covers both halves.
+    account_sync_worker = MonitoringWorker(meta_client=monitoring_worker.meta_client)
     day_boundary_worker = MonitoringWorker()
 
     heartbeat_file = Path("/tmp/buyerly-worker-heartbeat")
@@ -49,7 +53,7 @@ async def main() -> None:
         coalesce=True,
     )
     scheduler.add_job(
-        monitoring_worker.run_cycle,
+        monitoring_worker.run_rule_cycle,
         "interval",
         minutes=1,
         id="monitoring_job",
@@ -59,6 +63,9 @@ async def main() -> None:
     )
     async def run_account_day_boundary_tick() -> None:
         await _run_day_boundary_tick(day_boundary_worker)
+
+    async def run_account_sync_tick() -> None:
+        await account_sync_worker.run_account_sync_cycle()
 
     # Jobs without Meta calls move to the TypeScript worker one at a time
     # (#611 stage 4): TS_WORKER_JOBS lists the ones it owns, and each run
@@ -73,6 +80,8 @@ async def main() -> None:
         ("sync_log_compaction", run_sync_log_compaction_tick, {"hours": 24}),
         # ACCOUNT_DAY_STARTED within five minutes of each account's local midnight.
         ("account_day_boundary", run_account_day_boundary_tick, {"minutes": 1}),
+        # Account details, analytics facts, the inventory cache and account health.
+        ("account_sync", run_account_sync_tick, {"minutes": 1}),
     ]
     if "account_day_boundary" in owned_by_ts:
         # The deploy and the post-deploy smoke wait for this file; the cycle

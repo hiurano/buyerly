@@ -6,10 +6,10 @@ import type { DataSource } from 'typeorm';
 // skips exactly those (core/worker_jobs.py). Moving one back is removing it
 // from the list and restarting both workers.
 //
-// Jobs that call Meta (account sync and rules, analytics
-// store, inventory cache, account health, token rotation) are not here: they
-// stay on Python until the TypeScript Meta client and the side-by-side rules
-// comparison are done.
+// `account_sync` is the data half of the monitoring cycle (account details,
+// analytics facts, the inventory cache, account health). The rules half
+// (`monitoring_job` in Python) is not here: it stays on Python until the
+// side-by-side comparison of both rules engines.
 
 // The advisory lock each run holds, pg_try_advisory_lock(namespace, number).
 // The same numbers as core/worker_jobs.py SHARED_JOBS: a job is never run by
@@ -22,6 +22,7 @@ export const SHARED_JOBS = {
   sync_log_compaction: 4,
   worker_watchdog: 5,
   account_day_boundary: 6,
+  account_sync: 7,
 } as const;
 
 export type JobId = keyof typeof SHARED_JOBS;

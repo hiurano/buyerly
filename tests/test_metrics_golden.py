@@ -443,7 +443,7 @@ class TestGoldenMetrics(unittest.IsolatedAsyncioTestCase):
         with patch.object(analytics_store_module, "datetime", _FrozenDatetime):
             stats = await self.worker.run_cycle()
         self.assertEqual(stats["errors"], [], at.isoformat())
-        self.assertEqual(stats["accounts_checked"], 2, at.isoformat())
+        self.assertEqual(stats["accounts_synced"], 2, at.isoformat())
         return stats
 
     async def _get(self, client, headers, url: str, at: datetime) -> dict:
