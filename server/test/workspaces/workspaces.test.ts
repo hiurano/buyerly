@@ -320,7 +320,7 @@ describe.skipIf(!DATABASE_URL)('workspaces, invites and onboarding', () => {
     const newcomer = await createUser(db, { fullName: '' });
     const me = await person(newcomer);
     expect(refusal(await me.call(SKIP))).toEqual([409, 'Create a workspace first']);
-    const details = data<Row>(await me.call(DETAILS, { input: { first_name: ' Nina ', last_name: 'New ' } }), 'onboardingPersonalDetailsUpdate', 'onboarding');
+    const details = data<Row>(await me.call(DETAILS, { input: { first_name: ' Nina ', last_name: 'New ', email: 'someone.else@example.test' } }), 'onboardingPersonalDetailsUpdate', 'onboarding');
     expect(details).toMatchObject({ onboarding_step: 'workspace', onboarding_completed: false, active_workspace: null });
     expect(details.user).toMatchObject({ id: null, full_name: 'Nina New', first_name: 'Nina', last_name: 'New', email: newcomer.email, workspaces: [] });
     expect(refusal(await me.call(DETAILS, { input: { first_name: '  ' } }))).toEqual([400, 'Name is required']);
