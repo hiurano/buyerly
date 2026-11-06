@@ -31,7 +31,7 @@ x-app: &app
     # them (core/worker_jobs.py). Moving one back to Python is
     # TS_WORKER_JOBS=<the rest> in .env (an empty value moves all of them)
     # and `docker compose up -d worker worker-ts api`.
-    TS_WORKER_JOBS: ${TS_WORKER_JOBS-sync_log_compaction,inbox_email,inbox_telegram,inbox_push,worker_watchdog,account_day_boundary}
+    TS_WORKER_JOBS: ${TS_WORKER_JOBS-sync_log_compaction,inbox_email,inbox_telegram,inbox_push,worker_watchdog,account_day_boundary,account_sync}
     TZ: UTC
   volumes:
     - ./logs:/app/logs:z
