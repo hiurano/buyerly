@@ -971,9 +971,9 @@ export class MetaClient {
   }
 
   // ---------------------------------------------------------------------
-  // Writes. They change real delivery and budgets in Meta: nothing on the
-  // TypeScript server calls them until each operation is switched over with
-  // request-parity tests (#611, stage 4).
+  // Writes. They change real delivery and budgets in Meta; an operation uses
+  // them only with a test that proves its requests equal Python's
+  // (test/meta/delivery.test.ts, #611 stage 4).
 
   // A write answered 200: `success: true`, or the error Python raises.
   private confirmWrite(response: MetaResponse, failure: string): void {

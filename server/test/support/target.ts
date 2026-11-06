@@ -207,8 +207,8 @@ async function emailFromLog(path: string, to: string): Promise<EmailMessage | nu
   return found;
 }
 
-export function pythonTarget(): Target {
-  const base = (process.env.PYTHON_API_URL ?? '').replace(/\/+$/, '');
+export function pythonTarget(url = process.env.PYTHON_API_URL): Target {
+  const base = (url ?? '').replace(/\/+$/, '');
   const log = process.env.PYTHON_API_LOG ?? '';
   if (!base || !log) throw new Error('PYTHON_API_URL and PYTHON_API_LOG must be set');
   return {
@@ -248,6 +248,21 @@ export const CONTRACT_TARGET = process.env.CONTRACT_TARGET === 'python' ? 'pytho
 // The target the contract tests run against in this run.
 export async function contractTarget(): Promise<Target> {
   return CONTRACT_TARGET === 'python' ? pythonTarget() : typescriptTarget();
+}
+
+// Meta as the tests answer it (test/support/meta-recorder.ts): both servers'
+// Meta clients send to it, with the same app secret and token key, so a
+// test that checks the requests proves they are the same on both. In CI a
+// second Python API runs with these settings (PYTHON_META_API_URL).
+export const META_RECORDER_PORT = 18094;
+export const META_TEST_ENV = {
+  META_GRAPH_BASE_URL: `http://127.0.0.1:${META_RECORDER_PORT}`,
+  META_APP_SECRET: 'contract-meta-secret',
+  META_TOKEN_ENCRYPTION_KEY: 'CKOJW1eA4PLOe59rNqizKftdfj0lN17_CIFSpe7ihLw=',
+};
+
+export async function metaContractTarget(): Promise<Target> {
+  return CONTRACT_TARGET === 'python' ? pythonTarget(process.env.PYTHON_META_API_URL) : typescriptTarget(META_TEST_ENV);
 }
 
 // The code and link token of a login (or verification) email.
