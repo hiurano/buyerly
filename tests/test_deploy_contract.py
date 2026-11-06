@@ -289,7 +289,9 @@ class TestDeployContract(unittest.TestCase):
         )
 
     def test_account_day_boundary_has_an_independent_minute_job(self):
-        self.assertIn('id="account_day_boundary_job"', self.worker_service)
+        # A shared job (id account_day_boundary_job), on whichever worker TS_WORKER_JOBS names.
+        self.assertIn('("account_day_boundary", run_account_day_boundary_tick, {"minutes": 1})', self.worker_service)
+        self.assertIn('id=f"{job_id}_job"', self.worker_service)
         self.assertIn("run_day_boundary_cycle", self.worker_service)
 
     def test_old_spend_started_notification_cannot_return(self):

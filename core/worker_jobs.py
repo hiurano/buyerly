@@ -32,6 +32,7 @@ SHARED_JOBS = {
     "inbox_push": 3,
     "sync_log_compaction": 4,
     "worker_watchdog": 5,
+    "account_day_boundary": 6,
 }
 
 

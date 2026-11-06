@@ -48,7 +48,7 @@ describe('job ownership (TS_WORKER_JOBS)', () => {
       owned: new Set(),
       exclusive: async () => true,
     });
-    expect(Object.keys(definitions).sort()).toEqual(['inbox_email', 'inbox_push', 'inbox_telegram', 'sync_log_compaction', 'worker_watchdog']);
+    expect(Object.keys(definitions).sort()).toEqual(['account_day_boundary', 'inbox_email', 'inbox_push', 'inbox_telegram', 'sync_log_compaction', 'worker_watchdog']);
     // The watchdog ran in the API's loop (services/worker_watchdog.py).
     const watchdog = /CHECK_INTERVAL_SECONDS = (\d+)/.exec(pythonSource('services/worker_watchdog.py'));
     expect(definitions.worker_watchdog?.everyMs).toBe(Number(watchdog![1]) * 1000);

@@ -10,6 +10,7 @@ import { pushSender, vapidKey, type SendPush } from '../notifications/web-push.t
 import { publishSyncBus } from '../sync/bus.ts';
 import { compactSyncLog } from '../sync/compaction.ts';
 import { SHARED_JOBS, parseJobList, withJobLock, type JobId } from './jobs.ts';
+import { runDayBoundaryCycle } from './day-boundary.ts';
 import { CHECK_INTERVAL_MS, checkOnce } from './watchdog.ts';
 import { RUNS_KEY, startScheduler, type JobDefinition, type RunRecord, type Scheduler } from './scheduler.ts';
 
@@ -80,6 +81,14 @@ export function jobDefinitions(context: WorkerContext): Partial<Record<JobId, Jo
   };
   return {
     ...deliveries,
+    // Every minute: ACCOUNT_DAY_STARTED within five minutes of each account's local midnight.
+    account_day_boundary: {
+      everyMs: 60_000,
+      run: async () => {
+        const stats = await runDayBoundaryCycle(db, log);
+        if (stats.days_notified || stats.errors.length) log.info({ ...stats, errors: stats.errors.length }, 'Account day boundary cycle');
+      },
+    },
     // Every minute, as the API's loop did (services/worker_watchdog.py).
     worker_watchdog: {
       everyMs: CHECK_INTERVAL_MS,

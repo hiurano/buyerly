@@ -195,7 +195,7 @@ bash scripts/deploy.sh
 `worker-ts`; Python-воркер и watchdog в API пропускают ровно их
 ([core/worker_jobs.py](../core/worker_jobs.py)). Значение по умолчанию задаёт
 `docker-compose.yml` в репозитории; известные задачи: `inbox_email`,
-`inbox_telegram`, `inbox_push`, `sync_log_compaction`, `worker_watchdog`.
+`inbox_telegram`, `inbox_push`, `sync_log_compaction`, `worker_watchdog`, `account_day_boundary`.
 Синхронизация с Meta, правила, суточные прогоны, аналитика, кэш инвентаря,
 здоровье аккаунтов и ротация токенов остаются на Python до клиента Meta на TS.
 

@@ -6,7 +6,7 @@ import type { DataSource } from 'typeorm';
 // skips exactly those (core/worker_jobs.py). Moving one back is removing it
 // from the list and restarting both workers.
 //
-// Jobs that call Meta (account sync and rules, day-boundary runs, analytics
+// Jobs that call Meta (account sync and rules, analytics
 // store, inventory cache, account health, token rotation) are not here: they
 // stay on Python until the TypeScript Meta client and the side-by-side rules
 // comparison are done.
@@ -21,6 +21,7 @@ export const SHARED_JOBS = {
   inbox_push: 3,
   sync_log_compaction: 4,
   worker_watchdog: 5,
+  account_day_boundary: 6,
 } as const;
 
 export type JobId = keyof typeof SHARED_JOBS;
