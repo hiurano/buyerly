@@ -1276,7 +1276,7 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
         worker = MonitoringWorker(meta_client=mock_meta)
         stats = await worker.run_cycle()
 
-        self.assertEqual(stats["accounts_checked"], 3)
+        self.assertEqual(stats["accounts_synced"], 3)
         self.assertEqual(mock_meta.max_active_reads, 2)
 
     async def test_unknown_currency_is_refreshed_before_next_scheduled_check(self):
@@ -1298,9 +1298,9 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
 
         mock_meta = MockMetaClient()
         worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: now[0])
-        stats = await worker.run_cycle()
+        stats = await worker.run_account_sync_cycle()
 
-        self.assertEqual(stats["accounts_checked"], 1)
+        self.assertEqual(stats["accounts_synced"], 1)
         self.assertEqual(stats["accounts_skipped"], 0)
         async with self.test_session_maker() as session:
             account = (

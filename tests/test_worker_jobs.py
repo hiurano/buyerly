@@ -26,9 +26,9 @@ class TestOwnership(unittest.TestCase):
         source = (ROOT / "services" / "worker.py").read_text()
         self.assertIn("if job_id in owned_by_ts:", source)
         self.assertIn("exclusive(job_id, run)", source)
-        for job_id in ("inbox_email", "inbox_telegram", "inbox_push", "sync_log_compaction", "account_day_boundary"):
+        for job_id in ("inbox_email", "inbox_telegram", "inbox_push", "sync_log_compaction", "account_day_boundary", "account_sync"):
             self.assertIn(f'("{job_id}", ', source)
-        # Jobs that call Meta stay here until the TypeScript Meta client lands.
+        # The rules half of the monitoring cycle stays on Python until the side-by-side comparison.
         self.assertNotIn('"monitoring"', worker_jobs.SHARED_JOBS)
         self.assertIn('id="monitoring_job"', source)
 

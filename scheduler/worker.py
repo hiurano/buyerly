@@ -318,33 +318,21 @@ class MonitoringWorker:
         account: Account,
         access_token: str,
         due_rules: list[dict[str, Any]],
-        health_due: bool,
         semaphore: asyncio.Semaphore,
-        now: Optional[float] = None,
     ) -> dict[str, Any]:
-        """Collect one account's Meta reads under the global concurrency cap."""
+        """Collect the Meta reads one account's due rules need, under the global concurrency cap.
 
-        now = self._clock() if now is None else now
+        The account itself (currency, status, time zone) and its facts are read
+        by the account sync (`run_account_sync_cycle`).
+        """
+
         async with semaphore:
             priority = (
                 "critical"
                 if any(self._is_critical_stop_rule(rule) for rule in due_rules)
                 else "normal"
             )
-            account_info = None
             currency = normalize_currency(account.currency)
-
-            if health_due or currency == "UNKNOWN":
-                account_info = await self.meta_client.get_account_info(
-                    account.account_id,
-                    access_token,
-                    priority=priority,
-                )
-                currency = normalize_currency(account_info.get("currency") or currency)
-            if currency == "UNKNOWN":
-                raise RuntimeError(
-                    "Meta did not return the ad account currency; automation is blocked"
-                )
 
             today = await self.meta_client.get_adsets_insights(
                 account_id=account.account_id,
@@ -452,6 +440,44 @@ class MonitoringWorker:
                     ads_by_window = {}
                     ads_error = ad_error
 
+            return {
+                "currency": currency,
+                "adsets": today,
+                "campaigns": campaigns,
+                "campaign_lifetime": campaign_lifetime,
+                "campaigns_error": campaigns_error,
+                "ads": ads,
+                "ads_by_window": ads_by_window,
+                "ads_error": ads_error,
+                "insights_by_window": insights_by_window,
+                "window_errors": window_errors,
+            }
+
+    async def _fetch_account_facts(
+        self,
+        *,
+        account: Account,
+        access_token: str,
+        account_info_due: bool,
+        semaphore: asyncio.Semaphore,
+        now: float,
+    ) -> dict[str, Any]:
+        """One account's Meta reads for the account sync, under the global concurrency cap."""
+
+        async with semaphore:
+            account_info = None
+            currency = normalize_currency(account.currency)
+            if account_info_due or currency == "UNKNOWN":
+                account_info = await self.meta_client.get_account_info(
+                    account.account_id,
+                    access_token,
+                )
+                currency = normalize_currency(account_info.get("currency") or currency)
+            if currency == "UNKNOWN":
+                raise RuntimeError(
+                    "Meta did not return the ad account currency; automation is blocked"
+                )
+
             hierarchical_facts = []
             hierarchy_error = None
             try:
@@ -464,7 +490,6 @@ class MonitoringWorker:
                     date_preset="today",
                     currency=currency,
                     account_name=account.name,
-                    priority=priority,
                     # The cycle's clock, not a fresh reading: one cycle, one day.
                     reporting_date=resolve_account_period_dates(
                         reporting_timezone,
@@ -511,15 +536,6 @@ class MonitoringWorker:
                 "closed_day_facts": closed_day_facts,
                 "account_info": account_info,
                 "currency": currency,
-                "adsets": today,
-                "campaigns": campaigns,
-                "campaign_lifetime": campaign_lifetime,
-                "campaigns_error": campaigns_error,
-                "ads": ads,
-                "ads_by_window": ads_by_window,
-                "ads_error": ads_error,
-                "insights_by_window": insights_by_window,
-                "window_errors": window_errors,
                 "hierarchical_facts": hierarchical_facts,
                 "hierarchy_error": hierarchy_error,
             }
@@ -1803,207 +1819,210 @@ class MonitoringWorker:
                 logger.error("Failed to sync facts for account %s in workspace %s: %s", acc.account_id, workspace_id, err)
         return total_facts
 
-    async def run_cycle(self) -> dict:
-        cycle_started = time.perf_counter()
-        started_at = datetime.now(timezone.utc).isoformat()
-        self._current_cycle_id = uuid.uuid4().hex
-        stats = {
-            "cycle_id": self._current_cycle_id,
-            "accounts_checked": 0,
-            "accounts_skipped": 0,
-            "rules_checked": 0,
-            "adsets_checked": 0,
-            "adsets_stopped": 0,
-            "campaigns_stopped": 0,
-            "ads_stopped": 0,
-            "adsets_reactivated": 0,
-            "campaigns_reactivated": 0,
-            "ads_reactivated": 0,
-            "budgets_changed": 0,
-            "actions_skipped": 0,
-            "actions_reconciled": 0,
-            "stop_confirmations_waiting": 0,
-            "proposals_sent": 0,
-            "errors": []
-        }
+    @staticmethod
+    def _connection_problem(
+        acc: Account, connection_cache: dict[int, MetaConnection]
+    ) -> Optional[dict[str, Any]]:
+        """Why the account's Meta connection cannot be used now, as health arguments."""
+        if not (acc.meta_connection_id and acc.meta_connection_id in connection_cache):
+            return None
+        conn = connection_cache[acc.meta_connection_id]
+        if (
+            acc.workspace_id is not None
+            and conn.workspace_id is not None
+            and conn.workspace_id != acc.workspace_id
+        ):
+            logger.warning(
+                "Skipping account %s: Meta connection %s workspace mismatch (%s != %s)",
+                acc.account_id,
+                conn.id,
+                conn.workspace_id,
+                acc.workspace_id,
+            )
+            return {
+                "error": "Meta connection workspace mismatch",
+                "cause": "system",
+                "signals": {"token_healthy": False},
+            }
+        if conn.status in ("expired", "needs_reconnect", "missing_scopes", "error"):
+            logger.info(
+                "Skipping account %s: Meta connection %s is in %s state",
+                acc.account_id,
+                conn.id,
+                conn.status,
+            )
+            return {
+                "error": f"Meta connection requires user action: {conn.status}",
+                "cause": "user",
+                "signals": {"token_healthy": False, "connection_status": conn.status},
+            }
+        return None
 
-        async with async_session_maker() as session:
-            # 1. Load every active account
-            stmt = select(Account).where(Account.is_active == True)
-            result = await session.execute(stmt)
-            accounts = result.scalars().all()
-            if not accounts:
-                await self._persist_runtime_state(
-                    stats=stats,
-                    started_at=started_at,
-                    duration_ms=(time.perf_counter() - cycle_started) * 1000,
+    async def _load_cycle_context(self, session, accounts) -> dict[str, Any]:
+        """What both halves of the cycle read before touching an account."""
+        # Batch-preload AutomationScheduleState (chunked by 500)
+        account_ids = [str(acc.account_id) for acc in accounts]
+        schedule_cache: dict[str, AutomationScheduleState] = {}
+        for i in range(0, len(account_ids), 500):
+            chunk = account_ids[i:i + 500]
+            chunk_rows = (
+                await session.execute(
+                    select(AutomationScheduleState).where(
+                        AutomationScheduleState.account_id.in_(chunk)
+                    )
                 )
-                return stats
+            ).scalars().all()
+            for row in chunk_rows:
+                schedule_cache[row.state_key] = row
 
-            # Batch-preload AutomationScheduleState (chunked by 500)
-            account_ids = [str(acc.account_id) for acc in accounts]
-            schedule_cache: dict[str, AutomationScheduleState] = {}
-            for i in range(0, len(account_ids), 500):
-                chunk = account_ids[i:i + 500]
-                chunk_rows = (
+        # Batch-preload MetaConnection (chunked by 500)
+        connection_ids = {
+            acc.meta_connection_id
+            for acc in accounts
+            if acc.meta_connection_id is not None
+        }
+        connection_cache: dict[int, MetaConnection] = {}
+        if connection_ids:
+            conn_id_list = list(connection_ids)
+            for i in range(0, len(conn_id_list), 500):
+                chunk_conn_ids = conn_id_list[i:i + 500]
+                conn_rows = (
                     await session.execute(
-                        select(AutomationScheduleState).where(
-                            AutomationScheduleState.account_id.in_(chunk)
+                        select(MetaConnection).where(
+                            MetaConnection.id.in_(chunk_conn_ids)
                         )
                     )
                 ).scalars().all()
-                for row in chunk_rows:
-                    schedule_cache[row.state_key] = row
+                for conn in conn_rows:
+                    connection_cache[conn.id] = conn
 
-            # Batch-preload MetaConnection (chunked by 500)
-            connection_ids = {
-                acc.meta_connection_id
-                for acc in accounts
-                if acc.meta_connection_id is not None
-            }
-            connection_cache: dict[int, MetaConnection] = {}
-            if connection_ids:
-                conn_id_list = list(connection_ids)
-                for i in range(0, len(conn_id_list), 500):
-                    chunk_conn_ids = conn_id_list[i:i + 500]
-                    conn_rows = (
-                        await session.execute(
-                            select(MetaConnection).where(
-                                MetaConnection.id.in_(chunk_conn_ids)
-                            )
-                        )
-                    ).scalars().all()
-                    for conn in conn_rows:
-                        connection_cache[conn.id] = conn
-
-            settings_result = await session.execute(select(AppSettings).limit(1))
-            app_settings = settings_result.scalar_one_or_none()
-            default_interval = self._interval_minutes(
-                app_settings.poll_interval_minutes if app_settings else 10,
-                10,
-            )
-            critical_interval = self._interval_minutes(
-                app_settings.critical_rule_interval_minutes if app_settings else 2,
-                2,
-            )
-            stop_confirmation_minutes = max(
-                0,
-                min(
-                    60,
-                    int(app_settings.stop_confirmation_minutes if app_settings else 10),
+        settings_result = await session.execute(select(AppSettings).limit(1))
+        app_settings = settings_result.scalar_one_or_none()
+        default_interval = self._interval_minutes(
+            app_settings.poll_interval_minutes if app_settings else 10,
+            10,
+        )
+        critical_interval = self._interval_minutes(
+            app_settings.critical_rule_interval_minutes if app_settings else 2,
+            2,
+        )
+        stop_confirmation_minutes = max(
+            0,
+            min(
+                60,
+                int(app_settings.stop_confirmation_minutes if app_settings else 10),
+            ),
+        )
+        health_interval = self._interval_minutes(
+            app_settings.account_health_interval_minutes if app_settings else 15,
+            15,
+        )
+        max_concurrent_accounts = self._interval_minutes(
+            app_settings.max_concurrent_accounts if app_settings else 3,
+            3,
+        )
+        max_concurrent_actions = self._interval_minutes(
+            app_settings.max_concurrent_actions if app_settings else 3,
+            3,
+        )
+        if hasattr(self.meta_client, "configure_automation"):
+            self.meta_client.configure_automation(
+                inventory_cache_minutes=(
+                    app_settings.inventory_cache_minutes if app_settings else 5
+                ),
+                adaptive_polling_enabled=(
+                    app_settings.adaptive_polling_enabled if app_settings else True
+                ),
+                usage_soft_limit_percent=(
+                    app_settings.usage_soft_limit_percent if app_settings else 60
+                ),
+                usage_hard_limit_percent=(
+                    app_settings.usage_hard_limit_percent if app_settings else 80
                 ),
             )
-            health_interval = self._interval_minutes(
-                app_settings.account_health_interval_minutes if app_settings else 15,
-                15,
-            )
-            max_concurrent_accounts = self._interval_minutes(
-                app_settings.max_concurrent_accounts if app_settings else 3,
-                3,
-            )
-            max_concurrent_actions = self._interval_minutes(
-                app_settings.max_concurrent_actions if app_settings else 3,
-                3,
-            )
-            if hasattr(self.meta_client, "configure_automation"):
-                self.meta_client.configure_automation(
-                    inventory_cache_minutes=(
-                        app_settings.inventory_cache_minutes if app_settings else 5
-                    ),
-                    adaptive_polling_enabled=(
-                        app_settings.adaptive_polling_enabled if app_settings else True
-                    ),
-                    usage_soft_limit_percent=(
-                        app_settings.usage_soft_limit_percent if app_settings else 60
-                    ),
-                    usage_hard_limit_percent=(
-                        app_settings.usage_hard_limit_percent if app_settings else 80
-                    ),
-                )
-            read_semaphore = asyncio.Semaphore(max_concurrent_accounts)
-            self._action_semaphore = asyncio.Semaphore(max_concurrent_actions)
+
+        return {
+            "schedule_cache": schedule_cache,
+            "connection_cache": connection_cache,
+            "default_interval": default_interval,
+            "critical_interval": critical_interval,
+            "stop_confirmation_minutes": stop_confirmation_minutes,
+            "health_interval": health_interval,
+            "max_concurrent_accounts": max_concurrent_accounts,
+            "max_concurrent_actions": max_concurrent_actions,
+        }
+
+    def _account_sync_interval(
+        self, acc: Account, default_interval: int, critical_interval: int
+    ) -> int:
+        """Minutes between an account's syncs: the poll interval, or its most frequent rule's.
+
+        The facts stay as fresh as the numbers the rules see, as they were
+        while both were read in one cycle.
+        """
+        interval = default_interval
+        if not acc.rules_enabled:
+            return interval
+        for rule in self._load_rules(acc.active_rules, workspace_id=acc.workspace_id):
+            rule_interval = self._interval_minutes(rule.get("check_interval"), default_interval)
+            if self._is_critical_stop_rule(rule):
+                rule_interval = min(rule_interval, critical_interval)
+            interval = min(interval, rule_interval)
+        return interval
+
+    async def run_account_sync_cycle(self, account_ids: Optional[list[str]] = None) -> dict:
+        """The data half of the monitoring cycle (#611 stage 4).
+
+        For every active account that is due: the account itself from Meta
+        (currency, status, time zone; every account health interval), its
+        hierarchical facts for today and one closed day into the analytics
+        fact store, the ad set inventory cache the Meta client keeps on the
+        way, and the account's health. The rules half (`run_rule_cycle`)
+        reads only what its due rules need and never writes the facts.
+        `account_ids` limits it to those accounts (the parity test's).
+        """
+        self._current_cycle_id = uuid.uuid4().hex
+        stats = {
+            "cycle_id": self._current_cycle_id,
+            "accounts_synced": 0,
+            "accounts_skipped": 0,
+            "facts_stored": 0,
+            "errors": [],
+        }
+
+        async with async_session_maker() as session:
+            query = select(Account).where(Account.is_active == True)
+            if account_ids is not None:
+                query = query.where(Account.account_id.in_(account_ids))
+            accounts = (await session.execute(query)).scalars().all()
+            if not accounts:
+                return stats
+            context = await self._load_cycle_context(session, accounts)
+            schedule_cache = context["schedule_cache"]
+            connection_cache = context["connection_cache"]
+            read_semaphore = asyncio.Semaphore(context["max_concurrent_accounts"])
 
             prepared_accounts = []
             for acc in accounts:
                 account_ref = str(acc.account_id)
-                if acc.meta_connection_id and acc.meta_connection_id in connection_cache:
-                    conn = connection_cache[acc.meta_connection_id]
-                    if (
-                        acc.workspace_id is not None
-                        and conn.workspace_id is not None
-                        and conn.workspace_id != acc.workspace_id
-                    ):
-                        logger.warning(
-                            "Skipping account %s: Meta connection %s workspace mismatch (%s != %s)",
-                            acc.account_id,
-                            conn.id,
-                            conn.workspace_id,
-                            acc.workspace_id,
-                        )
-                        await self._set_account_health(
-                            session,
-                            acc,
-                            success=False,
-                            error="Meta connection workspace mismatch",
-                            cause="system",
-                            signals={"token_healthy": False},
-                        )
-                        continue
-                    if conn.status in ("expired", "needs_reconnect", "missing_scopes", "error"):
-                        logger.info(
-                            "Skipping rule checks for account %s: Meta connection %s is in %s state",
-                            acc.account_id,
-                            conn.id,
-                            conn.status,
-                        )
-                        await self._set_account_health(
-                            session,
-                            acc,
-                            success=False,
-                            error=f"Meta connection requires user action: {conn.status}",
-                            cause="user",
-                            signals={"token_healthy": False, "connection_status": conn.status},
-                        )
-                        continue
+                problem = self._connection_problem(acc, connection_cache)
+                if problem is not None:
+                    await self._set_account_health(session, acc, success=False, **problem)
+                    continue
 
                 now = self._clock()
-                active_rules = self._load_rules(
-                    acc.active_rules,
-                    workspace_id=acc.workspace_id,
+                sync_interval = self._account_sync_interval(
+                    acc, context["default_interval"], context["critical_interval"]
                 )
-                due_rule_entries = []
-                if acc.rules_enabled:
-                    for index, rule in enumerate(active_rules):
-                        rule_key = self._rule_key(acc.account_id, index, rule)
-                        interval = self._interval_minutes(
-                            rule.get("check_interval"),
-                            default_interval,
-                        )
-                        if self._is_critical_stop_rule(rule):
-                            interval = min(interval, critical_interval)
-                        state_key = self._schedule_key("rule", acc.account_id, rule_key)
-                        schedule_state = await self._get_or_create_schedule_state(
-                            session,
-                            state_key=state_key,
-                            account=acc,
-                            rule_key=rule_key,
-                            state_cache=schedule_cache,
-                        )
-                        if (
-                            schedule_state.last_checked_at <= 0
-                            or now - schedule_state.last_checked_at >= interval * 60
-                        ):
-                            due_rule_entries.append((rule_key, rule, schedule_state))
-
                 account_state = await self._get_or_create_schedule_state(
                     session,
                     state_key=self._schedule_key("account", acc.account_id),
                     account=acc,
                     state_cache=schedule_cache,
                 )
-                account_monitor_due = (
+                sync_due = (
                     account_state.last_checked_at <= 0
-                    or now - account_state.last_checked_at >= default_interval * 60
+                    or now - account_state.last_checked_at >= sync_interval * 60
                 )
                 health_state = await self._get_or_create_schedule_state(
                     session,
@@ -2013,28 +2032,16 @@ class MonitoringWorker:
                 )
                 health_due = (
                     health_state.last_checked_at <= 0
-                    or now - health_state.last_checked_at >= health_interval * 60
+                    or now - health_state.last_checked_at >= context["health_interval"] * 60
                 )
                 currency_refresh_due = normalize_currency(acc.currency) == "UNKNOWN"
-                if (
-                    not account_monitor_due
-                    and not due_rule_entries
-                    and not health_due
-                    and not currency_refresh_due
-                ):
+                if not sync_due and not health_due and not currency_refresh_due:
                     stats["accounts_skipped"] += 1
                     continue
-
-                if account_monitor_due:
-                    account_state.last_checked_at = now
-                for _, _, schedule_state in due_rule_entries:
-                    schedule_state.last_checked_at = now
+                account_state.last_checked_at = now
                 if health_due or currency_refresh_due:
                     health_state.last_checked_at = now
-
-                due_rules = [rule for _, rule, _ in due_rule_entries]
-                stats["accounts_checked"] += 1
-                stats["rules_checked"] += len(due_rules)
+                stats["accounts_synced"] += 1
                 try:
                     access_token = await resolve_account_access_token(
                         session, acc, connection_cache=connection_cache
@@ -2053,21 +2060,19 @@ class MonitoringWorker:
                     {
                         "account": acc,
                         "account_ref": account_ref,
-                        "now": now,
-                        "due_rules": due_rules,
-                        "health_due": health_due or currency_refresh_due,
                         "access_token": access_token,
+                        "account_info_due": health_due or currency_refresh_due,
+                        "now": now,
                     }
                 )
 
             await session.commit()
             snapshots = await asyncio.gather(
                 *(
-                    self._fetch_account_snapshot(
+                    self._fetch_account_facts(
                         account=item["account"],
                         access_token=item["access_token"],
-                        due_rules=item["due_rules"],
-                        health_due=item["health_due"],
+                        account_info_due=item["account_info_due"],
                         semaphore=read_semaphore,
                         now=item["now"],
                     )
@@ -2079,9 +2084,6 @@ class MonitoringWorker:
             for item, snapshot in zip(prepared_accounts, snapshots):
                 acc = item["account"]
                 account_ref = item["account_ref"]
-                now = item["now"]
-                due_rules = item["due_rules"]
-                access_token = item["access_token"]
                 try:
                     if isinstance(snapshot, PermissionError):
                         await self._handle_token_error(
@@ -2142,33 +2144,12 @@ class MonitoringWorker:
                             )
                             continue
                     acc.currency = snapshot["currency"]
-                    window_errors = snapshot.get("window_errors") or []
-                    if window_errors and due_rules:
-                        stats["errors"].extend(
-                            f"Account {account_ref} window: {error}"
-                            for error in window_errors
-                        )
-                        await self._set_account_health(
-                            session,
-                            acc,
-                            success=False,
-                            error=window_errors[0],
-                            signals={"token_healthy": True, "account_active": True},
-                        )
-                        continue
-                    insights_by_window = snapshot["insights_by_window"]
-                    adsets = snapshot["adsets"]
-                    campaigns = snapshot.get("campaigns") or []
-                    ads = snapshot.get("ads") or []
-                    ads_by_window = snapshot.get("ads_by_window") or {}
-                    stats["adsets_checked"] += len(adsets)
-
                     # Upsert hierarchical facts into Analytics Fact Store
                     hierarchical_facts = snapshot.get("hierarchical_facts")
                     hierarchy_error = snapshot.get("hierarchy_error")
                     if hierarchical_facts and acc.workspace_id:
                         try:
-                            await AnalyticsFactService.upsert_entity_facts(
+                            stats["facts_stored"] += await AnalyticsFactService.upsert_entity_facts(
                                 session,
                                 workspace_id=acc.workspace_id,
                                 account_id=acc.account_id,
@@ -2182,7 +2163,7 @@ class MonitoringWorker:
                         try:
                             # A savepoint: a failure must not undo today's facts.
                             async with session.begin_nested():
-                                await AnalyticsFactService.upsert_entity_facts(
+                                stats["facts_stored"] += await AnalyticsFactService.upsert_entity_facts(
                                     session,
                                     workspace_id=acc.workspace_id,
                                     account_id=acc.account_id,
@@ -2209,7 +2190,6 @@ class MonitoringWorker:
                                 "account_active": True,
                                 "meta_read_ok": True,
                                 "hierarchy_sync_ok": False,
-                                "window_errors_count": len(window_errors),
                             },
                         )
                     else:
@@ -2222,12 +2202,222 @@ class MonitoringWorker:
                                 "account_active": True,
                                 "meta_read_ok": True,
                                 "hierarchy_sync_ok": True,
-                                "window_errors_count": len(window_errors),
                             },
                         )
 
-                    if not acc.rules_enabled or not due_rules:
+                except Exception as e:
+                    logger.error(f"Error syncing account {account_ref}: {e}")
+                    stats["errors"].append(f"Account {account_ref}: {e}")
+                    await self._set_account_health(
+                        session,
+                        acc,
+                        success=False,
+                        error=e,
+                    )
+
+            await session.commit()
+
+        if stats["errors"]:
+            logger.warning(
+                "Account sync %s finished with %d error(s): %s",
+                stats["cycle_id"],
+                len(stats["errors"]),
+                "; ".join(redact_secrets(str(error))[:240] for error in stats["errors"][:5]),
+            )
+        return stats
+
+    async def run_cycle(self) -> dict:
+        """Both halves one after the other, as one cycle ran them before the split.
+
+        The worker schedules them as separate jobs (`account_sync` and
+        `monitoring`) so each can move to the TypeScript worker on its own;
+        tests and the rule simulator run a whole cycle.
+        """
+        sync = await self.run_account_sync_cycle()
+        stats = await self.run_rule_cycle()
+        stats["errors"] = list(sync["errors"]) + list(stats["errors"])
+        stats["accounts_synced"] = sync["accounts_synced"]
+        stats["facts_stored"] = sync["facts_stored"]
+        return stats
+
+    async def run_rule_cycle(self) -> dict:
+        """The rules half of the monitoring cycle: due rule checks and their Meta actions."""
+        cycle_started = time.perf_counter()
+        started_at = datetime.now(timezone.utc).isoformat()
+        self._current_cycle_id = uuid.uuid4().hex
+        stats = {
+            "cycle_id": self._current_cycle_id,
+            "accounts_checked": 0,
+            "accounts_skipped": 0,
+            "rules_checked": 0,
+            "adsets_checked": 0,
+            "adsets_stopped": 0,
+            "campaigns_stopped": 0,
+            "ads_stopped": 0,
+            "adsets_reactivated": 0,
+            "campaigns_reactivated": 0,
+            "ads_reactivated": 0,
+            "budgets_changed": 0,
+            "actions_skipped": 0,
+            "actions_reconciled": 0,
+            "stop_confirmations_waiting": 0,
+            "proposals_sent": 0,
+            "errors": []
+        }
+
+        async with async_session_maker() as session:
+            # 1. Load every active account
+            stmt = select(Account).where(Account.is_active == True)
+            result = await session.execute(stmt)
+            accounts = result.scalars().all()
+            if not accounts:
+                await self._persist_runtime_state(
+                    stats=stats,
+                    started_at=started_at,
+                    duration_ms=(time.perf_counter() - cycle_started) * 1000,
+                )
+                return stats
+
+            context = await self._load_cycle_context(session, accounts)
+            schedule_cache = context["schedule_cache"]
+            connection_cache = context["connection_cache"]
+            default_interval = context["default_interval"]
+            critical_interval = context["critical_interval"]
+            stop_confirmation_minutes = context["stop_confirmation_minutes"]
+            read_semaphore = asyncio.Semaphore(context["max_concurrent_accounts"])
+            self._action_semaphore = asyncio.Semaphore(context["max_concurrent_actions"])
+
+            prepared_accounts = []
+            for acc in accounts:
+                account_ref = str(acc.account_id)
+                # The account sync records the connection problem in the
+                # account's health; the rules just wait for it to be fixed.
+                if self._connection_problem(acc, connection_cache) is not None:
+                    continue
+
+                now = self._clock()
+                active_rules = self._load_rules(
+                    acc.active_rules,
+                    workspace_id=acc.workspace_id,
+                )
+                due_rule_entries = []
+                if acc.rules_enabled:
+                    for index, rule in enumerate(active_rules):
+                        rule_key = self._rule_key(acc.account_id, index, rule)
+                        interval = self._interval_minutes(
+                            rule.get("check_interval"),
+                            default_interval,
+                        )
+                        if self._is_critical_stop_rule(rule):
+                            interval = min(interval, critical_interval)
+                        state_key = self._schedule_key("rule", acc.account_id, rule_key)
+                        schedule_state = await self._get_or_create_schedule_state(
+                            session,
+                            state_key=state_key,
+                            account=acc,
+                            rule_key=rule_key,
+                            state_cache=schedule_cache,
+                        )
+                        if (
+                            schedule_state.last_checked_at <= 0
+                            or now - schedule_state.last_checked_at >= interval * 60
+                        ):
+                            due_rule_entries.append((rule_key, rule, schedule_state))
+
+                if not due_rule_entries:
+                    stats["accounts_skipped"] += 1
+                    continue
+                if normalize_currency(acc.currency) == "UNKNOWN":
+                    # The account sync reads the currency from Meta first;
+                    # the rules stay due until it has.
+                    stats["accounts_skipped"] += 1
+                    continue
+
+                for _, _, schedule_state in due_rule_entries:
+                    schedule_state.last_checked_at = now
+
+                due_rules = [rule for _, rule, _ in due_rule_entries]
+                stats["accounts_checked"] += 1
+                stats["rules_checked"] += len(due_rules)
+                try:
+                    access_token = await resolve_account_access_token(
+                        session, acc, connection_cache=connection_cache
+                    )
+                except Exception as error:
+                    # The account sync records it in the account's health.
+                    stats["errors"].append(f"Account {account_ref}: {error}")
+                    continue
+                prepared_accounts.append(
+                    {
+                        "account": acc,
+                        "account_ref": account_ref,
+                        "now": now,
+                        "due_rules": due_rules,
+                        "access_token": access_token,
+                    }
+                )
+
+            await session.commit()
+            snapshots = await asyncio.gather(
+                *(
+                    self._fetch_account_snapshot(
+                        account=item["account"],
+                        access_token=item["access_token"],
+                        due_rules=item["due_rules"],
+                        semaphore=read_semaphore,
+                    )
+                    for item in prepared_accounts
+                ),
+                return_exceptions=True,
+            )
+
+            for item, snapshot in zip(prepared_accounts, snapshots):
+                acc = item["account"]
+                account_ref = item["account_ref"]
+                now = item["now"]
+                due_rules = item["due_rules"]
+                access_token = item["access_token"]
+                try:
+                    if isinstance(snapshot, PermissionError):
+                        await self._handle_token_error(
+                            session,
+                            acc,
+                            snapshot,
+                            connection_cache,
+                        )
+                        await self._set_account_health(
+                            session,
+                            acc,
+                            success=False,
+                            emit_transition_event=False,
+                            error=snapshot,
+                            cause="user",
+                            signals={"token_healthy": False},
+                        )
                         continue
+                    if isinstance(snapshot, Exception):
+                        # A failed Meta read; the account sync records it in
+                        # the account's health.
+                        stats["errors"].append(f"Account {account_ref}: {snapshot}")
+                        continue
+
+                    window_errors = snapshot.get("window_errors") or []
+                    if window_errors:
+                        # The rules sit this cycle out rather than run on half
+                        # the numbers; the account's health is the account
+                        # sync's (`run_account_sync_cycle`).
+                        stats["errors"].extend(
+                            f"Account {account_ref} window: {error}"
+                            for error in window_errors
+                        )
+                        continue
+                    insights_by_window = snapshot["insights_by_window"]
+                    adsets = snapshot["adsets"]
+                    campaigns = snapshot.get("campaigns") or []
+                    ads = snapshot.get("ads") or []
+                    ads_by_window = snapshot.get("ads_by_window") or {}
+                    stats["adsets_checked"] += len(adsets)
+
 
                     stop_rules_due = any(
                         self._is_critical_stop_rule(rule) for rule in due_rules
