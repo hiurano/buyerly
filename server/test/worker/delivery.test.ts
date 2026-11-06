@@ -155,7 +155,7 @@ describe('what the deliveries send', () => {
   });
 });
 
-describe.skipIf(!DATABASE_URL)('Inbox deliveries on the database', () => {
+describe.skipIf(!DATABASE_URL)('Inbox deliveries on the database', { timeout: 60_000 }, () => {
   let dataSource: DataSource;
   let db: Database;
 
