@@ -34,6 +34,22 @@ redis.lrange("buyerly:rules-shadow:mismatches", 0, -1).then((items) => {
 }).finally(() => redis.disconnect());
 '
 echo
+echo "== Last rule cycle (accounts checked, rules checked, actions, errors) and rule-enabled accounts"
+docker exec -e PGOPTIONS='-c default_transaction_read_only=on' "${POSTGRES_CONTAINER:-buyerly-db}" \
+    psql --username="${POSTGRES_USER:-buyerly}" --dbname="${POSTGRES_DB:-buyerly}" --no-psqlrc --quiet \
+    --set=ON_ERROR_STOP=1 --pset=footer=off --command="
+SELECT state_key, updated_at, payload->>'accounts_checked' AS accounts_checked, payload->>'rules_checked' AS rules_checked,
+       payload->>'actions_count' AS actions, payload->>'errors_count' AS errors
+FROM automation_runtime_states ORDER BY updated_at DESC LIMIT 3;
+SELECT count(*) FILTER (WHERE is_active) AS active_accounts,
+       count(*) FILTER (WHERE is_active AND rules_enabled) AS with_rules_on,
+       count(*) FILTER (WHERE is_active AND rules_enabled AND active_rules NOT IN ('', '[]')) AS with_rules_attached
+FROM accounts;"
+echo
+echo "== Rules shadow capture warnings in the Python worker log (last 24 h)"
+docker logs --since 24h "${WORKER}" 2>&1 | grep -c 'Rules shadow capture' || true
+docker logs --since 24h "${WORKER}" 2>&1 | grep 'Rules shadow capture' | sed -E 's/act_[0-9]+/act_…/g' | cut -c1-200 | tail -3 || true
+echo
 echo "== Daily summaries and mismatch warnings in the worker-ts log (last 7 days)"
 docker logs --since 168h "${WORKER_TS}" 2>&1 | grep -c '"Rules shadow daily summary"' || true
 docker logs --since 168h "${WORKER_TS}" 2>&1 | grep -c 'Rules shadow: the TypeScript engine decided differently' || true
