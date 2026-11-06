@@ -94,7 +94,10 @@ describe.skipIf(!DATABASE_URL)('job locks and the sync log compaction', () => {
       await tx.query("INSERT INTO sync_actions (model, model_id, action, data, sync_groups, sync_id) VALUES ('Workspace', '0', 'update', '{}', ARRAY['workspace:0'], nextval('sync_actions_sync_id_seq'))");
       const newest = await lastSyncId(tx);
       expect(newest).toBeGreaterThan(0);
-      expect(await compactSyncLog(tx)).toBe(0);
+      // Today's entries stay (other tests may have left older ones to drop).
+      await compactSyncLog(tx);
+      const [kept] = await tx.query<{ count: number }[]>('SELECT count(*)::int AS count FROM sync_actions WHERE sync_id = $1', [newest]);
+      expect(kept?.count).toBe(1);
       const dropped = await compactSyncLog(tx, new Date(Date.now() + 31 * 24 * 60 * 60 * 1000));
       expect(dropped).toBeGreaterThan(0);
       const [left] = await tx.query<{ count: number }[]>('SELECT count(*)::int AS count FROM sync_actions WHERE sync_id IS NOT NULL');
