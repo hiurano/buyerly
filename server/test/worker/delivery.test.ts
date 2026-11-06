@@ -221,7 +221,7 @@ describe.skipIf(!DATABASE_URL)('Inbox deliveries on the database', { timeout: 60
     expect(mine.map((message) => message.subject)).toEqual(['Rule alert: Account', 'Turned off: Account']);
     expect(mine.some((message) => (message.text ?? "").includes(`https://buyerly.test/${w.workspace.slug}/inbox/${alert}`))).toBe(true);
     const rows = await deliveries('inbox_email_deliveries', [due, tooFresh, tooOld, alert]);
-    expect(rows.map((row) => [row.user_id, row.audit_event_id])).toEqual([[w.owner.id, due], [w.owner.id, alert]]);
+    expect(rows.map((row) => [row.user_id, row.audit_event_id])).toEqual([[w.owner.id, alert], [w.owner.id, due]]);
     expect(rows.every((row) => row.sent_at)).toBe(true);
     // A second run sends nothing again.
     sent.length = 0;
