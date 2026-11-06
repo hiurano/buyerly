@@ -390,6 +390,12 @@ Alembic/schema contract. Все операции — GET/SELECT; Meta Marketing 
 /opt/buyerly/logs/smoke/post-deploy-<full-sha>.json
 ```
 
+Порт на TypeScript (`server/src/scripts/post-deploy-smoke.ts`, #611 этап 5) те же
+проверки делает в одноразовом контейнере образа релиза (на хосте нет Node) через
+сокет Docker. Пока он работает параллельно: `deploy.sh` пишет его итог в лог
+(`TypeScript smoke (shadow …)`) и результат в `logs/smoke-ts/`, а решение об
+откате принимает Python-версия.
+
 Любая критическая ошибка завершает smoke ненулевым кодом и запускает rollback
 предыдущих app/web images. Процедуры реакции собраны в
 [`INCIDENT_RUNBOOKS.md`](INCIDENT_RUNBOOKS.md).
