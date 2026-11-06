@@ -71,7 +71,7 @@ database remain healthy.
 2. For expiry/revocation, use the supported reconnect flow and verify identity
    mismatch protection before restoring automation.
 3. For key rotation, prepend the new Fernet key, keep old decrypt-only keys,
-   run `docker compose exec api python -m scripts.rotate_meta_tokens`, and remove
+   run `docker compose exec api node server/dist/meta/rotate-tokens.js`, and remove
    old keys only after success.
 4. A missing/invalid production key blocks migration and deploy; restore the
    correct secret through the secret manager rather than generating over data.

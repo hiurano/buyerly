@@ -66,7 +66,6 @@ COPY meta_api ./meta_api
 COPY rules ./rules
 COPY scheduler ./scheduler
 COPY services ./services
-COPY scripts/rotate_meta_tokens.py ./scripts/rotate_meta_tokens.py
 COPY scripts/backup_service.sh scripts/backup_db.sh scripts/backup_env.sh scripts/offsite_sync.py ./scripts/
 COPY --from=frontend /app/frontend/dist ./frontend/dist
 
