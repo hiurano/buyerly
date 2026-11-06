@@ -3,13 +3,16 @@
 ## Состав production
 
 Весь Buyerly на сервере — один проект Docker Compose в `/opt/buyerly`. На самом
-хосте нужны только Docker, git и SSH; nginx, Redis, certbot и прочее не ставятся.
+хосте нужны только Docker, git и SSH; nginx, certbot и прочее не ставятся, Redis
+работает контейнером проекта.
 
 | Контейнер | Что делает |
 |---|---|
 | `buyerly-api` | FastAPI: HTTP API, собранное React-приложение, публичные страницы и загруженные картинки |
 | `buyerly-worker` | синхронизация с Meta и выполнение правил (APScheduler) |
 | `buyerly-server` | новый сервер на TypeScript (#611); API пересылает ему пути, которые он уже взял на себя |
+| `buyerly-worker-ts` | воркер на TypeScript (#611, этап 4): фоновые задачи из `TS_WORKER_JOBS` на BullMQ |
+| `buyerly-redis` | Redis 7 для очередей BullMQ: `noeviction`, append-only файл в томе `buyerly-redis`, потолок 96 МБ данных (160 МБ контейнер) |
 | `buyerly-db` | PostgreSQL 16, данные в томе `buyerly-postgres` |
 | `buyerly-tunnel` | Cloudflare Tunnel (`cloudflared`): единственный вход из интернета |
 | `buyerly-backup` | каждую ночь бэкап базы и uploads, зашифрованный, в S3 (см. «Резервные копии») |
@@ -171,8 +174,9 @@ systemd-таймеры и другие пакеты не нужны: распи�
    логи и бэкапы остаются) и собирает `buyerly-app:<sha>`;
 5. если база пустая, восстанавливает её и uploads из S3 (см. выше); применяет
    миграции (`migrate`);
-6. запускает `api`, `worker` и `backup`, ждёт healthcheck `api`, `worker` и
-   полный цикл планировщика, запускает туннель;
+6. поднимает `db` и `redis`, запускает `api`, `worker`, `worker-ts`, `server` и
+   `backup`, ждёт healthcheck `api`, `server`, `worker`, `worker-ts` и полный
+   цикл планировщика, запускает туннель;
 7. выполняет read-only smoke и проверяет https://buyerly.app/health/live через
    Cloudflare (`cf-ray`); при ошибке возвращает предыдущий образ;
 8. удаляет старые образы, сохраняя два последних релиза.
@@ -183,6 +187,39 @@ systemd-таймеры и другие пакеты не нужны: распи�
 cd /opt/buyerly
 bash scripts/deploy.sh
 ```
+
+### Фоновые задачи: Python или TypeScript (#611, этап 4)
+
+Задачи без вызовов Meta переезжают с `worker` (APScheduler) на `worker-ts`
+(BullMQ) по одной. Кто что выполняет, решает `TS_WORKER_JOBS` — список задач
+`worker-ts`; Python-воркер и watchdog в API пропускают ровно их
+([core/worker_jobs.py](../core/worker_jobs.py)). Значение по умолчанию задаёт
+`docker-compose.yml` в репозитории; известные задачи: `inbox_email`,
+`inbox_telegram`, `inbox_push`, `sync_log_compaction`, `worker_watchdog`.
+Синхронизация с Meta, правила, суточные прогоны, аналитика, кэш инвентаря,
+здоровье аккаунтов и ротация токенов остаются на Python до клиента Meta на TS.
+
+Одна задача никогда не выполняется дважды: каждый запуск держит свою
+advisory-блокировку Postgres, одну и ту же у обоих воркеров, и воркер, не
+получивший её, пропускает этот тик. Внутри `worker-ts` у каждой задачи своя
+очередь с concurrency 1: затянувшийся запуск откладывает следующий, а не
+накладывается на него.
+
+Вернуть задачу на Python — убрать её из списка в `.env` и перезапустить
+воркеры (пустое значение возвращает все):
+
+```bash
+cd /opt/buyerly
+echo 'TS_WORKER_JOBS=' >> .env   # или список без возвращаемой задачи
+docker compose up -d --no-deps api worker worker-ts
+```
+
+Здоровье `worker-ts` — `GET http://127.0.0.1:8091/health/worker-ts` внутри
+контейнера (его читают healthcheck и smoke): 200, когда Redis и база отвечают;
+в ответе последний запуск каждой задачи (`outcome`: `ok`, `error` или
+`skipped`). То же лежит в Redis: `docker exec buyerly-redis redis-cli HGETALL
+buyerly:worker-ts:runs`. Откат деплоя на релиз без `worker-ts` останавливает
+его: Python-воркер того релиза выполняет все задачи сам.
 
 ## Service worker
 

@@ -151,23 +151,49 @@ async def check_once(now: Optional[datetime] = None, session_maker=None) -> dict
 
 async def _deliver_inbox_while_stalled() -> None:
     # Imported here: the delivery modules pull in the API routers.
+    from core.worker_jobs import exclusive, ts_worker_jobs
     from services.inbox_email import run_inbox_email_tick
     from services.inbox_push import run_inbox_push_tick
     from services.inbox_telegram import run_inbox_telegram_tick
 
-    await run_inbox_email_tick()
-    await run_inbox_telegram_tick()
-    await run_inbox_push_tick()
+    # Deliveries the TypeScript worker owns (#611 stage 4) do not wait on this
+    # worker; the rest run under the same lock as in the worker.
+    owned_by_ts = ts_worker_jobs()
+    for job_id, run in (
+        ("inbox_email", run_inbox_email_tick),
+        ("inbox_telegram", run_inbox_telegram_tick),
+        ("inbox_push", run_inbox_push_tick),
+    ):
+        if job_id not in owned_by_ts:
+            await exclusive(job_id, run)()
+
+
+async def _check_and_deliver() -> None:
+    from core.worker_jobs import job_lock
+
+    async with job_lock("worker_watchdog") as acquired:
+        if not acquired:
+            return
+        result = await check_once()
+    if result["status"] == "critical":
+        await _deliver_inbox_while_stalled()
 
 
 async def run_forever(interval: float = CHECK_INTERVAL_SECONDS) -> None:
-    """The API's background loop; never raises except on cancellation."""
+    """The API's background loop; never raises except on cancellation.
+
+    Once the TypeScript worker owns ``worker_watchdog`` (TS_WORKER_JOBS) it
+    runs these checks instead and this loop does nothing.
+    """
+    from core.worker_jobs import owned_by_ts
+
+    if owned_by_ts("worker_watchdog"):
+        logger.info("Worker watchdog runs on the TypeScript worker (TS_WORKER_JOBS)")
+        return
     while True:
         await _sleep(interval)
         try:
-            result = await check_once()
-            if result["status"] == "critical":
-                await _deliver_inbox_while_stalled()
+            await _check_and_deliver()
         except asyncio.CancelledError:
             raise
         except Exception:

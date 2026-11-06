@@ -10,6 +10,8 @@ containers=(
     buyerly-db
     buyerly-api
     buyerly-worker
+    buyerly-worker-ts
+    buyerly-redis
     buyerly-backup
 )
 # The tunnel runs only where COMPOSE_PROFILES enables it.

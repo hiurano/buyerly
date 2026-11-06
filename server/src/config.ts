@@ -54,6 +54,13 @@ export interface Config {
   // Compose mounts as the buyerly-uploads volume for both services.
   // SERVER_UPLOADS_DIR replaces it; the tests use a directory of their own.
   uploadsRoot: string;
+
+  // Redis (decision 54): the worker's BullMQ queues (worker/), and the sync
+  // bus between processes. Empty means none: the worker refuses to start.
+  redisUrl: string;
+  // Background jobs the TypeScript worker owns (#611 stage 4); the Python
+  // worker skips them (core/worker_jobs.py). Comma-separated job ids.
+  tsWorkerJobs: string;
 }
 
 // <repository>/uploads, from server/src/config.ts and server/dist/config.js alike.
@@ -122,5 +129,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     telegramBotToken: (env.TELEGRAM_BOT_TOKEN ?? '').replace(/^["' \t\r\n]+|["' \t\r\n]+$/g, ''),
     vapidPrivateKey: (env.VAPID_PRIVATE_KEY ?? '').trim(),
     uploadsRoot: env.SERVER_UPLOADS_DIR || DEFAULT_UPLOADS_ROOT,
+    redisUrl: (env.REDIS_URL ?? '').trim(),
+    tsWorkerJobs: env.TS_WORKER_JOBS ?? '',
   };
 }

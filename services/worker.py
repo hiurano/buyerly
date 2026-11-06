@@ -6,6 +6,7 @@ from pathlib import Path
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from core.runtime import configure_logging
+from core.worker_jobs import exclusive, ts_worker_jobs
 from database.sync_log import run_sync_log_compaction_tick
 from scheduler.worker import MonitoringWorker
 from services.inbox_email import run_inbox_email_tick
@@ -66,44 +67,31 @@ async def main() -> None:
         coalesce=True,
         args=[day_boundary_worker],
     )
-    scheduler.add_job(
-        run_inbox_email_tick,
-        "interval",
-        minutes=1,
-        id="inbox_email_job",
-        next_run_time=datetime.now(timezone.utc),
-        max_instances=1,
-        coalesce=True,
-    )
-    # A push channel: new notifications go out within seconds, not after a pause.
-    scheduler.add_job(
-        run_inbox_telegram_tick,
-        "interval",
-        seconds=20,
-        id="inbox_telegram_job",
-        next_run_time=datetime.now(timezone.utc),
-        max_instances=1,
-        coalesce=True,
-    )
-    scheduler.add_job(
-        run_inbox_push_tick,
-        "interval",
-        seconds=20,
-        id="inbox_push_job",
-        next_run_time=datetime.now(timezone.utc),
-        max_instances=1,
-        coalesce=True,
-    )
-    # The sync log keeps SYNC_LOG_RETENTION_DAYS; a client further behind bootstraps again.
-    scheduler.add_job(
-        run_sync_log_compaction_tick,
-        "interval",
-        hours=24,
-        id="sync_log_compaction_job",
-        next_run_time=datetime.now(timezone.utc),
-        max_instances=1,
-        coalesce=True,
-    )
+    # Jobs without Meta calls move to the TypeScript worker one at a time
+    # (#611 stage 4): TS_WORKER_JOBS lists the ones it owns, and each run
+    # holds an advisory lock both workers take (core/worker_jobs.py).
+    owned_by_ts = ts_worker_jobs()
+    shared_jobs = [
+        ("inbox_email", run_inbox_email_tick, {"minutes": 1}),
+        # A push channel: new notifications go out within seconds, not after a pause.
+        ("inbox_telegram", run_inbox_telegram_tick, {"seconds": 20}),
+        ("inbox_push", run_inbox_push_tick, {"seconds": 20}),
+        # The sync log keeps SYNC_LOG_RETENTION_DAYS; a client further behind bootstraps again.
+        ("sync_log_compaction", run_sync_log_compaction_tick, {"hours": 24}),
+    ]
+    for job_id, run, interval in shared_jobs:
+        if job_id in owned_by_ts:
+            logger.info("Job %s runs on the TypeScript worker (TS_WORKER_JOBS)", job_id)
+            continue
+        scheduler.add_job(
+            exclusive(job_id, run),
+            "interval",
+            **interval,
+            id=f"{job_id}_job",
+            next_run_time=datetime.now(timezone.utc),
+            max_instances=1,
+            coalesce=True,
+        )
     scheduler.start()
     logger.info(
         "Monitoring and account day-boundary workers started with one-minute dispatch ticks"
