@@ -50,14 +50,14 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
   it('leaves one entry for each write, with the groups of whoever may see it', async () => {
     const { ws, members, teams } = world;
     const [team] = await db.query<{ id: number }[]>(
-      `INSERT INTO teams (workspace_id, name, key) VALUES ($1, 'Growth', $2) RETURNING id`,
+      `INSERT INTO teams (workspace_id, name, key, created_at, updated_at) VALUES ($1, 'Growth', $2, now(), now()) RETURNING id`,
       [ws.id, `G${Math.floor(Math.random() * 1e6)}`.slice(0, 7)],
     );
     const created = await last('Team', team.id);
     expect(created).toMatchObject({ action: 'insert', sync_groups: [`team:${team.id}`] });
     expect(created.data.name).toBe('Growth');
 
-    await db.query(`INSERT INTO team_members (team_id, member_id) VALUES ($1, $2)`, [team.id, members.owner.id]);
+    await db.query(`INSERT INTO team_members (team_id, member_id, joined_at) VALUES ($1, $2, now())`, [team.id, members.owner.id]);
     const [joined] = await db.query<{ id: number }[]>('SELECT id FROM team_members WHERE team_id = $1', [team.id]);
     expect(await last('TeamMember', joined.id)).toMatchObject({ sync_groups: [`team:${team.id}`, `member:${members.owner.id}`] });
 
@@ -93,7 +93,7 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
     const path = (name: string) => `${name}-${Math.random().toString(36).slice(2)}`;
     const [a, b] = [path('a'), path('b')];
     const insert = (runner: typeof first, value: string) =>
-      runner.query(`INSERT INTO favorites (member_id, kind, path, title) VALUES ($1, 'page', $2, $2) RETURNING id`, [members.owner.id, value]) as Promise<{ id: number }[]>;
+      runner.query(`INSERT INTO favorites (member_id, kind, path, title, created_at) VALUES ($1, 'page', $2, $2, now()) RETURNING id`, [members.owner.id, value]) as Promise<{ id: number }[]>;
     const [ida] = await insert(first, a);
     const [idb] = await insert(second, b);
     // Written first, committed last: it comes after in the log.
@@ -108,7 +108,7 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
     const ids = await db.transaction(async (tx) => {
       const made: number[] = [];
       for (const name of ['c', 'd', 'e']) {
-        const [row] = await tx.query<{ id: number }[]>(`INSERT INTO favorites (member_id, kind, path, title) VALUES ($1, 'page', $2, $2) RETURNING id`, [members.owner.id, path(name)]);
+        const [row] = await tx.query<{ id: number }[]>(`INSERT INTO favorites (member_id, kind, path, title, created_at) VALUES ($1, 'page', $2, $2, now()) RETURNING id`, [members.owner.id, path(name)]);
         made.push(row.id);
       }
       return made;
@@ -123,7 +123,7 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
     const runner = db.createQueryRunner();
     await runner.connect();
     await runner.startTransaction();
-    const [row] = (await runner.query(`INSERT INTO favorites (member_id, kind, path, title) VALUES ($1, 'page', 'pending', 'P') RETURNING id`, [world.members.owner.id])) as { id: number }[];
+    const [row] = (await runner.query(`INSERT INTO favorites (member_id, kind, path, title, created_at) VALUES ($1, 'page', 'pending', 'P', now()) RETURNING id`, [world.members.owner.id])) as { id: number }[];
     const pending = (await runner.query(`SELECT sync_id FROM sync_actions WHERE model = 'Favorite' AND model_id = $1`, [String(row.id)])) as { sync_id: string | null }[];
     expect(pending).toHaveLength(1);
     expect(pending[0].sync_id).toBeNull();
@@ -142,9 +142,9 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
     expect(latest).toHaveLength(3);
     expect(latest.every((entry) => entry.action === 'update' && JSON.stringify(entry.data) === '{"note":"bulk"}')).toBe(true);
 
-    const [team] = await db.query<{ id: number }[]>(`INSERT INTO teams (workspace_id, name, key) VALUES ($1, 'Doomed', $2) RETURNING id`, [ws.id, `D${Math.floor(Math.random() * 1e5)}`]);
-    await db.query('INSERT INTO team_members (team_id, member_id) VALUES ($1, $2), ($1, $3)', [team.id, members.buyer.id, members.guest.id]);
-    await db.query('INSERT INTO team_accounts (team_id, account_id) VALUES ($1, $2)', [team.id, accounts.loose.id]);
+    const [team] = await db.query<{ id: number }[]>(`INSERT INTO teams (workspace_id, name, key, created_at, updated_at) VALUES ($1, 'Doomed', $2, now(), now()) RETURNING id`, [ws.id, `D${Math.floor(Math.random() * 1e5)}`]);
+    await db.query('INSERT INTO team_members (team_id, member_id, joined_at) VALUES ($1, $2, now()), ($1, $3)', [team.id, members.buyer.id, members.guest.id]);
+    await db.query('INSERT INTO team_accounts (team_id, account_id, created_at) VALUES ($1, $2, now())', [team.id, accounts.loose.id]);
     const [mark] = await db.query<{ max: string | null }[]>('SELECT max(id) FROM sync_actions');
     await db.query('DELETE FROM teams WHERE id = $1', [team.id]);
     const gone = await db.query<Entry[]>(
@@ -167,7 +167,7 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
     expect(await entries('User', [users.owner.id])).toHaveLength(before.length);
 
     // The owner of both workspaces: both hear of a rename.
-    await db.query(`INSERT INTO workspace_members (workspace_id, user_id, role) VALUES ($1, $2, 'member')`, [other.id, users.owner.id]);
+    await db.query(`INSERT INTO workspace_members (workspace_id, user_id, role, joined_at) VALUES ($1, $2, 'member', now())`, [other.id, users.owner.id]);
     await db.query(`UPDATE users SET full_name = 'Olga O.' WHERE id = $1`, [users.owner.id]);
     const renamed = await last('User', users.owner.id);
     expect(renamed).toMatchObject({ data: { full_name: 'Olga O.' } });
@@ -196,10 +196,10 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
 
     // An Inbox event follows its ad account; the member's state on it is theirs.
     const [event] = await db.query<{ id: number }[]>(
-      `INSERT INTO audit_events (workspace_id, event_type, account_id) VALUES ($1, 'RULE_STOP', $2) RETURNING id`,
+      `INSERT INTO audit_events (workspace_id, event_type, account_id, actor_type) VALUES ($1, 'RULE_STOP', $2, 'system') RETURNING id`,
       [ws.id, accounts.hidden.accountId],
     );
-    const [loose] = await db.query<{ id: number }[]>(`INSERT INTO audit_events (workspace_id, event_type) VALUES ($1, 'TOKEN_ERROR') RETURNING id`, [ws.id]);
+    const [loose] = await db.query<{ id: number }[]>(`INSERT INTO audit_events (workspace_id, event_type, actor_type) VALUES ($1, 'TOKEN_ERROR', 'system') RETURNING id`, [ws.id]);
     await db.query(`INSERT INTO inbox_notification_states (user_id, audit_event_id, is_read) VALUES ($1, $2, true)`, [users.owner.id, event.id]);
     expect((await last('InboxEvent', event.id)).sync_groups).toEqual([`team:${teams.private.id}`]);
     expect((await last('InboxEvent', loose.id)).sync_groups).toEqual([`workspace:${ws.id}:members`]);
