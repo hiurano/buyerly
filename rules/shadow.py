@@ -35,6 +35,14 @@ CAPTURE_VERSION = 1
 MAX_PENDING_FILES = 500
 
 
+def max_pending_files() -> int:
+    """RULES_SHADOW_MAX_FILES raises the cap (CI keeps every case of its run)."""
+    try:
+        return int(os.environ.get("RULES_SHADOW_MAX_FILES", "") or MAX_PENDING_FILES)
+    except ValueError:
+        return MAX_PENDING_FILES
+
+
 def shadow_dir() -> Optional[Path]:
     """Where captures go; unset or empty RULES_SHADOW_DIR turns them off."""
     raw = os.environ.get("RULES_SHADOW_DIR", "").strip()
@@ -89,7 +97,7 @@ class ShadowCapture:
         """Write the capture; ``stopped_early`` when a refused token cut the check short."""
         try:
             pending = sum(1 for _ in self.directory.glob("*.json.gz"))
-            if pending >= MAX_PENDING_FILES:
+            if pending >= max_pending_files():
                 logger.warning("Rules shadow capture skipped: %s files wait unread", pending)
                 return
             document = {
