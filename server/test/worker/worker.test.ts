@@ -114,7 +114,8 @@ describe.skipIf(!DATABASE_URL)('job locks and the sync log compaction', () => {
       expect(kept?.count).toBe(1);
       const dropped = await compactSyncLog(tx, new Date(Date.now() + 31 * 24 * 60 * 60 * 1000));
       expect(dropped).toBeGreaterThan(0);
-      const [left] = await tx.query<{ count: number }[]>('SELECT count(*)::int AS count FROM sync_actions WHERE sync_id IS NOT NULL');
+      // Entries other tests commit meanwhile get later sync ids (commit order), so only ours are counted.
+      const [left] = await tx.query<{ count: number }[]>('SELECT count(*)::int AS count FROM sync_actions WHERE sync_id IS NOT NULL AND sync_id <= $1', [newest]);
       expect(left?.count).toBe(0);
       expect(await compactedThrough(tx)).toBe(newest);
       expect(await needsBootstrap(tx, 0)).toBe(true);
