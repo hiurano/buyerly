@@ -35,6 +35,10 @@ x-app: &app
     # The rules engine's shadow run (#611 stage 4): the Python worker leaves
     # what its monitoring cycle saw and decided here, worker-ts compares.
     RULES_SHADOW_DIR: /app/logs/rules-shadow
+    # The reverse run once worker-ts owns `monitoring`: it leaves each
+    # account's decision inputs here, the Python worker decides on them
+    # (rules/shadow_replay.py) and writes its decision to RULES_SHADOW_DIR.
+    RULES_SHADOW_REPLAY_DIR: /app/logs/rules-shadow-replay
     TZ: UTC
   volumes:
     - ./logs:/app/logs:z

@@ -2240,6 +2240,590 @@ class MonitoringWorker:
         stats["facts_stored"] = sync["facts_stored"]
         return stats
 
+    async def _decide_and_act(
+        self,
+        session,
+        acc: Account,
+        *,
+        now: float,
+        due_rules: list[dict[str, Any]],
+        entities: list[dict[str, Any]],
+        entity_windows: dict[str, dict[str, dict[str, Any]]],
+        undone_actions: dict[str, set[str]],
+        manual_enables: dict[str, str],
+        access_token: str,
+        stats: dict,
+        stop_confirmation_minutes: int,
+        critical_interval: int,
+        connection_cache: dict,
+        stop_rules_due: bool,
+    ) -> None:
+        """One account's rules on the entities read for them: the decision and the actions it calls for.
+
+        The rule cycle calls it after the Meta reads; the reverse shadow run
+        (rules/shadow_replay.py) calls it on the inputs the TypeScript cycle
+        decided on, in a rolled-back transaction and with a Meta that writes
+        nothing.
+        """
+
+        # The TypeScript engine decides beside this one on the
+        # same inputs before it may act (#611, rules/shadow.py).
+        shadow = await start_shadow_capture(
+            session,
+            cycle_id=self._current_cycle_id,
+            account=acc,
+            now=now,
+            stop_confirmation_minutes=stop_confirmation_minutes,
+            critical_interval=critical_interval,
+            due_rules=due_rules,
+            entities=entities,
+            entity_windows=entity_windows,
+            undone_actions=undone_actions,
+            manual_enables=manual_enables,
+        )
+        for held_id in manual_enables:
+            undone_actions.setdefault(held_id, set()).add(RuleAction.STOP.value)
+
+        rule_outcomes: list[dict[str, Any]] = []
+        # A token Meta refused on a write stops this account's actions
+        # for the cycle and is handled like one refused on a read.
+        token_error: Optional[PermissionError] = None
+        for adset in entities:
+            if token_error is not None:
+                break
+            a_id = str(adset["entity_id"])
+            current_adset_windows = entity_windows.get(a_id, {})
+
+            candidates = RuleEngine.evaluate_all(
+                entity=adset,
+                account=acc,
+                insights_by_window=current_adset_windows,
+                active_rules_override=self._rules_not_undone(
+                    due_rules,
+                    undone_actions.get(a_id),
+                ),
+            )
+            entity_actions = await self._entity_actions_to_run(
+                session,
+                acc,
+                candidates,
+                now=now,
+            )
+            outcomes = await self._rule_outcomes(
+                session,
+                acc,
+                adset,
+                RuleEngine.check(
+                    entity=adset,
+                    account=acc,
+                    insights_by_window=current_adset_windows,
+                    active_rules_override=due_rules,
+                ),
+                candidates,
+                entity_actions,
+                undone_actions.get(a_id),
+                now=now,
+                manual_enable=manual_enables.get(a_id),
+            )
+            rule_outcomes.extend(outcomes.values())
+            if not entity_actions:
+                if stop_rules_due:
+                    await self._reset_stop_confirmations(
+                        session,
+                        acc,
+                        a_id,
+                        now=now,
+                    )
+                continue
+
+            if stop_rules_due:
+                keep_execution_key = None
+                if entity_actions[0].action == RuleAction.STOP:
+                    keep_execution_key, _ = self._execution_key(acc, entity_actions[0])
+                await self._reset_stop_confirmations(
+                    session,
+                    acc,
+                    a_id,
+                    keep_execution_key=keep_execution_key,
+                    now=now,
+                )
+
+            for eval_res in entity_actions:
+                if token_error is not None:
+                    break
+                current_budget = float(adset.get("daily_budget", 0.0) or 0.0)
+                observed_state: dict[str, Any]
+                desired_state: dict[str, Any]
+                if eval_res.action == RuleAction.STOP:
+                    observed_state = {"status": adset.get("status", "UNKNOWN")}
+                    desired_state = {"status": "PAUSED"}
+                elif eval_res.action == RuleAction.AUTO_REACTIVATE:
+                    observed_state = {"status": adset.get("status", "UNKNOWN")}
+                    desired_state = {"status": "ACTIVE"}
+                elif eval_res.action == RuleAction.INCREASE_BUDGET:
+                    if current_budget <= 0 or eval_res.budget_change_percent <= 0:
+                        stats["actions_skipped"] += 1
+                        self._note_outcome(
+                            outcomes, eval_res, "skipped",
+                            detail="No daily budget to change at this level",
+                        )
+                        continue
+                    new_budget = current_budget * (1 + eval_res.budget_change_percent / 100.0)
+                    if eval_res.budget_max_daily > 0:
+                        new_budget = min(new_budget, eval_res.budget_max_daily)
+                    observed_state = {"daily_budget": current_budget}
+                    desired_state = {"daily_budget": new_budget}
+                elif eval_res.action == RuleAction.DECREASE_BUDGET:
+                    if current_budget <= 0 or eval_res.budget_change_percent <= 0:
+                        stats["actions_skipped"] += 1
+                        self._note_outcome(
+                            outcomes, eval_res, "skipped",
+                            detail="No daily budget to change at this level",
+                        )
+                        continue
+                    new_budget = max(
+                        current_budget * (1 - eval_res.budget_change_percent / 100.0),
+                        1.0,
+                    )
+                    observed_state = {"daily_budget": current_budget}
+                    desired_state = {"daily_budget": new_budget}
+                else:
+                    observed_state = {"status": adset.get("status", "UNKNOWN")}
+                    desired_state = dict(observed_state)
+
+                cooldown_until = await self._cooldown_until(
+                    session, acc, eval_res, now=now
+                )
+                if cooldown_until is not None:
+                    stats["actions_skipped"] += 1
+                    self._note_outcome(
+                        outcomes, eval_res, "cooldown", wait_until=cooldown_until
+                    )
+                    continue
+
+                if eval_res.action == RuleAction.STOP:
+                    confirmed, confirmation_reason, confirmation_state = (
+                        await self._confirm_stop_evaluation(
+                            session,
+                            acc,
+                            eval_res,
+                            now=now,
+                            confirmation_seconds=stop_confirmation_minutes * 60,
+                            max_gap_seconds=max(180, critical_interval * 60 * 3),
+                        )
+                    )
+                    if not confirmed:
+                        stats["actions_skipped"] += 1
+                        stats["stop_confirmations_waiting"] += 1
+                        confirming_since = (
+                            self._json_dict(confirmation_state.details).get("first_seen_at")
+                            if confirmation_state
+                            else None
+                        )
+                        self._note_outcome(
+                            outcomes,
+                            eval_res,
+                            "confirming",
+                            wait_until=(
+                                float(confirming_since) + stop_confirmation_minutes * 60
+                                if isinstance(confirming_since, (int, float))
+                                else None
+                            ),
+                        )
+                        if confirmation_reason == "started" and confirmation_state:
+                            await self._persist_audit_event(
+                                session,
+                                acc,
+                                event_type="STOP_CONFIRMATION_STARTED",
+                                status="WAITING",
+                                category="RULE_ENGINE",
+                                evaluation=eval_res,
+                                action=RuleAction.STOP.value,
+                                message=(
+                                    "A STOP candidate was found. Buyerly will re-check the "
+                                    f"metrics within {stop_confirmation_minutes} min."
+                                ),
+                                before_state=observed_state,
+                                after_state=desired_state,
+                                details={
+                                    "confirmation_minutes": stop_confirmation_minutes,
+                                    "execution_key": confirmation_state.execution_key,
+                                },
+                            )
+                        continue
+
+                claimed, claim_reason, execution_state = await self._claim_execution(
+                    session,
+                    acc,
+                    eval_res,
+                    observed_state=observed_state,
+                    desired_state=desired_state,
+                    now=now,
+                )
+                if not claimed:
+                    stats["actions_skipped"] += 1
+                    if claim_reason == "reconciled":
+                        stats["actions_reconciled"] += 1
+                        self._note_outcome(
+                            outcomes,
+                            eval_res,
+                            "fired",
+                            acted_at=execution_state.last_success_at,
+                        )
+                    elif claim_reason == "cooldown":
+                        self._note_outcome(
+                            outcomes,
+                            eval_res,
+                            "cooldown",
+                            wait_until=(
+                                float(execution_state.last_success_at or now)
+                                + max(0, int(eval_res.cooldown_minutes or 0)) * 60
+                            ),
+                        )
+                    else:
+                        self._note_outcome(outcomes, eval_res, "pending")
+                    if claim_reason in {"cooldown", "pending", "reconciled"}:
+                        await self._persist_audit_event(
+                            session,
+                            acc,
+                            event_type=(
+                                "RULE_ACTION_RECONCILED"
+                                if claim_reason == "reconciled"
+                                else "RULE_ACTION_COOLDOWN"
+                                if claim_reason == "cooldown"
+                                else "RULE_ACTION_PENDING"
+                            ),
+                            status="SUCCESS" if claim_reason == "reconciled" else "SKIPPED",
+                            evaluation=eval_res,
+                            action=eval_res.action.value,
+                            message={
+                                "cooldown": f"Action skipped: cooldown {eval_res.cooldown_minutes} min.",
+                                "pending": "The action already started in a previous cycle; the duplicate was blocked.",
+                                "reconciled": "The previous action's result was confirmed against Meta's current state.",
+                            }[claim_reason],
+                            before_state=observed_state,
+                            after_state=desired_state,
+                            details={
+                                "claim_reason": claim_reason,
+                                "execution_key": execution_state.execution_key,
+                            },
+                        )
+                    continue
+
+                if shadow is not None:
+                    shadow.acted(eval_res, observed_state, desired_state)
+
+                # STOP the ad set
+                if eval_res.action == RuleAction.STOP:
+                    action_started = time.perf_counter()
+                    try:
+                        await self._apply_entity_status(
+                            session,
+                            acc,
+                            eval_res,
+                            access_token=access_token,
+                            status="PAUSED",
+                        )
+                        stats[f"{self._stats_noun(eval_res)}_stopped"] += 1
+                        logger.info(f"STOPPED {eval_res.entity_level}: {a_id} ({eval_res.entity_name}) - {eval_res.reason}")
+
+                        try:
+                            await self._record_stopped_adset(session, acc, eval_res)
+                        except Exception as db_error:
+                            await session.rollback()
+                            logger.error(f"Failed to persist stopped adset {a_id}: {db_error}")
+                            stats["errors"].append(f"Stopped-adset persistence error {a_id}: {db_error}")
+
+                        self._finish_execution(
+                            execution_state,
+                            status="SUCCESS",
+                            now=now,
+                        )
+                        await self._persist_audit_event(
+                            session,
+                            acc,
+                            event_type="STOP",
+                            status="SUCCESS",
+                            evaluation=eval_res,
+                            before_state={"status": adset.get("status", "ACTIVE")},
+                            after_state={"status": "PAUSED"},
+                            duration_ms=(time.perf_counter() - action_started) * 1000,
+                        )
+                        await self._reflect_status(session, acc, eval_res, "PAUSED")
+
+                    except Exception as e:
+                        logger.error(f"Error pausing adset {a_id}: {e}")
+                        if isinstance(e, PermissionError):
+                            token_error = e
+                        stats["errors"].append(f"Pause error {a_id}: {e}")
+                        self._finish_execution(
+                            execution_state,
+                            status="ERROR",
+                            now=now,
+                            details={"error": str(e)},
+                        )
+                        await self._persist_audit_event(
+                            session,
+                            acc,
+                            event_type="STOP",
+                            status="ERROR",
+                            evaluation=eval_res,
+                            message=str(e),
+                            before_state={"status": adset.get("status", "UNKNOWN")},
+                            after_state={"status": adset.get("status", "UNKNOWN")},
+                            duration_ms=(time.perf_counter() - action_started) * 1000,
+                        )
+
+                # NOTIFICATION ONLY (send notification only)
+                elif eval_res.action == RuleAction.NOTIFY_ONLY:
+                    logger.info(f"NOTIFY ONLY {eval_res.entity_level}: {a_id} ({eval_res.entity_name}) - {eval_res.reason}")
+                    self._finish_execution(
+                        execution_state,
+                        status="SUCCESS",
+                        now=now,
+                    )
+                    await self._persist_audit_event(
+                        session,
+                        acc,
+                        event_type="NOTIFY_ONLY",
+                        status="SUCCESS",
+                        evaluation=eval_res,
+                        before_state={"status": adset.get("status", "UNKNOWN")},
+                        after_state={"status": adset.get("status", "UNKNOWN")},
+                    )
+
+                # OFFER TO TURN ON (late conversion)
+                elif eval_res.action == RuleAction.PROPOSE_REACTIVATE:
+                    stats["proposals_sent"] += 1
+                    logger.info(f"PROPOSE REACTIVATE {eval_res.entity_level}: {a_id} ({eval_res.entity_name}) - {eval_res.reason}")
+                    self._finish_execution(
+                        execution_state,
+                        status="SUCCESS",
+                        now=now,
+                    )
+                    await self._persist_audit_event(
+                        session,
+                        acc,
+                        event_type="PROPOSE_REACTIVATE",
+                        status="SUCCESS",
+                        evaluation=eval_res,
+                        before_state={"status": adset.get("status", "UNKNOWN")},
+                        after_state={"status": adset.get("status", "UNKNOWN")},
+                    )
+
+
+                # AUTO TURN-ON
+                elif eval_res.action == RuleAction.AUTO_REACTIVATE:
+                    action_started = time.perf_counter()
+                    try:
+                        await self._apply_entity_status(
+                            session,
+                            acc,
+                            eval_res,
+                            access_token=access_token,
+                            status="ACTIVE",
+                        )
+                        stats[f"{self._stats_noun(eval_res)}_reactivated"] += 1
+
+                        try:
+                            if eval_res.is_adset:
+                                await self._resolve_stopped_adset(session, a_id)
+                        except Exception as db_error:
+                            await session.rollback()
+                            logger.error(f"Failed to resolve stopped adset {a_id}: {db_error}")
+                            stats["errors"].append(f"Stopped-adset resolution error {a_id}: {db_error}")
+
+                        self._finish_execution(
+                            execution_state,
+                            status="SUCCESS",
+                            now=now,
+                        )
+                        await self._persist_audit_event(
+                            session,
+                            acc,
+                            event_type="AUTO_REACTIVATE",
+                            status="SUCCESS",
+                            evaluation=eval_res,
+                            before_state={"status": adset.get("status", "PAUSED")},
+                            after_state={"status": "ACTIVE"},
+                            duration_ms=(time.perf_counter() - action_started) * 1000,
+                        )
+                        await self._reflect_status(session, acc, eval_res, "ACTIVE")
+
+                        logger.info(f"AUTO REACTIVATED {eval_res.entity_level}: {a_id} ({eval_res.entity_name})")
+
+                    except Exception as e:
+                        logger.error(f"Error auto-reactivating adset {a_id}: {e}")
+                        if isinstance(e, PermissionError):
+                            token_error = e
+                        stats["errors"].append(f"Auto-reactivate error {a_id}: {e}")
+                        self._finish_execution(
+                            execution_state,
+                            status="ERROR",
+                            now=now,
+                            details={"error": str(e)},
+                        )
+                        await self._persist_audit_event(
+                            session,
+                            acc,
+                            event_type="AUTO_REACTIVATE",
+                            status="ERROR",
+                            evaluation=eval_res,
+                            message=str(e),
+                            before_state={"status": adset.get("status", "UNKNOWN")},
+                            after_state={"status": adset.get("status", "UNKNOWN")},
+                            duration_ms=(time.perf_counter() - action_started) * 1000,
+                        )
+
+                # BUDGET INCREASE
+                elif eval_res.action == RuleAction.INCREASE_BUDGET:
+                    action_started = time.perf_counter()
+                    try:
+                        await self._update_budget(
+                            acc,
+                            eval_res,
+                            access_token=access_token,
+                            new_budget=new_budget,
+                        )
+                        stats["budgets_changed"] += 1
+                        self._finish_execution(execution_state, status="SUCCESS", now=now)
+                        await self._persist_audit_event(
+                            session,
+                            acc,
+                            event_type="INCREASE_BUDGET",
+                            status="SUCCESS",
+                            evaluation=eval_res,
+                            before_state={"daily_budget": current_budget},
+                            after_state={"daily_budget": new_budget},
+                            duration_ms=(time.perf_counter() - action_started) * 1000,
+                        )
+                    except Exception as e:
+                        logger.error(f"Error increasing budget for adset {a_id}: {e}")
+                        if isinstance(e, PermissionError):
+                            token_error = e
+                        stats["errors"].append(f"Budget increase error {a_id}: {e}")
+                        self._finish_execution(
+                            execution_state,
+                            status="ERROR",
+                            now=now,
+                            details={"error": str(e)},
+                        )
+                        await self._persist_audit_event(
+                            session,
+                            acc,
+                            event_type="INCREASE_BUDGET",
+                            status="ERROR",
+                            evaluation=eval_res,
+                            message=str(e),
+                            before_state={"daily_budget": current_budget},
+                            after_state={"daily_budget": current_budget},
+                            duration_ms=(time.perf_counter() - action_started) * 1000,
+                        )
+
+                # BUDGET DECREASE
+                elif eval_res.action == RuleAction.DECREASE_BUDGET:
+                    action_started = time.perf_counter()
+                    try:
+                        await self._update_budget(
+                            acc,
+                            eval_res,
+                            access_token=access_token,
+                            new_budget=new_budget,
+                        )
+                        stats["budgets_changed"] += 1
+                        self._finish_execution(execution_state, status="SUCCESS", now=now)
+                        await self._persist_audit_event(
+                            session,
+                            acc,
+                            event_type="DECREASE_BUDGET",
+                            status="SUCCESS",
+                            evaluation=eval_res,
+                            before_state={"daily_budget": current_budget},
+                            after_state={"daily_budget": new_budget},
+                            duration_ms=(time.perf_counter() - action_started) * 1000,
+                        )
+                    except Exception as e:
+                        logger.error(f"Error decreasing budget for adset {a_id}: {e}")
+                        if isinstance(e, PermissionError):
+                            token_error = e
+                        stats["errors"].append(f"Budget decrease error {a_id}: {e}")
+                        self._finish_execution(
+                            execution_state,
+                            status="ERROR",
+                            now=now,
+                            details={"error": str(e)},
+                        )
+                        await self._persist_audit_event(
+                            session,
+                            acc,
+                            event_type="DECREASE_BUDGET",
+                            status="ERROR",
+                            evaluation=eval_res,
+                            message=str(e),
+                            before_state={"daily_budget": current_budget},
+                            after_state={"daily_budget": current_budget},
+                            duration_ms=(time.perf_counter() - action_started) * 1000,
+                        )
+
+                if execution_state.status == "SUCCESS":
+                    cooldown_seconds = max(0, int(eval_res.cooldown_minutes or 0)) * 60
+                    self._note_outcome(
+                        outcomes,
+                        eval_res,
+                        "fired",
+                        acted_at=now,
+                        wait_until=now + cooldown_seconds if cooldown_seconds else None,
+                    )
+                elif execution_state.status == "ERROR":
+                    self._note_outcome(
+                        outcomes,
+                        eval_res,
+                        "error",
+                        detail=str(
+                            self._json_dict(execution_state.details).get("error")
+                            or "Meta rejected the action"
+                        ),
+                    )
+
+        if shadow is not None:
+            shadow.finish(rule_outcomes, stopped_early=token_error is not None)
+        await self._save_rule_states(
+            session,
+            acc,
+            rule_outcomes,
+            checked_rule_ids={
+                rule["preset_id"]
+                for rule in due_rules
+                if isinstance(rule.get("preset_id"), int)
+            },
+            attached_rule_ids={
+                rule["preset_id"]
+                for rule in self._load_rules(
+                    acc.active_rules, workspace_id=acc.workspace_id
+                )
+                if isinstance(rule.get("preset_id"), int)
+            },
+            now=now,
+        )
+        if token_error is not None:
+            # Without this the account looked healthy until the
+            # next read failed, and every check retried the write.
+            await self._handle_token_error(
+                session,
+                acc,
+                token_error,
+                connection_cache,
+            )
+            await self._set_account_health(
+                session,
+                acc,
+                success=False,
+                emit_transition_event=False,
+                error=token_error,
+                cause="user",
+                signals={"token_healthy": False},
+            )
+
     async def run_rule_cycle(self, account_ids: Optional[list[str]] = None) -> dict:
         """The rules half of the monitoring cycle: due rule checks and their Meta actions.
 
@@ -2490,563 +3074,22 @@ class MonitoringWorker:
                         entities,
                         now=now,
                     )
-                    # The TypeScript engine decides beside this one on the
-                    # same inputs before it may act (#611, rules/shadow.py).
-                    shadow = await start_shadow_capture(
+                    await self._decide_and_act(
                         session,
-                        cycle_id=self._current_cycle_id,
-                        account=acc,
+                        acc,
                         now=now,
-                        stop_confirmation_minutes=stop_confirmation_minutes,
-                        critical_interval=critical_interval,
                         due_rules=due_rules,
                         entities=entities,
                         entity_windows=entity_windows,
                         undone_actions=undone_actions,
                         manual_enables=manual_enables,
+                        access_token=access_token,
+                        stats=stats,
+                        stop_confirmation_minutes=stop_confirmation_minutes,
+                        critical_interval=critical_interval,
+                        connection_cache=connection_cache,
+                        stop_rules_due=stop_rules_due,
                     )
-                    for held_id in manual_enables:
-                        undone_actions.setdefault(held_id, set()).add(RuleAction.STOP.value)
-
-                    rule_outcomes: list[dict[str, Any]] = []
-                    # A token Meta refused on a write stops this account's actions
-                    # for the cycle and is handled like one refused on a read.
-                    token_error: Optional[PermissionError] = None
-                    for adset in entities:
-                        if token_error is not None:
-                            break
-                        a_id = str(adset["entity_id"])
-                        current_adset_windows = entity_windows.get(a_id, {})
-
-                        candidates = RuleEngine.evaluate_all(
-                            entity=adset,
-                            account=acc,
-                            insights_by_window=current_adset_windows,
-                            active_rules_override=self._rules_not_undone(
-                                due_rules,
-                                undone_actions.get(a_id),
-                            ),
-                        )
-                        entity_actions = await self._entity_actions_to_run(
-                            session,
-                            acc,
-                            candidates,
-                            now=now,
-                        )
-                        outcomes = await self._rule_outcomes(
-                            session,
-                            acc,
-                            adset,
-                            RuleEngine.check(
-                                entity=adset,
-                                account=acc,
-                                insights_by_window=current_adset_windows,
-                                active_rules_override=due_rules,
-                            ),
-                            candidates,
-                            entity_actions,
-                            undone_actions.get(a_id),
-                            now=now,
-                            manual_enable=manual_enables.get(a_id),
-                        )
-                        rule_outcomes.extend(outcomes.values())
-                        if not entity_actions:
-                            if stop_rules_due:
-                                await self._reset_stop_confirmations(
-                                    session,
-                                    acc,
-                                    a_id,
-                                    now=now,
-                                )
-                            continue
-
-                        if stop_rules_due:
-                            keep_execution_key = None
-                            if entity_actions[0].action == RuleAction.STOP:
-                                keep_execution_key, _ = self._execution_key(acc, entity_actions[0])
-                            await self._reset_stop_confirmations(
-                                session,
-                                acc,
-                                a_id,
-                                keep_execution_key=keep_execution_key,
-                                now=now,
-                            )
-
-                        for eval_res in entity_actions:
-                            if token_error is not None:
-                                break
-                            current_budget = float(adset.get("daily_budget", 0.0) or 0.0)
-                            observed_state: dict[str, Any]
-                            desired_state: dict[str, Any]
-                            if eval_res.action == RuleAction.STOP:
-                                observed_state = {"status": adset.get("status", "UNKNOWN")}
-                                desired_state = {"status": "PAUSED"}
-                            elif eval_res.action == RuleAction.AUTO_REACTIVATE:
-                                observed_state = {"status": adset.get("status", "UNKNOWN")}
-                                desired_state = {"status": "ACTIVE"}
-                            elif eval_res.action == RuleAction.INCREASE_BUDGET:
-                                if current_budget <= 0 or eval_res.budget_change_percent <= 0:
-                                    stats["actions_skipped"] += 1
-                                    self._note_outcome(
-                                        outcomes, eval_res, "skipped",
-                                        detail="No daily budget to change at this level",
-                                    )
-                                    continue
-                                new_budget = current_budget * (1 + eval_res.budget_change_percent / 100.0)
-                                if eval_res.budget_max_daily > 0:
-                                    new_budget = min(new_budget, eval_res.budget_max_daily)
-                                observed_state = {"daily_budget": current_budget}
-                                desired_state = {"daily_budget": new_budget}
-                            elif eval_res.action == RuleAction.DECREASE_BUDGET:
-                                if current_budget <= 0 or eval_res.budget_change_percent <= 0:
-                                    stats["actions_skipped"] += 1
-                                    self._note_outcome(
-                                        outcomes, eval_res, "skipped",
-                                        detail="No daily budget to change at this level",
-                                    )
-                                    continue
-                                new_budget = max(
-                                    current_budget * (1 - eval_res.budget_change_percent / 100.0),
-                                    1.0,
-                                )
-                                observed_state = {"daily_budget": current_budget}
-                                desired_state = {"daily_budget": new_budget}
-                            else:
-                                observed_state = {"status": adset.get("status", "UNKNOWN")}
-                                desired_state = dict(observed_state)
-
-                            cooldown_until = await self._cooldown_until(
-                                session, acc, eval_res, now=now
-                            )
-                            if cooldown_until is not None:
-                                stats["actions_skipped"] += 1
-                                self._note_outcome(
-                                    outcomes, eval_res, "cooldown", wait_until=cooldown_until
-                                )
-                                continue
-
-                            if eval_res.action == RuleAction.STOP:
-                                confirmed, confirmation_reason, confirmation_state = (
-                                    await self._confirm_stop_evaluation(
-                                        session,
-                                        acc,
-                                        eval_res,
-                                        now=now,
-                                        confirmation_seconds=stop_confirmation_minutes * 60,
-                                        max_gap_seconds=max(180, critical_interval * 60 * 3),
-                                    )
-                                )
-                                if not confirmed:
-                                    stats["actions_skipped"] += 1
-                                    stats["stop_confirmations_waiting"] += 1
-                                    confirming_since = (
-                                        self._json_dict(confirmation_state.details).get("first_seen_at")
-                                        if confirmation_state
-                                        else None
-                                    )
-                                    self._note_outcome(
-                                        outcomes,
-                                        eval_res,
-                                        "confirming",
-                                        wait_until=(
-                                            float(confirming_since) + stop_confirmation_minutes * 60
-                                            if isinstance(confirming_since, (int, float))
-                                            else None
-                                        ),
-                                    )
-                                    if confirmation_reason == "started" and confirmation_state:
-                                        await self._persist_audit_event(
-                                            session,
-                                            acc,
-                                            event_type="STOP_CONFIRMATION_STARTED",
-                                            status="WAITING",
-                                            category="RULE_ENGINE",
-                                            evaluation=eval_res,
-                                            action=RuleAction.STOP.value,
-                                            message=(
-                                                "A STOP candidate was found. Buyerly will re-check the "
-                                                f"metrics within {stop_confirmation_minutes} min."
-                                            ),
-                                            before_state=observed_state,
-                                            after_state=desired_state,
-                                            details={
-                                                "confirmation_minutes": stop_confirmation_minutes,
-                                                "execution_key": confirmation_state.execution_key,
-                                            },
-                                        )
-                                    continue
-
-                            claimed, claim_reason, execution_state = await self._claim_execution(
-                                session,
-                                acc,
-                                eval_res,
-                                observed_state=observed_state,
-                                desired_state=desired_state,
-                                now=now,
-                            )
-                            if not claimed:
-                                stats["actions_skipped"] += 1
-                                if claim_reason == "reconciled":
-                                    stats["actions_reconciled"] += 1
-                                    self._note_outcome(
-                                        outcomes,
-                                        eval_res,
-                                        "fired",
-                                        acted_at=execution_state.last_success_at,
-                                    )
-                                elif claim_reason == "cooldown":
-                                    self._note_outcome(
-                                        outcomes,
-                                        eval_res,
-                                        "cooldown",
-                                        wait_until=(
-                                            float(execution_state.last_success_at or now)
-                                            + max(0, int(eval_res.cooldown_minutes or 0)) * 60
-                                        ),
-                                    )
-                                else:
-                                    self._note_outcome(outcomes, eval_res, "pending")
-                                if claim_reason in {"cooldown", "pending", "reconciled"}:
-                                    await self._persist_audit_event(
-                                        session,
-                                        acc,
-                                        event_type=(
-                                            "RULE_ACTION_RECONCILED"
-                                            if claim_reason == "reconciled"
-                                            else "RULE_ACTION_COOLDOWN"
-                                            if claim_reason == "cooldown"
-                                            else "RULE_ACTION_PENDING"
-                                        ),
-                                        status="SUCCESS" if claim_reason == "reconciled" else "SKIPPED",
-                                        evaluation=eval_res,
-                                        action=eval_res.action.value,
-                                        message={
-                                            "cooldown": f"Action skipped: cooldown {eval_res.cooldown_minutes} min.",
-                                            "pending": "The action already started in a previous cycle; the duplicate was blocked.",
-                                            "reconciled": "The previous action's result was confirmed against Meta's current state.",
-                                        }[claim_reason],
-                                        before_state=observed_state,
-                                        after_state=desired_state,
-                                        details={
-                                            "claim_reason": claim_reason,
-                                            "execution_key": execution_state.execution_key,
-                                        },
-                                    )
-                                continue
-
-                            if shadow is not None:
-                                shadow.acted(eval_res, observed_state, desired_state)
-
-                            # STOP the ad set
-                            if eval_res.action == RuleAction.STOP:
-                                action_started = time.perf_counter()
-                                try:
-                                    await self._apply_entity_status(
-                                        session,
-                                        acc,
-                                        eval_res,
-                                        access_token=access_token,
-                                        status="PAUSED",
-                                    )
-                                    stats[f"{self._stats_noun(eval_res)}_stopped"] += 1
-                                    logger.info(f"STOPPED {eval_res.entity_level}: {a_id} ({eval_res.entity_name}) - {eval_res.reason}")
-
-                                    try:
-                                        await self._record_stopped_adset(session, acc, eval_res)
-                                    except Exception as db_error:
-                                        await session.rollback()
-                                        logger.error(f"Failed to persist stopped adset {a_id}: {db_error}")
-                                        stats["errors"].append(f"Stopped-adset persistence error {a_id}: {db_error}")
-
-                                    self._finish_execution(
-                                        execution_state,
-                                        status="SUCCESS",
-                                        now=now,
-                                    )
-                                    await self._persist_audit_event(
-                                        session,
-                                        acc,
-                                        event_type="STOP",
-                                        status="SUCCESS",
-                                        evaluation=eval_res,
-                                        before_state={"status": adset.get("status", "ACTIVE")},
-                                        after_state={"status": "PAUSED"},
-                                        duration_ms=(time.perf_counter() - action_started) * 1000,
-                                    )
-                                    await self._reflect_status(session, acc, eval_res, "PAUSED")
-
-                                except Exception as e:
-                                    logger.error(f"Error pausing adset {a_id}: {e}")
-                                    if isinstance(e, PermissionError):
-                                        token_error = e
-                                    stats["errors"].append(f"Pause error {a_id}: {e}")
-                                    self._finish_execution(
-                                        execution_state,
-                                        status="ERROR",
-                                        now=now,
-                                        details={"error": str(e)},
-                                    )
-                                    await self._persist_audit_event(
-                                        session,
-                                        acc,
-                                        event_type="STOP",
-                                        status="ERROR",
-                                        evaluation=eval_res,
-                                        message=str(e),
-                                        before_state={"status": adset.get("status", "UNKNOWN")},
-                                        after_state={"status": adset.get("status", "UNKNOWN")},
-                                        duration_ms=(time.perf_counter() - action_started) * 1000,
-                                    )
-
-                            # NOTIFICATION ONLY (send notification only)
-                            elif eval_res.action == RuleAction.NOTIFY_ONLY:
-                                logger.info(f"NOTIFY ONLY {eval_res.entity_level}: {a_id} ({eval_res.entity_name}) - {eval_res.reason}")
-                                self._finish_execution(
-                                    execution_state,
-                                    status="SUCCESS",
-                                    now=now,
-                                )
-                                await self._persist_audit_event(
-                                    session,
-                                    acc,
-                                    event_type="NOTIFY_ONLY",
-                                    status="SUCCESS",
-                                    evaluation=eval_res,
-                                    before_state={"status": adset.get("status", "UNKNOWN")},
-                                    after_state={"status": adset.get("status", "UNKNOWN")},
-                                )
-
-                            # OFFER TO TURN ON (late conversion)
-                            elif eval_res.action == RuleAction.PROPOSE_REACTIVATE:
-                                stats["proposals_sent"] += 1
-                                logger.info(f"PROPOSE REACTIVATE {eval_res.entity_level}: {a_id} ({eval_res.entity_name}) - {eval_res.reason}")
-                                self._finish_execution(
-                                    execution_state,
-                                    status="SUCCESS",
-                                    now=now,
-                                )
-                                await self._persist_audit_event(
-                                    session,
-                                    acc,
-                                    event_type="PROPOSE_REACTIVATE",
-                                    status="SUCCESS",
-                                    evaluation=eval_res,
-                                    before_state={"status": adset.get("status", "UNKNOWN")},
-                                    after_state={"status": adset.get("status", "UNKNOWN")},
-                                )
-
-
-                            # AUTO TURN-ON
-                            elif eval_res.action == RuleAction.AUTO_REACTIVATE:
-                                action_started = time.perf_counter()
-                                try:
-                                    await self._apply_entity_status(
-                                        session,
-                                        acc,
-                                        eval_res,
-                                        access_token=access_token,
-                                        status="ACTIVE",
-                                    )
-                                    stats[f"{self._stats_noun(eval_res)}_reactivated"] += 1
-
-                                    try:
-                                        if eval_res.is_adset:
-                                            await self._resolve_stopped_adset(session, a_id)
-                                    except Exception as db_error:
-                                        await session.rollback()
-                                        logger.error(f"Failed to resolve stopped adset {a_id}: {db_error}")
-                                        stats["errors"].append(f"Stopped-adset resolution error {a_id}: {db_error}")
-
-                                    self._finish_execution(
-                                        execution_state,
-                                        status="SUCCESS",
-                                        now=now,
-                                    )
-                                    await self._persist_audit_event(
-                                        session,
-                                        acc,
-                                        event_type="AUTO_REACTIVATE",
-                                        status="SUCCESS",
-                                        evaluation=eval_res,
-                                        before_state={"status": adset.get("status", "PAUSED")},
-                                        after_state={"status": "ACTIVE"},
-                                        duration_ms=(time.perf_counter() - action_started) * 1000,
-                                    )
-                                    await self._reflect_status(session, acc, eval_res, "ACTIVE")
-
-                                    logger.info(f"AUTO REACTIVATED {eval_res.entity_level}: {a_id} ({eval_res.entity_name})")
-
-                                except Exception as e:
-                                    logger.error(f"Error auto-reactivating adset {a_id}: {e}")
-                                    if isinstance(e, PermissionError):
-                                        token_error = e
-                                    stats["errors"].append(f"Auto-reactivate error {a_id}: {e}")
-                                    self._finish_execution(
-                                        execution_state,
-                                        status="ERROR",
-                                        now=now,
-                                        details={"error": str(e)},
-                                    )
-                                    await self._persist_audit_event(
-                                        session,
-                                        acc,
-                                        event_type="AUTO_REACTIVATE",
-                                        status="ERROR",
-                                        evaluation=eval_res,
-                                        message=str(e),
-                                        before_state={"status": adset.get("status", "UNKNOWN")},
-                                        after_state={"status": adset.get("status", "UNKNOWN")},
-                                        duration_ms=(time.perf_counter() - action_started) * 1000,
-                                    )
-
-                            # BUDGET INCREASE
-                            elif eval_res.action == RuleAction.INCREASE_BUDGET:
-                                action_started = time.perf_counter()
-                                try:
-                                    await self._update_budget(
-                                        acc,
-                                        eval_res,
-                                        access_token=access_token,
-                                        new_budget=new_budget,
-                                    )
-                                    stats["budgets_changed"] += 1
-                                    self._finish_execution(execution_state, status="SUCCESS", now=now)
-                                    await self._persist_audit_event(
-                                        session,
-                                        acc,
-                                        event_type="INCREASE_BUDGET",
-                                        status="SUCCESS",
-                                        evaluation=eval_res,
-                                        before_state={"daily_budget": current_budget},
-                                        after_state={"daily_budget": new_budget},
-                                        duration_ms=(time.perf_counter() - action_started) * 1000,
-                                    )
-                                except Exception as e:
-                                    logger.error(f"Error increasing budget for adset {a_id}: {e}")
-                                    if isinstance(e, PermissionError):
-                                        token_error = e
-                                    stats["errors"].append(f"Budget increase error {a_id}: {e}")
-                                    self._finish_execution(
-                                        execution_state,
-                                        status="ERROR",
-                                        now=now,
-                                        details={"error": str(e)},
-                                    )
-                                    await self._persist_audit_event(
-                                        session,
-                                        acc,
-                                        event_type="INCREASE_BUDGET",
-                                        status="ERROR",
-                                        evaluation=eval_res,
-                                        message=str(e),
-                                        before_state={"daily_budget": current_budget},
-                                        after_state={"daily_budget": current_budget},
-                                        duration_ms=(time.perf_counter() - action_started) * 1000,
-                                    )
-
-                            # BUDGET DECREASE
-                            elif eval_res.action == RuleAction.DECREASE_BUDGET:
-                                action_started = time.perf_counter()
-                                try:
-                                    await self._update_budget(
-                                        acc,
-                                        eval_res,
-                                        access_token=access_token,
-                                        new_budget=new_budget,
-                                    )
-                                    stats["budgets_changed"] += 1
-                                    self._finish_execution(execution_state, status="SUCCESS", now=now)
-                                    await self._persist_audit_event(
-                                        session,
-                                        acc,
-                                        event_type="DECREASE_BUDGET",
-                                        status="SUCCESS",
-                                        evaluation=eval_res,
-                                        before_state={"daily_budget": current_budget},
-                                        after_state={"daily_budget": new_budget},
-                                        duration_ms=(time.perf_counter() - action_started) * 1000,
-                                    )
-                                except Exception as e:
-                                    logger.error(f"Error decreasing budget for adset {a_id}: {e}")
-                                    if isinstance(e, PermissionError):
-                                        token_error = e
-                                    stats["errors"].append(f"Budget decrease error {a_id}: {e}")
-                                    self._finish_execution(
-                                        execution_state,
-                                        status="ERROR",
-                                        now=now,
-                                        details={"error": str(e)},
-                                    )
-                                    await self._persist_audit_event(
-                                        session,
-                                        acc,
-                                        event_type="DECREASE_BUDGET",
-                                        status="ERROR",
-                                        evaluation=eval_res,
-                                        message=str(e),
-                                        before_state={"daily_budget": current_budget},
-                                        after_state={"daily_budget": current_budget},
-                                        duration_ms=(time.perf_counter() - action_started) * 1000,
-                                    )
-
-                            if execution_state.status == "SUCCESS":
-                                cooldown_seconds = max(0, int(eval_res.cooldown_minutes or 0)) * 60
-                                self._note_outcome(
-                                    outcomes,
-                                    eval_res,
-                                    "fired",
-                                    acted_at=now,
-                                    wait_until=now + cooldown_seconds if cooldown_seconds else None,
-                                )
-                            elif execution_state.status == "ERROR":
-                                self._note_outcome(
-                                    outcomes,
-                                    eval_res,
-                                    "error",
-                                    detail=str(
-                                        self._json_dict(execution_state.details).get("error")
-                                        or "Meta rejected the action"
-                                    ),
-                                )
-
-                    if shadow is not None:
-                        shadow.finish(rule_outcomes, stopped_early=token_error is not None)
-                    await self._save_rule_states(
-                        session,
-                        acc,
-                        rule_outcomes,
-                        checked_rule_ids={
-                            rule["preset_id"]
-                            for rule in due_rules
-                            if isinstance(rule.get("preset_id"), int)
-                        },
-                        attached_rule_ids={
-                            rule["preset_id"]
-                            for rule in self._load_rules(
-                                acc.active_rules, workspace_id=acc.workspace_id
-                            )
-                            if isinstance(rule.get("preset_id"), int)
-                        },
-                        now=now,
-                    )
-                    if token_error is not None:
-                        # Without this the account looked healthy until the
-                        # next read failed, and every check retried the write.
-                        await self._handle_token_error(
-                            session,
-                            acc,
-                            token_error,
-                            connection_cache,
-                        )
-                        await self._set_account_health(
-                            session,
-                            acc,
-                            success=False,
-                            emit_transition_event=False,
-                            error=token_error,
-                            cause="user",
-                            signals={"token_healthy": False},
-                        )
 
                 except Exception as e:
                     logger.error(f"Error processing account {account_ref}: {e}")

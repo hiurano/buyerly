@@ -8,6 +8,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from core.runtime import configure_logging
 from core.worker_jobs import exclusive, ts_worker_jobs
 from database.sync_log import run_sync_log_compaction_tick
+from rules.shadow_replay import replay_pending as replay_rules_shadow
 from scheduler.worker import MonitoringWorker
 from services.inbox_email import run_inbox_email_tick
 from services.inbox_push import run_inbox_push_tick
@@ -83,6 +84,24 @@ async def main() -> None:
         # The deploy and the post-deploy smoke wait for this file; the cycle
         # itself runs on the TypeScript worker.
         day_boundary_cycle_file.touch()
+    if "monitoring" in owned_by_ts:
+        # The reverse shadow run (#611 stage 4): the TypeScript cycle acts and
+        # leaves its decision inputs; Python decides on them without acting
+        # and leaves a capture for worker-ts to compare (rules/shadow_replay.py).
+        async def run_rules_shadow_replay_tick() -> None:
+            stats = await replay_rules_shadow()
+            if stats["requests"]:
+                logger.info("Rules shadow replay: %s", stats)
+
+        scheduler.add_job(
+            run_rules_shadow_replay_tick,
+            "interval",
+            seconds=30,
+            id="rules_shadow_replay_job",
+            next_run_time=datetime.now(timezone.utc),
+            max_instances=1,
+            coalesce=True,
+        )
     for job_id, run, interval in shared_jobs:
         if job_id in owned_by_ts:
             logger.info("Job %s runs on the TypeScript worker (TS_WORKER_JOBS)", job_id)

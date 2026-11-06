@@ -66,6 +66,9 @@ export interface Config {
   // Where Python's monitoring cycle leaves the rules engine's captures for
   // the shadow run (rules/shadow.py, rules/shadow.ts); both workers mount it.
   rulesShadowDir: string;
+  // RULES_SHADOW_REPLAY_DIR: where the rule cycle leaves its decision inputs
+  // for the Python worker to decide on (the reverse shadow run).
+  rulesShadowReplayDir: string;
   // Meta (core/config.py): the pinned Graph API version and origin (the fake
   // Meta on the local stack), the app and its Facebook Login for Business
   // configuration, and the Fernet keys stored Meta tokens are encrypted with
@@ -149,6 +152,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     redisUrl: (env.REDIS_URL ?? '').trim(),
     tsWorkerJobs: env.TS_WORKER_JOBS ?? '',
     rulesShadowDir: (env.RULES_SHADOW_DIR ?? '').trim(),
+    rulesShadowReplayDir: (env.RULES_SHADOW_REPLAY_DIR ?? '').trim(),
     metaGraphVersion: env.META_GRAPH_VERSION || 'v26.0',
     metaGraphBaseUrl: env.META_GRAPH_BASE_URL || 'https://graph.facebook.com',
     metaAppId: env.META_APP_ID ?? '',

@@ -2,7 +2,10 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { gunzipSync } from 'node:zlib';
 import Fastify from 'fastify';
 import type { DataSource } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -10,6 +13,7 @@ import { databaseOver } from '../../src/database.ts';
 import { AccountEntity } from '../../src/entities/index.ts';
 import { MetaClient } from '../../src/meta/client.ts';
 import { PostgresInventoryCache } from '../../src/meta/inventory-cache.ts';
+import { type Capture, compareCapture } from '../../src/rules/shadow.ts';
 import { campaignEntities, entityWindows, RuleCycle, windowsByLevel } from '../../src/worker/rule-cycle.ts';
 import { createUser, createWorkspace, testDatabase } from '../support/db.ts';
 import { DATABASE_URL } from '../support/target.ts';
@@ -373,19 +377,21 @@ describe.skipIf(!DATABASE_URL)('the rule cycle on the database', () => {
     await reset();
     const pythonDatabase = DATABASE_URL.replace(/^postgres(ql)?:/, 'postgresql+asyncpg:');
     // Not spawnSync: the Graph API answering Python runs in this process.
-    const run = await new Promise<{ status: number | null; stdout: string; stderr: string }>((resolve) => {
-      const child = spawn(PYTHON, [join(REPO, 'server/test/worker/rule_cycle_parity.py')], {
-        cwd: REPO,
-        env: { ...process.env, PYTHONPATH: REPO, DATABASE_URL: pythonDatabase, META_GRAPH_BASE_URL: graph.url(), META_APP_SECRET: 'parity-secret', META_TOKEN_ENCRYPTION_KEY: KEY },
+    const python = (script: string, env: Record<string, string>, input: unknown) =>
+      new Promise<{ status: number | null; stdout: string; stderr: string }>((resolve) => {
+        const child = spawn(PYTHON, [join(REPO, 'server/test/worker', script)], {
+          cwd: REPO,
+          env: { ...process.env, PYTHONPATH: REPO, DATABASE_URL: pythonDatabase, META_GRAPH_BASE_URL: graph.url(), META_APP_SECRET: 'parity-secret', META_TOKEN_ENCRYPTION_KEY: KEY, ...env },
+        });
+        let stdout = '';
+        let stderr = '';
+        child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()));
+        child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
+        child.on('error', (error) => resolve({ status: null, stdout, stderr: String(error) }));
+        child.on('close', (status) => resolve({ status, stdout, stderr }));
+        child.stdin.end(JSON.stringify(input));
       });
-      let stdout = '';
-      let stderr = '';
-      child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()));
-      child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
-      child.on('error', (error) => resolve({ status: null, stdout, stderr: String(error) }));
-      child.on('close', (status) => resolve({ status, stdout, stderr }));
-      child.stdin.end(JSON.stringify({ clocks: CLOCKS, account_ids: accountIds }));
-    });
+    const run = await python('rule_cycle_parity.py', {}, { clocks: CLOCKS, account_ids: accountIds });
     if (run.status !== 0) {
       if (process.env.CI) throw new Error(`Python failed: ${run.stderr}`);
       return;
@@ -396,7 +402,10 @@ describe.skipIf(!DATABASE_URL)('the rule cycle on the database', () => {
     await reset();
     const db = databaseOver(dataSource);
     let now = CLOCK;
+    const shadowRoot = await mkdtemp(join(tmpdir(), 'rules-reverse-shadow-'));
+    const shadow = { captures: join(shadowRoot, 'captures'), requests: join(shadowRoot, 'requests') };
     const cycle = new RuleCycle({
+      shadow,
       db,
       log,
       tokenEncryptionKey: KEY,
@@ -435,5 +444,30 @@ describe.skipIf(!DATABASE_URL)('the rule cycle on the database', () => {
     expect(ours.accounts.find((row) => row.account_id === ids(3))).toMatchObject({ is_active: false });
     expect(ours.meta.find((row) => row.id === `${ids(1)}_s4`)).toMatchObject({ status: 'PAUSED' });
     expect(ourStats.some((stats) => (stats.errors as string[]).some((error) => error.includes('window')))).toBe(true);
-  }, 120_000);
+
+    // The reverse shadow run: Python decides on what each TypeScript check
+    // saw (rules/shadow_replay.py), and the comparison of #670 finds the
+    // two decisions the same.
+    try {
+      const requests = (await readdir(shadow.requests)).filter((name) => name.endsWith('.json.gz'));
+      expect(requests.length).toBeGreaterThan(0);
+      const replay = await python('rule_replay_parity.py', { RULES_SHADOW_DIR: shadow.captures, RULES_SHADOW_REPLAY_DIR: shadow.requests, RULES_SHADOW_MAX_FILES: '100000' }, {});
+      expect(replay.status, replay.stderr).toBe(0);
+      expect(JSON.parse(replay.stdout)).toEqual({ requests: requests.length, captures: requests.length, errors: 0 });
+      expect(await readdir(shadow.requests)).toEqual([]);
+      const captures = (await readdir(shadow.captures)).filter((name) => name.endsWith('.json.gz'));
+      expect(captures).toHaveLength(requests.length);
+      let actions = 0;
+      for (const name of captures) {
+        const capture = JSON.parse(gunzipSync(await readFile(join(shadow.captures, name))).toString()) as Capture;
+        const comparison = compareCapture(capture);
+        expect(comparison.differences.filter((difference) => !difference.explained), name).toEqual([]);
+        expect(comparison.outcomesMatched, name).toBe(comparison.outcomes);
+        actions += comparison.actionsPython;
+      }
+      expect(actions).toBeGreaterThan(0);
+    } finally {
+      await rm(shadowRoot, { recursive: true, force: true });
+    }
+  }, 180_000);
 });
