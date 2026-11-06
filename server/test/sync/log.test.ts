@@ -1,5 +1,6 @@
 import type { DataSource } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { AuditEventEntity } from '../../src/entities/index.ts';
 import type { ActingMember } from '../../src/workspaces/access.ts';
 import { changesSince, memberSyncGroups } from '../../src/sync/log.ts';
 import { testDatabase } from '../support/db.ts';
@@ -143,7 +144,7 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
     expect(latest.every((entry) => entry.action === 'update' && JSON.stringify(entry.data) === '{"note":"bulk"}')).toBe(true);
 
     const [team] = await db.query<{ id: number }[]>(`INSERT INTO teams (workspace_id, name, key, created_at, updated_at) VALUES ($1, 'Doomed', $2, now(), now()) RETURNING id`, [ws.id, `D${Math.floor(Math.random() * 1e5)}`]);
-    await db.query('INSERT INTO team_members (team_id, member_id, joined_at) VALUES ($1, $2, now()), ($1, $3)', [team.id, members.buyer.id, members.guest.id]);
+    await db.query('INSERT INTO team_members (team_id, member_id, joined_at) VALUES ($1, $2, now()), ($1, $3, now())', [team.id, members.buyer.id, members.guest.id]);
     await db.query('INSERT INTO team_accounts (team_id, account_id, created_at) VALUES ($1, $2, now())', [team.id, accounts.loose.id]);
     const [mark] = await db.query<{ max: string | null }[]>('SELECT max(id) FROM sync_actions');
     await db.query('DELETE FROM teams WHERE id = $1', [team.id]);
@@ -195,11 +196,9 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
     });
 
     // An Inbox event follows its ad account; the member's state on it is theirs.
-    const [event] = await db.query<{ id: number }[]>(
-      `INSERT INTO audit_events (workspace_id, event_type, account_id, actor_type) VALUES ($1, 'RULE_STOP', $2, 'system') RETURNING id`,
-      [ws.id, accounts.hidden.accountId],
-    );
-    const [loose] = await db.query<{ id: number }[]>(`INSERT INTO audit_events (workspace_id, event_type, actor_type) VALUES ($1, 'TOKEN_ERROR', 'system') RETURNING id`, [ws.id]);
+    const events = db.getRepository(AuditEventEntity);
+    const event = await events.save(events.create({ workspaceId: ws.id, eventType: 'RULE_STOP', accountId: accounts.hidden.accountId }));
+    const loose = await events.save(events.create({ workspaceId: ws.id, eventType: 'TOKEN_ERROR' }));
     await db.query(`INSERT INTO inbox_notification_states (user_id, audit_event_id, is_read) VALUES ($1, $2, true)`, [users.owner.id, event.id]);
     expect((await last('InboxEvent', event.id)).sync_groups).toEqual([`team:${teams.private.id}`]);
     expect((await last('InboxEvent', loose.id)).sync_groups).toEqual([`workspace:${ws.id}:members`]);
@@ -209,7 +208,10 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
 
   it('gives a member groups by role and teams', async () => {
     const { ws, members, teams } = world;
-    const groupsOf = (who: 'owner' | 'buyer' | 'guest') => db.transaction((tx) => memberSyncGroups(tx, acting(who)));
+    const ours = new Set([teams.public.id, teams.private.id].map((id) => `team:${id}`));
+    // Other tests of this file leave teams of their own behind.
+    const groupsOf = async (who: 'owner' | 'buyer' | 'guest') =>
+      (await db.transaction((tx) => memberSyncGroups(tx, acting(who)))).filter((group) => !group.startsWith('team:') || ours.has(group));
     expect(await groupsOf('owner')).toEqual([
       `workspace:${ws.id}`, `workspace:${ws.id}:members`, `member:${members.owner.id}`, `team:${teams.public.id}`, `team:${teams.private.id}`,
     ].sort());
