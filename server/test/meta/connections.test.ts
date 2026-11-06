@@ -131,6 +131,21 @@ describe.skipIf(!DATABASE_URL)('Meta connections, on both servers', () => {
     expect(dead.headers.location).toBe('https://buyerly.test/connect/meta/inv_fb_dead?meta_status=invite_invalid');
   });
 
+  it('answers the settings check only to a signed-in person', async () => {
+    expect((await new Browser(target).get('/api/meta/oauth/config')).status).toBe(401);
+    const { ws, ownerUser } = await world(target, db);
+    const browser = new Browser(target, { 'x-workspace-slug': ws.slug });
+    expect((await browser.signIn(ownerUser.email!)).status).toBe(200);
+    const answer = await browser.get('/api/meta/oauth/config');
+    expect(answer.status).toBe(200);
+    expect(answer.json()).toEqual({
+      configured: false,
+      checks: { app_id: false, app_secret: false, login_config_id: false, redirect_uri: false, encryption_key: false },
+      graph_version: 'v26.0',
+      redirect_uri: '',
+    });
+  });
+
   it('turns a callback without a usable state back to the app', async () => {
     const browser = new Browser(target);
     const location = async (query: string) => {
