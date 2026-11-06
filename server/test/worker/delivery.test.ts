@@ -314,7 +314,7 @@ describe.skipIf(!DATABASE_URL)('Inbox deliveries on the database', { timeout: 60
   async function emailed(w: Awaited<ReturnType<typeof world>>) {
     const sent: EmailMessage[] = [];
     await deliverInboxEmails({ db, log, webappUrl: 'https://buyerly.test', now: w.now, sendEmail: async (message) => { sent.push(message); return true; }, pauseMs: 0 });
-    const by = (user: UserEntity) => sent.filter((message) => message.to === user.email).map((message) => message.text?.split('\n')[2] ?? '').sort();
+    const by = (user: UserEntity) => sent.filter((message) => message.to === user.email).map((message) => message.text?.split('\n\n')[1] ?? '').sort();
     return { owner: by(w.owner), buyer: by(w.buyer) };
   }
   const setMember = (w: Awaited<ReturnType<typeof world>>, who: 'ownerMember' | 'buyerMember', values: Partial<WorkspaceMemberEntity>) =>
