@@ -77,7 +77,7 @@ META_GRAPH_VERSION=v26.0
 затем токены переводятся на новый ключ:
 
 ```bash
-docker compose exec api python -m scripts.rotate_meta_tokens
+docker compose exec api node server/dist/meta/rotate-tokens.js
 ```
 
 `RESEND_API_KEY`, `TELEGRAM_BOT_TOKEN` и `TURNSTILE_SECRET_KEY` хранятся в

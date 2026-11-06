@@ -3,7 +3,7 @@ import { connectDatabase, type Database } from '../database.ts';
 import { MetaTokenKeyring, rotateStoredMetaTokens, type RotationStats } from './tokens.ts';
 
 // Re-encrypt every stored Meta token with the primary key of
-// META_TOKEN_ENCRYPTION_KEY (scripts/rotate_meta_tokens.py): after a new key
+// META_TOKEN_ENCRYPTION_KEY (it replaced scripts/rotate_meta_tokens.py): after a new key
 // is prepended, run it once, then the old key can be dropped. The worker can
 // run the same function on a schedule (rotateMetaTokens).
 //
