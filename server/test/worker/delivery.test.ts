@@ -217,7 +217,8 @@ describe.skipIf(!DATABASE_URL)('Inbox deliveries on the database', { timeout: 60
     const mine = sent.filter((message) => [w.owner.email, w.buyer.email].includes(message.to));
     expect(mine.map((message) => message.to).sort()).toEqual([w.owner.email, w.owner.email].sort());
     expect(count).toBeGreaterThanOrEqual(2);
-    expect(mine[0].subject).toBe('Turned off: Account');
+    // Oldest first: the alert (12 min ago), then the stop (10 min ago).
+    expect(mine.map((message) => message.subject)).toEqual(['Rule alert: Account', 'Turned off: Account']);
     expect(mine.some((message) => (message.text ?? "").includes(`https://buyerly.test/${w.workspace.slug}/inbox/${alert}`))).toBe(true);
     const rows = await deliveries('inbox_email_deliveries', [due, tooFresh, tooOld, alert]);
     expect(rows.map((row) => [row.user_id, row.audit_event_id])).toEqual([[w.owner.id, due], [w.owner.id, alert]]);
