@@ -11,6 +11,9 @@ import { publishSyncBus } from '../sync/bus.ts';
 import { compactSyncLog } from '../sync/compaction.ts';
 import { SHARED_JOBS, parseJobList, withJobLock, type JobId } from './jobs.ts';
 import { runDayBoundaryCycle } from './day-boundary.ts';
+import { AccountSync } from './account-sync.ts';
+import { MetaClient } from '../meta/client.ts';
+import { PostgresInventoryCache } from '../meta/inventory-cache.ts';
 import { CHECK_INTERVAL_MS, checkOnce } from './watchdog.ts';
 import { RUNS_KEY, startScheduler, type JobDefinition, type RunRecord, type Scheduler } from './scheduler.ts';
 
@@ -34,16 +37,38 @@ export interface WorkerContext {
   owned: ReadonlySet<JobId>;
   // Runs a job under its advisory lock (jobs.ts withJobLock); false when held elsewhere.
   exclusive: (job: JobId, run: () => Promise<void>) => Promise<boolean>;
+  metaFetch?: typeof fetch;
 }
 
 // What the jobs talk to outside the database; tests replace them.
-export type WorkerServices = Pick<WorkerContext, 'sendEmail' | 'telegram' | 'sendPush'>;
+export type WorkerServices = Pick<WorkerContext, 'sendEmail' | 'telegram' | 'sendPush'> & {
+  // Requests to the Meta Graph API.
+  metaFetch: typeof fetch;
+};
 
 // Every job this worker can run, with the Python worker's interval. A job
 // listed in TS_WORKER_JOBS that is not here yet stops the start, so a deploy
 // that names it fails and rolls back instead of leaving it run by no one.
 export function jobDefinitions(context: WorkerContext): Partial<Record<JobId, JobDefinition>> {
   const { db, log, config } = context;
+  // One sync for the worker's life: it remembers which closed days it re-read.
+  let sync: AccountSync | null = null;
+  const accountSync = (): AccountSync => {
+    sync ??= new AccountSync({
+      db,
+      log,
+      tokenEncryptionKey: config.metaTokenEncryptionKey,
+      meta: new MetaClient({
+        graphVersion: config.metaGraphVersion,
+        baseUrl: config.metaGraphBaseUrl,
+        appSecret: config.metaAppSecret,
+        log,
+        ...(context.metaFetch ? { fetch: context.metaFetch } : {}),
+        cacheProvider: new PostgresInventoryCache(db, log),
+      }),
+    });
+    return sync;
+  };
   const delivery = { db, log, webappUrl: config.webappUrl };
   const deliveries = {
     inbox_email: {
@@ -87,6 +112,15 @@ export function jobDefinitions(context: WorkerContext): Partial<Record<JobId, Jo
       run: async () => {
         const stats = await runDayBoundaryCycle(db, log);
         if (stats.days_notified || stats.errors.length) log.info({ ...stats, errors: stats.errors.length }, 'Account day boundary cycle');
+      },
+    },
+    // Every minute: account details, analytics facts, the inventory cache and
+    // account health (the data half of the monitoring cycle).
+    account_sync: {
+      everyMs: 60_000,
+      run: async () => {
+        const stats = await accountSync().run();
+        if (stats.accounts_synced || stats.errors.length) log.info({ ...stats, errors: stats.errors.length }, 'Account sync cycle');
       },
     },
     // Every minute, as the API's loop did (services/worker_watchdog.py).
@@ -138,6 +172,7 @@ export function buildWorker(config: Config, dataSource: DataSource, services: Pa
     sendPush: services.sendPush !== undefined ? services.sendPush : vapid ? pushSender(vapid, config.vapidSubject) : null,
     owned: jobs,
     exclusive: (job, run) => withJobLock(dataSource, job, run),
+    ...(services.metaFetch ? { metaFetch: services.metaFetch } : {}),
   };
   const definitions = jobDefinitions(context);
   const missing = [...jobs].filter((job) => !definitions[job]);

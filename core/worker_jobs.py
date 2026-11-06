@@ -33,6 +33,7 @@ SHARED_JOBS = {
     "sync_log_compaction": 4,
     "worker_watchdog": 5,
     "account_day_boundary": 6,
+    "account_sync": 7,
 }
 
 
