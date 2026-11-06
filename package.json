@@ -10,6 +10,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "changelog": "node server/src/scripts/build-changelog.ts",
     "lint": "eslint server packages/shared frontend/src frontend/sw",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm test --workspace @buyerly/server"

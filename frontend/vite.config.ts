@@ -81,7 +81,7 @@ function publicWebsite(): Plugin {
   };
   const stylesheet = '/static/css/legal.css';
   const publicDir = path.resolve(__dirname, 'public');
-  // One page per release, built by scripts/build_changelog.py (#435).
+  // One page per release, built by server/src/scripts/build-changelog.ts (#435).
   for (const file of fs.readdirSync(path.join(publicDir, 'changelog'))) {
     if (file.endsWith('.html')) routes[`/changelog/${file.slice(0, -5)}`] = `changelog/${file}`;
   }
