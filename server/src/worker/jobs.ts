@@ -23,6 +23,9 @@ export const SHARED_JOBS = {
   worker_watchdog: 5,
   account_day_boundary: 6,
   account_sync: 7,
+  // TypeScript only: the rules engine's shadow run (rules/shadow.ts). It
+  // compares what Python's monitoring cycle decided; nothing to move back.
+  rules_shadow: 8,
 } as const;
 
 export type JobId = keyof typeof SHARED_JOBS;
