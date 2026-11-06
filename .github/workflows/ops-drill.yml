@@ -16,6 +16,10 @@ name: Ops drill (manual)
 #   worker-stall      scripts/drill_worker_stall.sh: PAUSES the production
 #                     worker for about 8-10 minutes (no rule checks or actions
 #                     meanwhile) and checks /health/worker and the Inbox alert.
+#   account-sync-report  scripts/account_sync_report.sh: read-only counts of
+#                     what the account sync wrote per hour (facts, health,
+#                     events), to compare the hours before and after it moves
+#                     between the Python and the TypeScript worker (#611).
 #
 # None of them writes to the production database or the uploads volume.
 
@@ -33,6 +37,7 @@ on:
           - restore-offsite-negative
           - uploads
           - worker-stall
+          - account-sync-report
       confirm:
         description: Type the drill name again to confirm
         type: string
@@ -85,6 +90,7 @@ jobs:
               restore-offsite-negative) cmd="bash scripts/offsite_restore_drill.sh --negative" ;;
               uploads) cmd="bash scripts/drill_uploads.sh" ;;
               worker-stall) cmd="bash scripts/drill_worker_stall.sh" ;;
+              account-sync-report) cmd="bash scripts/account_sync_report.sh" ;;
               *) echo "Unknown drill"; exit 1 ;;
             esac
             if [ "$(id -u)" -ne 0 ]; then cmd="sudo -n ${cmd}"; fi
