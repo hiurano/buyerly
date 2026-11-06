@@ -8,6 +8,7 @@ import { databaseOver } from '../../src/database.ts';
 import { compactSyncLog } from '../../src/sync/compaction.ts';
 import { compactedThrough, lastSyncId, needsBootstrap } from '../../src/sync/log.ts';
 import { readConfig } from '../../src/config.ts';
+import { telegramBot } from '../../src/notifications/telegram.ts';
 import { buildWorker, jobDefinitions } from '../../src/worker/app.ts';
 import { LOCK_NAMESPACE, SHARED_JOBS, parseJobList, withJobLock } from '../../src/worker/jobs.ts';
 import { startScheduler, type RunRecord } from '../../src/worker/scheduler.ts';
@@ -37,7 +38,15 @@ describe('job ownership (TS_WORKER_JOBS)', () => {
   it('runs every job on the Python worker\'s interval', () => {
     const source = pythonSource('services/worker.py');
     const units: Record<string, number> = { seconds: 1000, minutes: 60_000, hours: 3_600_000 };
-    const definitions = jobDefinitions({ config: readConfig({}), db: databaseOver({ options: {} } as unknown as DataSource), log: Fastify().log });
+    const definitions = jobDefinitions({
+      config: readConfig({}),
+      db: databaseOver({ options: {} } as unknown as DataSource),
+      log: Fastify().log,
+      sendEmail: async () => true,
+      telegram: telegramBot('', Fastify().log),
+      sendPush: null,
+    });
+    expect(Object.keys(definitions).sort()).toEqual(['inbox_email', 'inbox_push', 'inbox_telegram', 'sync_log_compaction']);
     for (const [job, definition] of Object.entries(definitions)) {
       const match = new RegExp(`\\("${job}", \\w+, \\{"(\\w+)": (\\d+)\\}\\)`).exec(source);
       expect(match, `${job} in services/worker.py`).not.toBeNull();

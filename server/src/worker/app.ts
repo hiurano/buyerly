@@ -3,6 +3,10 @@ import { Redis } from 'ioredis';
 import type { DataSource } from 'typeorm';
 import type { Config } from '../config.ts';
 import { databaseOver, type Database } from '../database.ts';
+import { resendSender, type SendEmail } from '../email/send.ts';
+import { deliverInboxEmails, deliverInboxPush, deliverInboxTelegram } from '../notifications/delivery.ts';
+import { telegramBot, type TelegramBot } from '../notifications/telegram.ts';
+import { pushSender, vapidKey, type SendPush } from '../notifications/web-push.ts';
 import { compactSyncLog } from '../sync/compaction.ts';
 import { SHARED_JOBS, parseJobList, type JobId } from './jobs.ts';
 import { RUNS_KEY, startScheduler, type JobDefinition, type RunRecord, type Scheduler } from './scheduler.ts';
@@ -19,13 +23,46 @@ export interface WorkerContext {
   config: Config;
   db: Database;
   log: FastifyInstance['log'];
+  sendEmail: SendEmail;
+  telegram: TelegramBot;
+  // null without a VAPID key: desktop notifications are off.
+  sendPush: SendPush | null;
 }
+
+// What the jobs talk to outside the database; tests replace them.
+export type WorkerServices = Pick<WorkerContext, 'sendEmail' | 'telegram' | 'sendPush'>;
 
 // Every job this worker can run, with the Python worker's interval. A job
 // listed in TS_WORKER_JOBS that is not here yet stops the start, so a deploy
 // that names it fails and rolls back instead of leaving it run by no one.
 export function jobDefinitions(context: WorkerContext): Partial<Record<JobId, JobDefinition>> {
+  const { db, log, config } = context;
+  const delivery = { db, log, webappUrl: config.webappUrl };
   return {
+    inbox_email: {
+      everyMs: 60_000,
+      run: async () => {
+        const sent = await deliverInboxEmails({ ...delivery, sendEmail: context.sendEmail });
+        if (sent) log.info({ sent }, 'Sent Inbox notification emails');
+      },
+    },
+    // A push channel: new notifications go out within seconds, not after a pause.
+    inbox_telegram: {
+      everyMs: 20_000,
+      run: async () => {
+        if (!context.telegram.configured) return;
+        const sent = await deliverInboxTelegram({ ...delivery, telegram: context.telegram });
+        if (sent) log.info({ sent }, 'Sent Inbox notifications to Telegram');
+      },
+    },
+    inbox_push: {
+      everyMs: 20_000,
+      run: async () => {
+        if (!context.sendPush) return;
+        const sent = await deliverInboxPush({ ...delivery, sendPush: context.sendPush });
+        if (sent) log.info({ sent }, 'Sent Inbox notifications to desktops');
+      },
+    },
     // The sync log keeps SYNC_LOG_RETENTION_DAYS; a client further behind bootstraps again.
     sync_log_compaction: {
       everyMs: 24 * 60 * 60 * 1000,
@@ -50,10 +87,18 @@ export interface BuiltWorker {
   stop(): Promise<void>;
 }
 
-export function buildWorker(config: Config, dataSource: DataSource): BuiltWorker {
+export function buildWorker(config: Config, dataSource: DataSource, services: Partial<WorkerServices> = {}): BuiltWorker {
   const app = Fastify({ logger: { level: config.logLevel } });
   const db = databaseOver(dataSource);
-  const context: WorkerContext = { config, db, log: app.log };
+  const vapid = vapidKey(config.vapidPrivateKey, app.log);
+  const context: WorkerContext = {
+    config,
+    db,
+    log: app.log,
+    sendEmail: services.sendEmail ?? resendSender(config, app.log),
+    telegram: services.telegram ?? telegramBot(config.telegramBotToken, app.log),
+    sendPush: services.sendPush !== undefined ? services.sendPush : vapid ? pushSender(vapid, config.vapidSubject) : null,
+  };
 
   const { jobs, unknown } = parseJobList(config.tsWorkerJobs);
   if (unknown.length) throw new Error(`TS_WORKER_JOBS names unknown jobs: ${unknown.join(', ')}`);

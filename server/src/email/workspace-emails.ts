@@ -139,3 +139,32 @@ export function inviteAcceptedEmail(options: { to: string; memberName: string; m
   const text = [heading, '', paragraph, options.membersUrl, '', `Unsubscribe: ${options.settingsUrl}`].join('\n');
   return { to: options.to, subject: heading, html, text };
 }
+
+// core/email.py send_inbox_notification_email: one unread Inbox
+// notification, laid out like Linear's, with a link straight to it.
+export function inboxNotificationEmail(options: {
+  to: string;
+  workspaceName: string;
+  title: string;
+  target: string;
+  accountName: string;
+  message: string;
+  url: string;
+  settingsUrl: string;
+}): EmailMessage {
+  const heading = options.target ? `${options.title}: ${options.target}` : options.title;
+  const context = [options.accountName, options.workspaceName].filter((part) => part && part !== options.target).join(' · ');
+  const contextHtml = context
+    ? `<p style="margin:0 0 16px;font-size:13px;line-height:20px;color:#8B94A0;">${escapeHtml(context)}</p>`
+    : '';
+  const messageHtml = options.message
+    ? '<div style="margin:0 0 16px;padding:7px 12px;font-size:14px;line-height:21px;'
+      + `border-radius:4px;background-color:#F8F9FB;color:#3C4149;">${escapeHtml(options.message)}</div>`
+    : '';
+  const html = linearEmailHtml({ heading, bodyHtml: contextHtml + messageHtml, button: 'Open your Inbox', url: options.url, settingsUrl: options.settingsUrl });
+  const text = [heading];
+  if (context) text.push(context);
+  if (options.message) text.push('', options.message);
+  text.push('', `Open your Inbox: ${options.url}`, '', `Unsubscribe: ${options.settingsUrl}`);
+  return { to: options.to, subject: heading, html, text: text.join('\n') };
+}

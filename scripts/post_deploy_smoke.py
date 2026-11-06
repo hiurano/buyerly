@@ -166,6 +166,14 @@ def _worker_ts_health() -> dict:
     return payload
 
 
+def _worker_ts_outcomes(checks: list[dict]) -> dict:
+    for item in checks:
+        if item["name"] == "worker_ts_health" and item.get("details"):
+            jobs = item["details"].get("jobs") or {}
+            return {job: (run or {}).get("outcome") for job, run in jobs.items()}
+    return {}
+
+
 def _internal_contracts() -> dict:
     output = _command(
         "in-container production contracts",
@@ -261,6 +269,8 @@ def main() -> int:
         "release_sha": EXPECTED_SHA,
         "result_path": str(result_path),
         "failed_checks": [item["name"] for item in checks if not item["ok"]],
+        # What the TypeScript worker ran last (#611 stage 4), for the deploy log.
+        "worker_ts_jobs": _worker_ts_outcomes(checks),
     }, sort_keys=True))
     return 0 if payload["ok"] else 1
 
