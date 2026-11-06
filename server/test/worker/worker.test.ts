@@ -105,6 +105,9 @@ describe.skipIf(!DATABASE_URL)('job locks and the sync log compaction', () => {
     const db = databaseOver(first);
     const rollback = new Error('rollback');
     await expect(db.transaction(async (tx) => {
+      // Other test files write the log meanwhile; they wait for this rolled-back
+      // transaction, so what it compacts is only what it sees now.
+      await tx.query('LOCK TABLE sync_actions IN SHARE ROW EXCLUSIVE MODE');
       await tx.query("INSERT INTO sync_actions (model, model_id, action, data, sync_groups, sync_id) VALUES ('Workspace', '0', 'update', '{}', ARRAY['workspace:0'], nextval('sync_actions_sync_id_seq'))");
       const newest = await lastSyncId(tx);
       expect(newest).toBeGreaterThan(0);
@@ -114,8 +117,7 @@ describe.skipIf(!DATABASE_URL)('job locks and the sync log compaction', () => {
       expect(kept?.count).toBe(1);
       const dropped = await compactSyncLog(tx, new Date(Date.now() + 31 * 24 * 60 * 60 * 1000));
       expect(dropped).toBeGreaterThan(0);
-      // Entries other tests commit meanwhile get later sync ids (commit order), so only ours are counted.
-      const [left] = await tx.query<{ count: number }[]>('SELECT count(*)::int AS count FROM sync_actions WHERE sync_id IS NOT NULL AND sync_id <= $1', [newest]);
+      const [left] = await tx.query<{ count: number }[]>('SELECT count(*)::int AS count FROM sync_actions WHERE sync_id IS NOT NULL');
       expect(left?.count).toBe(0);
       expect(await compactedThrough(tx)).toBe(newest);
       expect(await needsBootstrap(tx, 0)).toBe(true);
