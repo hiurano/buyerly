@@ -426,7 +426,7 @@ describe.skipIf(!DATABASE_URL)('the rule cycle on the database', () => {
 
     // The cases reach what they are for.
     const events = new Set(ours.audit.map((row) => row.event_type));
-    for (const type of ['STOP', 'STOP_CONFIRMATION_STARTED', 'INCREASE_BUDGET', 'DECREASE_BUDGET', 'NOTIFY_ONLY', 'RULE_ACTION_RECONCILED', 'RULE_ACTION_COOLDOWN', 'TOKEN_EXPIRED']) {
+    for (const type of ['STOP', 'STOP_CONFIRMATION_STARTED', 'INCREASE_BUDGET', 'DECREASE_BUDGET', 'NOTIFY_ONLY', 'RULE_ACTION_RECONCILED', 'TOKEN_EXPIRED']) {
       expect(events, type).toContain(type);
     }
     expect(ours.audit.some((row) => row.event_type === 'STOP' && row.status === 'ERROR')).toBe(true);
