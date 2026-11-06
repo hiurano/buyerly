@@ -404,10 +404,10 @@ export class RuleCycle {
         state.is_new = false;
       } else {
         await tx.query(
-          `UPDATE rule_execution_states SET owner_user_id = $2, status = $9, correlation_id = $10, last_attempt_at = $11, last_success_at = $12,
-             before_state = $13, after_state = $14, details = $15, updated_at = now()
+          `UPDATE rule_execution_states SET owner_user_id = $2, status = $3, correlation_id = $4, last_attempt_at = $5, last_success_at = $6,
+             before_state = $7, after_state = $8, details = $9, updated_at = now()
            WHERE execution_key = $1`,
-          values,
+          [values[0], values[1], ...values.slice(8)],
         );
       }
     }
