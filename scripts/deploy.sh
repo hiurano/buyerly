@@ -256,6 +256,22 @@ ensure_generated_secrets
 ensure_repository_secrets
 FINAL_ENV_HASH=$(sha256sum .env 2>/dev/null || true)
 
+# The TypeScript port of the smoke (#611 stage 5) runs next to the Python one for
+# a release or two: it must report the same checks. It only logs; the Python
+# result still decides about the rollback. It runs in a throwaway container of
+# the release image (the host has no Node), with the Docker socket for the
+# docker inspect/exec checks, and writes to logs/smoke-ts.
+smoke_ts_shadow() {
+    local sha="$1" ts_out ts_status=0
+    mkdir -p "${APP_DIR}/logs/smoke-ts"
+    ts_out=$(docker run --rm --network host \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v "${APP_DIR}/logs/smoke-ts:/smoke" \
+        -e EXPECTED_SHA="${sha}" -e SMOKE_RESULT_DIR=/smoke \
+        "buyerly-app:${sha}" node server/dist/scripts/post-deploy-smoke.js 2>&1) || ts_status=$?
+    echo "[INFO] TypeScript smoke (shadow, exit ${ts_status}): $(printf '%s' "${ts_out}" | tail -n 1)"
+}
+
 PREVIOUS_SHA=""
 PREVIOUS_APP_TAG=$(docker inspect --format '{{.Config.Image}}' buyerly-api 2>/dev/null || true)
 if [[ "${PREVIOUS_APP_TAG}" =~ ^buyerly-app:([0-9a-f]{40})$ ]]; then
@@ -269,6 +285,7 @@ if [[ -n "${EXPECTED_SHA}" && "${PREVIOUS_SHA}" == "${EXPECTED_SHA}" \
       && wait_for_container buyerly-api && wait_for_container buyerly-worker; then
     if APP_DIR="${APP_DIR}" EXPECTED_SHA="${EXPECTED_SHA}" \
           python3 "${SCRIPT_DIR}/post_deploy_smoke.py"; then
+        smoke_ts_shadow "${EXPECTED_SHA}" || true
         echo "[SUCCESS] Buyerly ${EXPECTED_SHA} is already deployed and healthy."
         exit 0
     fi
@@ -369,9 +386,11 @@ fi
 if ! APP_DIR="${APP_DIR}" EXPECTED_SHA="${TARGET_SHA}" \
     python3 "${SCRIPT_DIR}/post_deploy_smoke.py"; then
     echo "[ERROR] Post-deploy smoke failed; restoring the previous release."
+    smoke_ts_shadow "${TARGET_SHA}" || true
     rollback
     exit 1
 fi
+smoke_ts_shadow "${TARGET_SHA}" || true
 record_running_version "${TARGET_SHA}"
 if [[ "${TUNNEL_ENABLED}" == "true" ]] && ! public_edge_ok; then
     exit 1
