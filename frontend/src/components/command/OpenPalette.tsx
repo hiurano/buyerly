@@ -29,10 +29,10 @@ import { openSettings as openSettingsPage } from '@/lib/routing';
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, another palette. */
 const OPEN_LAYER_SELECTOR = [
-  '[role="dialog"]:not(.buyerly-menu-exit)',
-  '[role="alertdialog"]',
+  '[role="dialog"]:not(.buyerly-menu-exit):not([data-state="closed"])',
+  '[role="alertdialog"]:not([data-state="closed"])',
   '[role="menu"]:not([data-state="closed"])',
-  '[cmdk-root]',
+  '[cmdk-root]:not([data-state="closed"] *)',
 ].join(', ');
 
 function isTyping(): boolean {
