@@ -569,11 +569,11 @@ const styles = stylex.create({
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, a select. */
 const OPEN_LAYER_SELECTOR = [
-  '[role="dialog"]:not(.buyerly-menu-exit)',
-  '[role="alertdialog"]',
+  '[role="dialog"]:not(.buyerly-menu-exit):not([data-state="closed"])',
+  '[role="alertdialog"]:not([data-state="closed"])',
   '[role="menu"]:not([data-state="closed"])',
   '.buyerly-display-select-menu',
-  '[cmdk-root]',
+  '[cmdk-root]:not([data-state="closed"] *)',
 ].join(', ');
 
 function isTypingTarget(target: EventTarget | null): boolean {
