@@ -196,12 +196,15 @@ bash scripts/deploy.sh
 ([core/worker_jobs.py](../core/worker_jobs.py)). Значение по умолчанию задаёт
 `docker-compose.yml` в репозитории; известные задачи: `inbox_email`,
 `inbox_telegram`, `inbox_push`, `sync_log_compaction`, `worker_watchdog`, `account_day_boundary`,
-`account_sync`,
+`account_sync`, `monitoring`,
 `rules_shadow` (только TypeScript, см. ниже). `account_sync` — половина цикла мониторинга с данными: аккаунт из Meta
 (валюта, статус, часовой пояс), факты аналитики за сегодня и один закрытый день,
-здоровье аккаунта. Вторая половина — проверки правил и их действия в Meta
-(`monitoring_job`) — остаётся на Python до сравнения двух движков правил; кэш
-инвентаря ad sets пишет клиент Meta при чтениях правил.
+здоровье аккаунта. Вторая половина — `monitoring` (в журнале Python
+`monitoring_job`): проверки правил, их чтения и записи в Meta, история,
+слоты исполнения и состояния правил на сущностях
+([worker/rule-cycle.ts](../server/src/worker/rule-cycle.ts)); по умолчанию
+пока у Python, переключение — ниже. Кэш инвентаря ad sets пишет клиент Meta
+при чтениях правил.
 
 Одна задача никогда не выполняется дважды: каждый запуск держит свою
 advisory-блокировку Postgres, одну и ту же у обоих воркеров, и воркер, не

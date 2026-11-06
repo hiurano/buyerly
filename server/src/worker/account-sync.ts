@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyBaseLogger } from 'fastify';
 import type { EntityManager } from 'typeorm';
-import { recordAuditEvent } from '../audit/events.ts';
 import { rows, type Database } from '../database.ts';
 import { periodDates, daysBefore } from '../graphql/areas/accounts/clock.ts';
 import type { MetaClient } from '../meta/client.ts';
@@ -11,7 +10,8 @@ import { redactSecrets } from '../meta/redact.ts';
 import { MetaTokenKeyring, resolveAccountAccessToken } from '../meta/tokens.ts';
 import { canonicalTimezoneName, normalizeCurrency } from '../meta/units.ts';
 import { pyStr } from '../rules/validation.ts';
-import { errorText, recordAccountHealth, type HealthUpdate } from './account-health.ts';
+import { errorText, type HealthUpdate } from './account-health.ts';
+import { handleTokenError, persistMonitoringEvent, setMonitoredHealth } from './monitoring-events.ts';
 import { upsertEntityFacts } from './analytics-facts.ts';
 
 // The data half of the monitoring cycle (scheduler/worker.py
@@ -27,7 +27,7 @@ const CLOSED_DAY_REFRESH_SCHEDULE: Array<[number, number]> = [[1, 60 * 60], ...[
 const BROKEN_CONNECTION_STATES = new Set(['expired', 'needs_reconnect', 'missing_scopes', 'error']);
 const CRITICAL_ACTIONS = new Set(['turn_off', 'stop', 'pause']);
 
-interface AccountRow {
+export interface AccountRow {
   id: number;
   account_id: string;
   name: string | null;
@@ -45,7 +45,7 @@ interface AccountRow {
   active_rules: string | null;
 }
 
-interface ConnectionRow {
+export interface ConnectionRow {
   id: number;
   workspace_id: number | null;
   owner_user_id: number | null;
@@ -139,7 +139,7 @@ export function accountSyncInterval(account: Pick<AccountRow, 'rules_enabled' | 
 
 // MonitoringWorker._connection_problem: why the account's Meta connection
 // cannot be used now, as health arguments.
-function connectionProblem(account: AccountRow, connections: Map<number, ConnectionRow>, log: AccountSyncOptions['log']): HealthUpdate | null {
+export function connectionProblem(account: AccountRow, connections: Map<number, ConnectionRow>, log: AccountSyncOptions['log']): HealthUpdate | null {
   const connection = account.meta_connection_id ? connections.get(account.meta_connection_id) : undefined;
   if (!connection) return null;
   if (account.workspace_id !== null && connection.workspace_id !== null && connection.workspace_id !== account.workspace_id) {
@@ -160,7 +160,7 @@ function connectionProblem(account: AccountRow, connections: Map<number, Connect
 
 // Runs `work` for every item, at most `limit` at once, results in item order
 // (asyncio.gather under a semaphore, return_exceptions=True).
-async function gatherLimited<T, R>(items: T[], limit: number, work: (item: T) => Promise<R>): Promise<Array<{ value?: R; error?: unknown }>> {
+export async function gatherLimited<T, R>(items: T[], limit: number, work: (item: T) => Promise<R>): Promise<Array<{ value?: R; error?: unknown }>> {
   const results: Array<{ value?: R; error?: unknown }> = items.map(() => ({}));
   let next = 0;
   const lane = async () => {
@@ -202,99 +202,21 @@ export class AccountSync {
     return null;
   }
 
-  // MonitoringWorker._persist_audit_event for the account sync's events: an
-  // account in no workspace is quarantined, one without an owner takes the
-  // workspace's. A failure is logged and leaves the rest of the account's
-  // writes in place.
+  // The account sync's history entries (MonitoringWorker._persist_audit_event).
   private async audit(
     tx: EntityManager,
     account: AccountRow,
-    event: { eventType: string; status: string; action: string; message: string; before?: unknown; after?: unknown; details?: unknown },
+    event: { eventType: string; status: string; action: string; message: string; before?: unknown; after?: unknown; details?: Record<string, unknown> },
   ): Promise<void> {
-    await tx.query('SAVEPOINT account_sync_audit');
-    try {
-      if (account.workspace_id === null) throw new Error(`Account ${account.account_id} has no workspace; audit event is quarantined`);
-      if (account.owner_user_id === null) {
-        const [workspace] = await rows<{ owner_user_id: number | null }>(tx, 'SELECT owner_user_id FROM workspaces WHERE id = $1', [account.workspace_id]);
-        if (!workspace || workspace.owner_user_id === null) throw new Error(`Account ${account.account_id} has no resolvable audit owner`);
-        await tx.query('UPDATE accounts SET owner_user_id = $2 WHERE id = $1', [account.id, workspace.owner_user_id]);
-        account.owner_user_id = workspace.owner_user_id;
-      }
-      await recordAuditEvent(tx, {
-        workspaceId: account.workspace_id,
-        ownerUserId: account.owner_user_id,
-        actorType: 'system',
-        actorId: 'monitoring_worker',
-        category: 'ACCOUNT_HEALTH',
-        eventType: event.eventType,
-        status: event.status,
-        accountId: String(account.account_id ?? ''),
-        accountName: String(account.name ?? ''),
-        adsetId: '',
-        adsetName: '',
-        entityLevel: 'adset',
-        entityId: '',
-        entityName: '',
-        ruleId: null,
-        ruleName: '',
-        action: event.action,
-        message: redactSecrets(event.message),
-        beforeState: (event.before ?? {}) as never,
-        afterState: (event.after ?? {}) as never,
-        details: (event.details ?? {}) as never,
-        correlationId: this.cycleId,
-        durationMs: 0,
-      });
-      await tx.query('RELEASE SAVEPOINT account_sync_audit');
-    } catch (error) {
-      await tx.query('ROLLBACK TO SAVEPOINT account_sync_audit');
-      this.options.log.error(`Failed to persist audit event ${event.eventType}: ${errorText(error)}`);
-    }
+    await persistMonitoringEvent(tx, this.options.log, this.cycleId, account, { ...event, category: 'ACCOUNT_HEALTH' });
   }
 
-  // MonitoringWorker._set_account_health: the row, and an alert or recovery
-  // event when its status or cause changed.
   private async setHealth(tx: EntityManager, account: AccountRow, update: HealthUpdate, emitTransitionEvent = true): Promise<void> {
-    const { row, transitioned } = await recordAccountHealth(tx, account, update);
-    if (!row || !transitioned || !emitTransitionEvent) return;
-    await this.audit(tx, account, {
-      eventType: update.success ? 'ACCOUNT_HEALTH_RECOVERED' : 'ACCOUNT_HEALTH_ALERT',
-      status: update.success ? 'SUCCESS' : row.status.toUpperCase(),
-      action: update.success ? 'MONITOR' : 'INVESTIGATE',
-      message: update.success ? 'Account health recovered' : row.last_error_message,
-      after: { status: row.status, cause: row.cause },
-      details: { error_code: row.last_error_code, consecutive_failures: row.consecutive_failures },
-    });
+    await setMonitoredHealth(tx, this.options.log, this.cycleId, account, update, emitTransitionEvent);
   }
 
-  // MonitoringWorker._handle_token_error: Meta refused the token.
   private async handleTokenError(tx: EntityManager, account: AccountRow, error: MetaTokenAuthError, connections: Map<number, ConnectionRow>): Promise<void> {
-    this.options.log.error(`Token error for account ${account.account_id}: ${error.message}`);
-    await tx.query('UPDATE accounts SET is_active = false WHERE id = $1 AND is_active', [account.id]);
-    if (account.meta_connection_id && connections.has(account.meta_connection_id)) {
-      await tx.query("UPDATE meta_connections SET status = 'error', last_error = $2, updated_at = now() WHERE id = $1", [
-        account.meta_connection_id,
-        error.description || error.message,
-      ]);
-    }
-    await this.audit(tx, account, {
-      eventType: 'TOKEN_EXPIRED',
-      status: 'ERROR',
-      action: 'DISABLE_MONITORING',
-      message: error.description || error.message,
-      before: { is_active: true },
-      after: { is_active: false },
-      details: {
-        error_code: error.code,
-        error_subcode: error.subcode,
-        subcode_key: error.subcodeKey,
-        subcode_title: error.title,
-        subcode_description: error.description,
-        action_hint: error.actionHint,
-        error_user_msg: error.errorUserMsg,
-        fbtrace_id: error.fbtraceId,
-      },
-    });
+    await handleTokenError(tx, this.options.log, this.cycleId, account, error, new Set(connections.keys()));
   }
 
   private async loadSettings(tx: EntityManager): Promise<Settings> {

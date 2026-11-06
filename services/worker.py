@@ -52,17 +52,11 @@ async def main() -> None:
         max_instances=1,
         coalesce=True,
     )
-    scheduler.add_job(
-        monitoring_worker.run_rule_cycle,
-        "interval",
-        minutes=1,
-        id="monitoring_job",
-        next_run_time=datetime.now(timezone.utc),
-        max_instances=1,
-        coalesce=True,
-    )
     async def run_account_day_boundary_tick() -> None:
         await _run_day_boundary_tick(day_boundary_worker)
+
+    async def run_rule_cycle_tick() -> None:
+        await monitoring_worker.run_rule_cycle()
 
     async def run_account_sync_tick() -> None:
         await account_sync_worker.run_account_sync_cycle()
@@ -82,6 +76,8 @@ async def main() -> None:
         ("account_day_boundary", run_account_day_boundary_tick, {"minutes": 1}),
         # Account details, analytics facts, the inventory cache and account health.
         ("account_sync", run_account_sync_tick, {"minutes": 1}),
+        # Due rule checks and their Meta actions (rule-cycle.ts on TypeScript).
+        ("monitoring", run_rule_cycle_tick, {"minutes": 1}),
     ]
     if "account_day_boundary" in owned_by_ts:
         # The deploy and the post-deploy smoke wait for this file; the cycle

@@ -18,7 +18,7 @@ class TestOwnership(unittest.TestCase):
     def test_the_list_names_known_jobs_only(self):
         self.assertEqual(worker_jobs.ts_worker_jobs(""), set())
         self.assertEqual(
-            worker_jobs.ts_worker_jobs(" inbox_email, ,sync_log_compaction,monitoring "),
+            worker_jobs.ts_worker_jobs(" inbox_email, ,sync_log_compaction,rules "),
             {"inbox_email", "sync_log_compaction"},
         )
 
@@ -26,11 +26,10 @@ class TestOwnership(unittest.TestCase):
         source = (ROOT / "services" / "worker.py").read_text()
         self.assertIn("if job_id in owned_by_ts:", source)
         self.assertIn("exclusive(job_id, run)", source)
-        for job_id in ("inbox_email", "inbox_telegram", "inbox_push", "sync_log_compaction", "account_day_boundary", "account_sync"):
+        for job_id in ("inbox_email", "inbox_telegram", "inbox_push", "sync_log_compaction", "account_day_boundary", "account_sync", "monitoring"):
             self.assertIn(f'("{job_id}", ', source)
-        # The rules half of the monitoring cycle stays on Python until the side-by-side comparison.
-        self.assertNotIn('"monitoring"', worker_jobs.SHARED_JOBS)
-        self.assertIn('id="monitoring_job"', source)
+        # The scheduler id stays monitoring_job, as the logs and runbooks name it.
+        self.assertIn('id=f"{job_id}_job"', source)
 
     def test_the_typescript_worker_uses_the_same_lock_numbers(self):
         source = (ROOT / "server" / "src" / "worker" / "jobs.ts").read_text()

@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 import type { EntityManager } from 'typeorm';
 import { recordAuditEvent, userActorId } from '../audit/events.ts';
-import { rows } from '../database.ts';
+import { rows, type Database } from '../database.ts';
 import { AuditEventEntity, type UserEntity } from '../entities/index.ts';
 import { ensureWriteAccess, refuseRecorded, scopeOf, writableAccount, type AccountRow } from '../graphql/areas/accounts/scope.ts';
 import { RouteError } from '../graphql/errors.ts';
@@ -148,7 +148,7 @@ async function recordOutcome(
 // into the entity's newest fact, so Ads Manager shows it before the next
 // sync overwrites the row. Never raises: Meta has already changed.
 export async function reflectEntityChange(
-  app: FastifyInstance,
+  app: { db: Database; log: Pick<FastifyBaseLogger, 'warn' | 'error'> },
   change: { workspaceId: number | null; accountId: string; level: string; entityId: string; status?: string; dailyBudget?: number },
 ): Promise<boolean> {
   if (!change.workspaceId || !change.accountId || !change.entityId) return false;
