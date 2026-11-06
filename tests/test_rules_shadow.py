@@ -265,6 +265,26 @@ class RulesShadowCaptureTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(stats["errors"], [])
         self.assertEqual(list(Path(self.temporary.name).iterdir()), [])
 
+    async def test_a_cycle_with_no_rule_due_leaves_a_marker(self):
+        async with self.sessions() as session:
+            user_id, workspace_id = await self._workspace(session, "shadow-marker")
+            session.add(
+                Account(
+                    account_id="act_shadow_marker", name="Marker", access_token="token", owner_user_id=user_id,
+                    workspace_id=workspace_id, timezone_name="HST", currency="USD", rules_enabled=False, is_active=True,
+                )
+            )
+            await session.commit()
+        with patch.dict(os.environ, {"RULES_SHADOW_DIR": self.temporary.name}):
+            worker = MonitoringWorker(meta_client=MockMetaClient(), clock=lambda: 10_000.0)
+            worker._sleep = _no_sleep
+            await worker.run_cycle()
+        files = sorted(Path(self.temporary.name).glob("*.json.gz"))
+        self.assertEqual(len(files), 1)
+        marker = json.loads(gzip.decompress(files[0].read_bytes()))
+        self.assertTrue(marker["marker"])
+        self.assertEqual((marker["entities"], marker["python"]["outcomes"], marker["now"]), ([], [], 10_000.0))
+
     async def test_random_scenarios_over_several_cycles(self):
         directory = os.environ.get("RULES_SHADOW_DIR") or self.temporary.name
         scenarios = int(os.environ.get("RULES_SHADOW_SCENARIOS", "12"))

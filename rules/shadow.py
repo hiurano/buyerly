@@ -74,6 +74,62 @@ def _evaluation(evaluation: Any) -> dict[str, Any]:
     }
 
 
+# Cycles that wrote at least one account capture; the rest get a marker.
+_cycles_with_captures: set[str] = set()
+
+
+def _write(directory: Path, document: dict[str, Any], account_ref: str) -> None:
+    pending = sum(1 for _ in directory.glob("*.json.gz"))
+    if pending >= max_pending_files():
+        logger.warning("Rules shadow capture skipped: %s files wait unread", pending)
+        return
+    payload = gzip.compress(
+        json.dumps(document, allow_nan=False, ensure_ascii=False, default=str).encode("utf-8")
+    )
+    name = f"{int(time.time() * 1000):013d}-{document['cycle_id']}-{account_ref}"
+    temporary = directory / f".{name}.tmp"
+    temporary.write_bytes(payload)
+    temporary.replace(directory / f"{name}.json.gz")
+
+
+def finish_cycle(cycle_id: str, now: float) -> None:
+    """A cycle in which no account's rules were due still leaves a marker.
+
+    Its decision is empty on both sides; the comparison counts the cycle, so
+    the shadow run is shown to follow every cycle even while no rule is on.
+    """
+    if cycle_id in _cycles_with_captures:
+        _cycles_with_captures.discard(cycle_id)
+        return
+    directory = shadow_dir()
+    if directory is None:
+        return
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        _write(
+            directory,
+            {
+                "version": CAPTURE_VERSION,
+                "marker": True,
+                "cycle_id": cycle_id,
+                "account": {"account_id": "", "workspace_id": None, "currency": "UNKNOWN", "rules_enabled": False, "timezone_name": None},
+                "now": now,
+                "stop_confirmation_minutes": 0,
+                "critical_interval": 0,
+                "due_rules": [],
+                "entities": [],
+                "entity_windows": {},
+                "undone_actions": {},
+                "manual_enables": {},
+                "execution_states": [],
+                "python": {"outcomes": [], "actions": [], "stopped_early": False},
+            },
+            "cycle",
+        )
+    except Exception as error:
+        logger.warning("Rules shadow cycle marker not written: %s", error)
+
+
 class ShadowCapture:
     def __init__(self, directory: Path, inputs: dict[str, Any]) -> None:
         self.directory = directory
@@ -96,10 +152,7 @@ class ShadowCapture:
     def finish(self, outcomes: list[dict[str, Any]], *, stopped_early: bool) -> None:
         """Write the capture; ``stopped_early`` when a refused token cut the check short."""
         try:
-            pending = sum(1 for _ in self.directory.glob("*.json.gz"))
-            if pending >= max_pending_files():
-                logger.warning("Rules shadow capture skipped: %s files wait unread", pending)
-                return
+            _cycles_with_captures.add(self.inputs["cycle_id"])
             document = {
                 **self.inputs,
                 "python": {
@@ -108,13 +161,7 @@ class ShadowCapture:
                     "stopped_early": stopped_early,
                 },
             }
-            payload = gzip.compress(
-                json.dumps(document, allow_nan=False, ensure_ascii=False, default=str).encode("utf-8")
-            )
-            name = f"{int(time.time() * 1000):013d}-{self.inputs['cycle_id']}-{self.inputs['account']['account_id']}"
-            temporary = self.directory / f".{name}.tmp"
-            temporary.write_bytes(payload)
-            temporary.replace(self.directory / f"{name}.json.gz")
+            _write(self.directory, document, self.inputs["account"]["account_id"])
         except Exception as error:
             logger.warning("Rules shadow capture not written: %s", error)
 

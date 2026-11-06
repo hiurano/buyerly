@@ -42,8 +42,8 @@ export async function report(redis: Redis, options: Options, now = new Date()): 
     if (summary.captures || summary.capture_errors) days.push(summary);
   }
   lines.push('');
-  lines.push('day         cycles captures  clean partial outcomes  matched actions(py/ts/=)  unexplained explained errors  match');
-  const total: DaySummary = { day: 'total', captures: 0, cycles: 0, clean: 0, partial: 0, capture_errors: 0, outcomes: 0, outcomes_matched: 0, actions_python: 0, actions_ts: 0, actions_matched: 0, unexplained: 0, explained: 0 };
+  lines.push('day         cycles captures markers  clean partial outcomes  matched actions(py/ts/=)  unexplained explained errors  match');
+  const total: DaySummary = { day: 'total', captures: 0, markers: 0, cycles: 0, clean: 0, partial: 0, capture_errors: 0, outcomes: 0, outcomes_matched: 0, actions_python: 0, actions_ts: 0, actions_matched: 0, unexplained: 0, explained: 0 };
   for (const summary of [...days, total]) {
     if (summary !== total) {
       const sums = total as unknown as Record<string, number>;
@@ -55,6 +55,7 @@ export async function report(redis: Redis, options: Options, now = new Date()): 
         summary.day.padEnd(10),
         String(summary.cycles).padStart(7),
         String(summary.captures).padStart(8),
+        String(summary.markers).padStart(7),
         String(summary.clean).padStart(6),
         String(summary.partial).padStart(7),
         String(summary.outcomes).padStart(8),

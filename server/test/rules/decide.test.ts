@@ -174,6 +174,6 @@ describe.skipIf(!REDIS_URL)('the shadow run', () => {
 
     const text = await report(redis, { days: 3, mismatches: 5, replay: true }, new Date((base.now + 3600) * 1000));
     expect(text).toContain('replay on this release: 1 difference(s) left');
-    expect(text).toMatch(/total\s+2\s+2\s+1/);
+    expect(text).toMatch(/total\s+2\s+2\s+0\s+1/);
   });
 });
