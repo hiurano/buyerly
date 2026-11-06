@@ -9,7 +9,7 @@ import { rateLimit } from '../http/rate-limit.ts';
 import { UserEntity } from '../entities/index.ts';
 import { HttpError, ValidationFailed } from '../http/errors.ts';
 import { ImageStorage, InvalidImageUpload, MAX_UPLOAD_BYTES } from '../uploads/images.ts';
-import { SIGNED_UPLOAD_PREFIX, verifyUpload } from '../uploads/signed.ts';
+import { SIGNED_UPLOAD_PATH, verifyUpload } from '../uploads/signed.ts';
 
 // Image uploads (api/routers/onboarding.py: avatar and workspace logo) and
 // the files themselves under /uploads/ (api/server.py mounts them), on the
@@ -129,15 +129,15 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
   // user's own. Logos nobody took for a day are removed first.
   await app.register(async (signed) => {
     signed.addContentTypeParser('*', { parseAs: 'buffer', bodyLimit: UPLOAD_REQUEST_LIMIT }, (_request, body, done) => done(null, body));
-    signed.put<{ Params: { token: string } }>(
-      `${SIGNED_UPLOAD_PREFIX}:token`,
+    signed.put<{ Querystring: { token?: string } }>(
+      SIGNED_UPLOAD_PATH,
       {
         bodyLimit: UPLOAD_REQUEST_LIMIT,
         onRequest: upload.onRequest,
         preValidation: [rateLimit({ limit: 20, scope: 'signed_upload' })],
       },
       async (request): Promise<{ asset_url: string }> => {
-        const grant = verifyUpload(app.config.otpPepper, request.params.token);
+        const grant = verifyUpload(app.config.otpPepper, String(request.query.token ?? ''));
         if (!grant) throw new HttpError(403, 'This upload link is invalid or has expired');
         const content = Buffer.isBuffer(request.body) ? request.body : Buffer.alloc(0);
         const category = grant.p === 'avatar' ? 'avatars' : 'workspaces';

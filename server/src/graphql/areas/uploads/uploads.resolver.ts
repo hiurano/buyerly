@@ -1,6 +1,6 @@
 import { Arg, Ctx, Mutation, Resolver } from 'type-graphql';
 import { MAX_UPLOAD_BYTES } from '../../../uploads/images.ts';
-import { SIGNED_UPLOAD_PREFIX, UPLOAD_PURPOSES, signUpload, type UploadPurpose } from '../../../uploads/signed.ts';
+import { SIGNED_UPLOAD_PATH, UPLOAD_PURPOSES, signUpload, type UploadPurpose } from '../../../uploads/signed.ts';
 import { mutated, type GraphQLContext } from '../../context.ts';
 import { RouteError } from '../../errors.ts';
 import { inputSchema } from '../../input.ts';
@@ -46,7 +46,7 @@ export class UploadsResolver {
       t: req.content_type,
     });
     return mutated(context, UploadPayload, {
-      upload_url: `${SIGNED_UPLOAD_PREFIX}${token}`,
+      upload_url: `${SIGNED_UPLOAD_PATH}?token=${token}`,
       headers: { 'Content-Type': req.content_type || 'application/octet-stream' },
     });
   }

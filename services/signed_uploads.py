@@ -15,7 +15,8 @@ from typing import Optional
 from core.config import settings
 
 UPLOAD_PURPOSES = ("avatar", "workspace_logo")
-SIGNED_UPLOAD_PREFIX = "/uploads/signed/"
+# The link: the token goes in the query, longer than a path segment should be.
+SIGNED_UPLOAD_PATH = "/uploads/signed"
 LIFETIME_SECONDS = 10 * 60
 
 

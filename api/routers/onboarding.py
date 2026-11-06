@@ -39,7 +39,7 @@ from services.image_uploads import (
     is_owned_workspace_logo,
     save_image_upload,
 )
-from services.signed_uploads import SIGNED_UPLOAD_PREFIX, sign_upload, verify_upload
+from services.signed_uploads import SIGNED_UPLOAD_PATH, sign_upload, verify_upload
 from services.workspace_slugs import WorkspaceSlugUnavailable, allocate_workspace_slug
 
 logger = logging.getLogger(__name__)
@@ -349,14 +349,14 @@ async def request_file_upload(req: FileUploadRequest, user: User = Depends(get_c
         raise HTTPException(status_code=400, detail="The file must not exceed 5 MB")
     token = sign_upload(user_id=user.id, purpose=req.purpose, filename=req.filename, content_type=req.content_type)
     headers = {"Content-Type": req.content_type or "application/octet-stream"}
-    return {"upload_url": f"{SIGNED_UPLOAD_PREFIX}{token}", "headers": headers}
+    return {"upload_url": f"{SIGNED_UPLOAD_PATH}?token={token}", "headers": headers}
 
 
 @signed_uploads_router.put(
-    SIGNED_UPLOAD_PREFIX + "{token}",
+    SIGNED_UPLOAD_PATH,
     dependencies=[Depends(rate_limit_dep(limit=20, window_seconds=60, scope="signed_upload"))],
 )
-async def put_signed_upload(token: str, request: Request):
+async def put_signed_upload(request: Request, token: str = ""):
     """The bytes of a file `fileUpload` granted; the link is the grant, so no session is needed.
 
     Answers where the file is now; the avatar or logo takes it with the next profile or workspace

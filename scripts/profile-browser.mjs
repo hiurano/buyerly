@@ -77,7 +77,7 @@ try {
       // fileUpload: a signed link, then the bytes PUT to it (decision 55).
       if (verb === 'POST' && path === '/api/onboarding/file-upload') {
         writes.push(`POST file-upload ${request.postDataJSON().purpose}`);
-        return route.fulfill({ json: { upload_url: '/uploads/signed/test-token', headers: { 'Content-Type': 'image/png' } } });
+        return route.fulfill({ json: { upload_url: '/uploads/signed?token=test-token', headers: { 'Content-Type': 'image/png' } } });
       }
       if (verb === 'GET' && path === '/api/auth/sessions') return route.fulfill({ json: [] });
       if (verb === 'GET' && path === '/api/inbox') {
@@ -103,7 +103,7 @@ try {
       return route.fulfill({ status: 404, json: { detail: 'Unexpected test request' } });
     });
     await page.route('**/uploads/avatars/**', route => route.fulfill({ contentType: 'image/png', body: PNG }));
-    await page.route('**/uploads/signed/**', (route) => {
+    await page.route((url) => url.pathname === '/uploads/signed', (route) => {
       writes.push(`${route.request().method()} signed upload`);
       return route.fulfill({ json: { asset_url: '/uploads/avatars/avatar_1_test.png' } });
     });

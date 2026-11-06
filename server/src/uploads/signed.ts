@@ -9,7 +9,8 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export type UploadPurpose = 'avatar' | 'workspace_logo';
 export const UPLOAD_PURPOSES: UploadPurpose[] = ['avatar', 'workspace_logo'];
-export const SIGNED_UPLOAD_PREFIX = '/uploads/signed/';
+// The link: the token goes in the query, longer than a path parameter may be.
+export const SIGNED_UPLOAD_PATH = '/uploads/signed';
 const LIFETIME_SECONDS = 10 * 60;
 
 export interface UploadGrant {

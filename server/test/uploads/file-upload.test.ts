@@ -52,7 +52,7 @@ describe.skipIf(!DATABASE_URL)('fileUpload and the signed link', () => {
     const answer = await grant(browser, { purpose: 'avatar', content_type: 'image/png', filename: 'me.png', size: png.length });
     expect(answer.errors).toBeUndefined();
     const { upload_url: uploadUrl, headers } = answer.data!.fileUpload!.uploadFile;
-    expect(uploadUrl.startsWith('/uploads/signed/')).toBe(true);
+    expect(uploadUrl.startsWith('/uploads/signed?token=')).toBe(true);
 
     // The link is the grant: a browser with no session may PUT to it.
     const put = await new Browser(target).request('PUT', uploadUrl, { body: png, headers });
@@ -72,7 +72,7 @@ describe.skipIf(!DATABASE_URL)('fileUpload and the signed link', () => {
 
   it('refuses a forged link, a file too large and what is not an image', async () => {
     const { browser } = await member();
-    const forged = await new Browser(target).request('PUT', '/uploads/signed/e30.0000', { body: png, headers: { 'content-type': 'image/png' } });
+    const forged = await new Browser(target).request('PUT', '/uploads/signed?token=e30.0000', { body: png, headers: { 'content-type': 'image/png' } });
     expect(forged.status).toBe(403);
 
     const large = await grant(browser, { purpose: 'avatar', content_type: 'image/png', filename: 'a.png', size: 6 * 1024 * 1024 });

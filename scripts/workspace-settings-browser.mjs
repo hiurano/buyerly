@@ -69,7 +69,7 @@ try {
       if (verb === 'GET' && path === '/api/me') return route.fulfill({ json: me() });
       // fileUpload: a signed link, then the bytes PUT to it (decision 55).
       if (verb === 'POST' && path === '/api/onboarding/file-upload') {
-        return route.fulfill({ json: { upload_url: '/uploads/signed/test-token', headers: { 'Content-Type': 'image/png' } } });
+        return route.fulfill({ json: { upload_url: '/uploads/signed?token=test-token', headers: { 'Content-Type': 'image/png' } } });
       }
       if (path === `/api/workspaces/${workspace.id}` && verb === 'PATCH') {
         const body = request.postDataJSON();
@@ -115,7 +115,7 @@ try {
       return route.fulfill({ status: 404, json: { detail: 'Unexpected test request' } });
     });
     await context.route('**/uploads/**', route => route.fulfill({ body: PNG, contentType: 'image/png' }));
-    await context.route('**/uploads/signed/**', (route) => {
+    await context.route((url) => url.pathname === '/uploads/signed', (route) => {
       writes.push({ verb: route.request().method(), path: new URL(route.request().url()).pathname, body: 'file' });
       return route.fulfill({ json: { asset_url: '/uploads/workspaces/logo_1_new.png' } });
     });
@@ -266,7 +266,7 @@ try {
       const expected = [
         ['PATCH', '/api/workspaces/7', { name: 'Alpha Media' }],
         ['POST', '/api/onboarding/file-upload', 'workspace_logo'],
-        ['PUT', '/uploads/signed/test-token', 'file'],
+        ['PUT', '/uploads/signed', 'file'],
         ['PATCH', '/api/workspaces/7', { logo_url: '/uploads/workspaces/logo_1_new.png' }],
         ['PATCH', '/api/workspaces/7', { slug: 'beta' }],
         ['PATCH', '/api/workspaces/7', { slug: 'alpha-media' }],
