@@ -3,6 +3,7 @@ import type { DataSource } from 'typeorm';
 import {
   AccountEntity,
   AccountNotificationSettingEntity,
+  AuditEventEntity,
   DesktopPushSubscriptionEntity,
   TelegramLinkTokenEntity,
   UserEntity,
@@ -169,6 +170,46 @@ describe.skipIf(!DATABASE_URL)('notification settings', () => {
       expect((await field(me, BELL, { id })).kinds).toEqual(['rule_actions', 'manual']);
       const rows = await db.getRepository(AccountNotificationSettingEntity).findBy({ memberId: me.memberId, accountId: id });
       expect(rows.map((row) => [row.kind, row.enabled]).sort()).toEqual(ACCOUNT_KINDS.map((kind) => [kind, ['manual', 'rule_actions'].includes(kind)]).sort());
+    });
+
+    it('decides which events of the account reach Inbox, and goes with the member who leaves', async () => {
+      const me = await owner();
+      const buyer = await joined(me.workspace);
+      const id = await account(me, me.user.id);
+      const events = db.getRepository(AuditEventEntity);
+      const add = (message: string, eventType: string, values: Partial<AuditEventEntity> = {}) => events.save(events.create({
+        workspaceId: me.workspace.id, eventType, message, accountId: id, accountName: 'Nutra US', createdAt: new Date(Date.now() - 60_000), ...values,
+      }));
+      await add('account issue', 'ACCOUNT_ISSUE');
+      await add('rule alert', 'NOTIFY_ONLY');
+      await add('rule stop', 'STOP');
+      await add('manual pause', 'MANUAL_PAUSE', { category: 'MANUAL_ACTION' });
+      // On no account: everyone's, whatever the bell says.
+      await add('workspace note', 'SYNC_DONE', { accountId: '' });
+      const inbox = async (member: Member): Promise<string[]> => {
+        const page = await field(member, 'query { inbox }') as unknown as { items: { message: string }[] };
+        return page.items.map((item) => item.message).sort();
+      };
+      const lead = ['account issue', 'manual pause', 'rule alert', 'rule stop', 'workspace note'];
+      expect(await inbox(me)).toEqual(lead);
+      expect(await inbox(buyer)).toEqual(['workspace note']);
+
+      // A member who does not lead the account follows the kinds they pick, theirs alone.
+      await field(buyer, BELL_SET, { id, input: { kinds: ['urgent', 'rule_alerts'] } });
+      expect(await inbox(buyer)).toEqual(['account issue', 'rule alert', 'workspace note']);
+      expect(await inbox(me)).toEqual(lead);
+
+      // The lead can mute kinds; events on no account stay.
+      await field(me, BELL_SET, { id, input: { kinds: ['urgent'] } });
+      expect(await inbox(me)).toEqual(['account issue', 'workspace note']);
+      await field(me, BELL_SET, { id, input: { kinds: [] } });
+      expect(await inbox(me)).toEqual(['workspace note']);
+      await field(me, BELL_SET, { id, input: { kinds: ['manual', 'rule_actions'] } });
+      expect(await inbox(me)).toEqual(['manual pause', 'rule stop', 'workspace note']);
+
+      const left = await graphql(buyer, 'mutation($id: Int!) { workspaceLeave(id: $id) { workspace } }', { id: me.workspace.id });
+      expect(left.errors).toBeUndefined();
+      expect(await db.getRepository(AccountNotificationSettingEntity).countBy({ memberId: buyer.memberId })).toBe(0);
     });
 
     it('rejects unknown kinds and accounts; the act_ prefix is optional', async () => {
