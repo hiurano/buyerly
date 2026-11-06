@@ -8,6 +8,8 @@ import {
   WebSessionEntity,
   WorkspaceMemberEntity,
 } from '../../src/entities/index.ts';
+import { Redis } from 'ioredis';
+import { publishSyncBus } from '../../src/sync/bus.ts';
 import type { SyncTuning } from '../../src/sync/hub.ts';
 import { Browser } from '../support/browser.ts';
 import { HandshakeRefused, SocketClosed, openSocket, type TestSocket } from '../support/socket.ts';
@@ -36,8 +38,8 @@ export function streamCases(context: SyncContext): void {
     });
 
     // This server with the stream's timings changed.
-    async function tuned(tuning: Partial<SyncTuning>): Promise<Target> {
-      const target = await typescriptTarget({}, { sync: tuning });
+    async function tuned(tuning: Partial<SyncTuning>, env: Record<string, string> = {}): Promise<Target> {
+      const target = await typescriptTarget(env, { sync: tuning });
       targets.push(target);
       return target;
     }
@@ -176,6 +178,22 @@ export function streamCases(context: SyncContext): void {
       await socket.receiveType('caught_up');
       await rename(world, world.teams.public, 'Polled');
       expect((await socket.receiveType('delta', 3000)).actions[0].data.name).toBe('Polled');
+    });
+
+    it.skipIf(inProcessOnly || !process.env.REDIS_URL)('reads the log when the Redis sync bus says so', async () => {
+      // Neither LISTEN nor a poll within the test: only the bus wakes the hub (decision 54).
+      const target = await tuned({ listen: false, pollMs: 60_000 }, { REDIS_URL: process.env.REDIS_URL! });
+      const world = await syncWorld(context.db, target);
+      const socket = await open(world, 'buyer', { target });
+      await socket.receiveType('caught_up');
+      await rename(world, world.teams.public, 'Published');
+      const redis = new Redis(process.env.REDIS_URL!);
+      try {
+        await publishSyncBus(redis);
+      } finally {
+        redis.disconnect();
+      }
+      expect((await socket.receiveType('delta', 3000)).actions[0].data.name).toBe('Published');
     });
 
     // Sync groups

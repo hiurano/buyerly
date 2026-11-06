@@ -16,9 +16,11 @@ import { NOTIFY_CHANNEL, SYNC_ACTION_COLUMNS, actionMessage, lastSyncId, type Sy
 // Who notifies: the deferred trigger that gives each log row its sync id
 // (database/sync_log.py sync_log_assign_id) sends NOTIFY at commit, so every
 // writer wakes the hub alike, the Python API and worker included, for as
-// long as they write. Decision 54 moves this bus to Redis pub/sub once the
-// worker runs on this server (#611 stage 4); until then Postgres is the bus,
-// and polling stays as the fallback either way.
+// long as they write. Decision 54 adds Redis pub/sub now that the worker
+// runs on this server (#611 stage 4): the TypeScript worker publishes
+// on sync/bus.ts after its jobs, and this process subscribes when REDIS_URL
+// is set (routes/sync-socket.ts). NOTIFY stays for the Python writers, and
+// polling stays as the fallback either way.
 
 export interface SyncTuning {
   // Rows read at once, by the hub and by a socket catching up.
@@ -162,7 +164,8 @@ export class SyncHub {
     for (const subscription of this.subscriptions) subscription.interrupt();
   }
 
-  private notify(): void {
+  // A committed write elsewhere: read the log now (Postgres NOTIFY, the Redis sync bus).
+  notify(): void {
     this.woken = true;
     this.wake?.();
   }

@@ -420,7 +420,7 @@ gh workflow run ops-drill.yml -f drill=restore-local -f confirm=restore-local
 | `restore-offsite` | `offsite_restore_drill.sh` | временный контейнер без сети; нужны `S3_*` и `BACKUP_ENCRYPTION_KEY` в `.env` |
 | `restore-offsite-negative` | `offsite_restore_drill.sh --negative` | то же плюс четыре случая отказа |
 | `uploads` | `drill_uploads.sh` | `buyerly-uploads` монтируется read-only, архив восстанавливается во временный volume `buyerly-uploads-drill` и сверяется по SHA-256 |
-| `worker-stall` | `drill_worker_stall.sh` | **ставит боевой worker на паузу** (`docker pause`) на 8–10 минут: правила не проверяются, Inbox-доставка идёт из API; проверяет 503 на `/health/worker`, `WORKER_STALLED` и `WORKER_RECOVERED`; worker снимается с паузы при любом исходе |
+| `worker-stall` | `drill_worker_stall.sh` | **ставит боевой worker на паузу** (`docker pause`) на 8–10 минут: правила не проверяются, Inbox-доставка идёт из `worker-ts` (или из API, если `worker_watchdog` вне `TS_WORKER_JOBS`); проверяет 503 на `/health/worker`, `WORKER_STALLED` и `WORKER_RECOVERED`; worker снимается с паузы при любом исходе |
 
 Ни одно учение не пишет в боевую БД или в volume uploads. Учения по расписанию не запускаются.
 

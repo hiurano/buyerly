@@ -1,4 +1,4 @@
-"""What the Python Inbox deliveries would send, for cases read as JSON from stdin.
+"""What the Python worker jobs would send or decide, for cases read as JSON from stdin.
 
 server/test/worker/delivery.test.ts sends [{"fn": name, "args": {...}}, ...]
 and compares each answer with the TypeScript port's
@@ -11,6 +11,7 @@ import asyncio
 import base64
 import json
 import sys
+from datetime import datetime
 from types import SimpleNamespace
 from unittest import mock
 
@@ -21,6 +22,7 @@ from core import web_push
 from services.inbox_email import event_target, event_title
 from services.inbox_push import push_message
 from services.inbox_telegram import message_text
+from services.worker_watchdog import cycle_status
 
 EVENT_FIELDS = (
     "id", "event_type", "action", "category", "entity_name", "adset_name",
@@ -69,6 +71,9 @@ def answer(case):
         return _email(args)
     if fn == "encrypt":
         return _encrypt(args)
+    if fn == "cycle":
+        now = datetime.fromisoformat(args["now"].replace("Z", "+00:00"))
+        return cycle_status(args["payload"], now)
     raise ValueError(fn)
 
 
