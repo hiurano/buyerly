@@ -57,16 +57,9 @@ async def main() -> None:
         max_instances=1,
         coalesce=True,
     )
-    scheduler.add_job(
-        _run_day_boundary_tick,
-        "interval",
-        minutes=1,
-        id="account_day_boundary_job",
-        next_run_time=datetime.now(timezone.utc),
-        max_instances=1,
-        coalesce=True,
-        args=[day_boundary_worker],
-    )
+    async def run_account_day_boundary_tick() -> None:
+        await _run_day_boundary_tick(day_boundary_worker)
+
     # Jobs without Meta calls move to the TypeScript worker one at a time
     # (#611 stage 4): TS_WORKER_JOBS lists the ones it owns, and each run
     # holds an advisory lock both workers take (core/worker_jobs.py).
@@ -78,7 +71,13 @@ async def main() -> None:
         ("inbox_push", run_inbox_push_tick, {"seconds": 20}),
         # The sync log keeps SYNC_LOG_RETENTION_DAYS; a client further behind bootstraps again.
         ("sync_log_compaction", run_sync_log_compaction_tick, {"hours": 24}),
+        # ACCOUNT_DAY_STARTED within five minutes of each account's local midnight.
+        ("account_day_boundary", run_account_day_boundary_tick, {"minutes": 1}),
     ]
+    if "account_day_boundary" in owned_by_ts:
+        # The deploy and the post-deploy smoke wait for this file; the cycle
+        # itself runs on the TypeScript worker.
+        day_boundary_cycle_file.touch()
     for job_id, run, interval in shared_jobs:
         if job_id in owned_by_ts:
             logger.info("Job %s runs on the TypeScript worker (TS_WORKER_JOBS)", job_id)
