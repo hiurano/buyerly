@@ -38,7 +38,7 @@ class TestDeployContract(unittest.TestCase):
             project_root / "scripts" / "verify_docker_log_rotation.sh"
         ).read_text()
         cls.smoke_script = (
-            project_root / "scripts" / "post_deploy_smoke.py"
+            project_root / "server" / "src" / "scripts" / "post-deploy-smoke.ts"
         ).read_text()
         cls.internal_smoke = (
             project_root / "services" / "smoke_checks.py"
@@ -61,7 +61,7 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("INITIAL_ENV_HASH", early_exit)
         self.assertIn("FINAL_ENV_HASH", early_exit)
         self.assertIn("git rev-parse HEAD", early_exit)
-        self.assertIn("post_deploy_smoke.py", early_exit)
+        self.assertIn("run_post_deploy_smoke", early_exit)
         self.assertIn("is already deployed and healthy", self.script)
 
     def test_only_the_tunnel_is_trusted_to_report_the_visitor(self):
@@ -147,15 +147,15 @@ class TestDeployContract(unittest.TestCase):
         )
 
     def test_post_deploy_smoke_is_blocking_persisted_and_read_only(self):
-        self.assertIn("post_deploy_smoke.py", self.script)
-        smoke_position = self.script.index("post_deploy_smoke.py")
+        self.assertIn("run_post_deploy_smoke", self.script)
+        smoke_position = self.script.index("run_post_deploy_smoke")
         cleanup_position = self.script.rindex("cleanup_docker_artifacts.sh")
         self.assertLess(smoke_position, cleanup_position)
         self.assertIn("rollback", self.script[smoke_position:cleanup_position])
-        self.assertIn('"mode": "read-only"', self.smoke_script)
-        self.assertIn('"meta_budget_mutations": 0', self.smoke_script)
-        self.assertIn("post-deploy-{EXPECTED_SHA}.json", self.smoke_script)
-        self.assertIn("os.replace", self.smoke_script)
+        self.assertIn("mode: 'read-only'", self.smoke_script)
+        self.assertIn("meta_budget_mutations: 0", self.smoke_script)
+        self.assertIn("post-deploy-${EXPECTED_SHA}.json", self.smoke_script)
+        self.assertIn("rename(", self.smoke_script)
         self.assertIn("0o600", self.smoke_script)
         self.assertNotIn("META_APP_SECRET", self.smoke_script)
         self.assertNotIn("access_token", self.smoke_script)
@@ -321,7 +321,7 @@ class TestDeployContract(unittest.TestCase):
         # silently rolls api/worker back to an old image.
         self.assertIn('record_running_version "${TARGET_SHA}"', self.script)
         self.assertIn('record_running_version "${PREVIOUS_SHA}"', self.script)
-        smoke = self.script.rindex("post_deploy_smoke.py\"; then")
+        smoke = self.script.rindex("run_post_deploy_smoke \"${TARGET_SHA}\"; then")
         self.assertLess(smoke, self.script.index('record_running_version "${TARGET_SHA}"'))
 
     def test_remote_deploy_failure_exposes_only_safe_stage_diagnostics(self):

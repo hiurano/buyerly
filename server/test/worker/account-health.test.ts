@@ -6,7 +6,7 @@ import { createUser, createWorkspace, testDatabase } from '../support/db.ts';
 
 // Account health (services/account_health.py; tests/test_account_health.py).
 // The synthetic-metrics normalizer of that file is Python-only: nothing but
-// scripts/post_deploy_smoke.py writes those metrics, and stage 6 deletes it.
+// the post-deploy smoke writes those metrics (its own test covers them).
 
 describe('classifying a failure', () => {
   it('names the user, Meta or the system as responsible', () => {

@@ -26,7 +26,7 @@ get the case-by-case pass before stage 6.
 
 | `tests/` file | Tests | Verdict | Where / why |
 |---|---|---|---|
-| test_account_health | 4 | ported | `worker/account-health.test.ts`. The synthetic-metrics normalizer lives only in `scripts/post_deploy_smoke.py` (dies; the TS smoke has its own test) |
+| test_account_health | 4 | ported | `worker/account-health.test.ts`. The synthetic-metrics normalizer lived only in the Python post-deploy smoke (deleted; the TS smoke has its own test) |
 | test_account_notifications | 5 | ported + covered (by case) | `notifications/notifications.test.ts`; the bell's effect on Inbox and leaving the workspace were added |
 | test_analytics_fact_store | 14 | covered + ported (by case) | `accounts/analytics.test.ts`, `accounts/clock.test.ts` (ported), `worker/account-sync.test.ts`, `meta/client.test.ts`. `cleanup_expired_facts` is called by nothing but its test: dies |
 | test_api | 73 | covered (by area) | sessions/sign-in `auth/*`, health, rules `rules/*`, audit/undo `audit/*` + `meta/delivery.test.ts`, accounts, uploads. Summary snapshot writing and `/api/settings` runtime: no TS code (monitoring loop) |

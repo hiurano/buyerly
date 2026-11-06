@@ -12,7 +12,7 @@ const SCRIPT = path.resolve('src/scripts/post-deploy-smoke.ts');
 
 // The smoke talks to the API over HTTP and to Docker over its unix socket
 // (inspect, exec). Both are faked here; the checks, the result file and the
-// stdout line are those of scripts/post_deploy_smoke.py.
+// stdout line are those of the Python script it replaced.
 const servers: http.Server[] = [];
 afterEach(() => { for (const s of servers.splice(0)) s.close(); });
 

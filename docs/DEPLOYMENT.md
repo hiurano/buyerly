@@ -392,7 +392,7 @@ df` и `du` без удаления volumes вручную.
 
 ## Post-deploy smoke и rollback gate
 
-После переключения трафика `scripts/post_deploy_smoke.py` проверяет точный SHA
+После переключения трафика смоук проверяет точный SHA
 live/readiness, отказ защищённых endpoints без сессии, workspace-isolation,
 Meta-конфигурацию без раскрытия значений, summary scope, worker heartbeat и
 Alembic/schema contract. Все операции — GET/SELECT; Meta Marketing API и бюджеты
@@ -404,11 +404,10 @@ Alembic/schema contract. Все операции — GET/SELECT; Meta Marketing 
 /opt/buyerly/logs/smoke/post-deploy-<full-sha>.json
 ```
 
-Порт на TypeScript (`server/src/scripts/post-deploy-smoke.ts`, #611 этап 5) те же
-проверки делает в одноразовом контейнере образа релиза (на хосте нет Node) через
-сокет Docker. Пока он работает параллельно: `deploy.sh` пишет его итог в лог
-(`TypeScript smoke (shadow …)`) и результат в `logs/smoke-ts/`, а решение об
-откате принимает Python-версия.
+Скрипт — `server/src/scripts/post-deploy-smoke.ts` (#611 этап 5). На хосте нет
+Node, поэтому `deploy.sh` запускает его в одноразовом контейнере образа релиза
+(`--network host`, сокет Docker для проверок `docker inspect`/`exec`); итог — строка
+`[INFO] TypeScript smoke (exit N): …` в логе деплоя.
 
 Любая критическая ошибка завершает smoke ненулевым кодом и запускает rollback
 предыдущих app/web images. Процедуры реакции собраны в
