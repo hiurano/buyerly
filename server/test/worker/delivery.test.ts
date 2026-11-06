@@ -275,6 +275,47 @@ describe.skipIf(!DATABASE_URL)('Inbox deliveries on the database', { timeout: 60
     expect(messages.filter((message) => message.chatId === Number(chatId))).toEqual([]);
   });
 
+  it('follows the Telegram settings and read state, and tries a failed send again', async () => {
+    const w = await world();
+    const members = dataSource.getRepository(WorkspaceMemberEntity);
+    const connections = dataSource.getRepository(TelegramConnectionEntity);
+    const chatId = Math.floor(Math.random() * 1e12);
+    const sent: string[] = [];
+    let answer: TelegramSendResult = { ok: true, error: '' };
+    const telegram = {
+      configured: true,
+      sendMessage: async (chat: number, text: string) => { if (chat === chatId) sent.push(text.split('\n')[1]); return answer; },
+    } as unknown as TelegramBot;
+    const run = async () => { sent.length = 0; await deliverInboxTelegram({ db, log, webappUrl: 'https://buyerly.test', now: w.now, telegram, pauseMs: 0 }); return [...sent]; };
+    const channel = (values: Record<string, unknown>) => members.update({ id: w.ownerMember.id }, { notificationChannels: { telegram: values } });
+
+    // Not connected: nothing, even with the channel on.
+    await channel({ enabled: true, priority_only: false, kinds: ['urgent'] });
+    await w.event(1, { message: 'for nobody yet' });
+    expect(await run()).toEqual([]);
+
+    await connections.save(connections.create({ memberId: w.ownerMember.id, chatId: String(chatId), username: null, firstName: null, deliveryError: null, deliveryErrorAt: null }));
+    await w.event(1, { eventType: 'NOTIFY_ONLY', message: 'alert is off' });
+    await w.event(1, { eventType: 'TOKEN_EXPIRED', message: 'urgent' });
+    const read = await w.event(1, { eventType: 'TOKEN_EXPIRED', message: 'already read' });
+    await dataSource.query('INSERT INTO inbox_notification_states (user_id, audit_event_id, is_read, updated_at) VALUES ($1, $2, true, now())', [w.owner.id, read]);
+    expect(await run()).toEqual(['urgent']);
+    expect(await run()).toEqual([]);
+
+    // A failed send is tried again later; nothing is recorded as sent.
+    const retried = await w.event(0.5, { eventType: 'TOKEN_EXPIRED', message: 'retried' });
+    answer = { ok: false, error: 'Too Many Requests' };
+    expect(await run()).toEqual(['retried']);
+    expect(await deliveries('inbox_telegram_deliveries', [retried])).toEqual([]);
+    answer = { ok: true, error: '' };
+    expect(await run()).toEqual(['retried']);
+    expect((await deliveries('inbox_telegram_deliveries', [retried]))[0]?.sent_at).toBeTruthy();
+
+    await channel({ enabled: false });
+    await w.event(0.4, { eventType: 'TOKEN_EXPIRED', message: 'channel off' });
+    expect(await run()).toEqual([]);
+  });
+
   it('sends desktop notifications to every signed-in browser and forgets the gone ones', async () => {
     const w = await world();
     await dataSource.getRepository(WorkspaceMemberEntity).update({ id: w.ownerMember.id }, {

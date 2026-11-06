@@ -46,7 +46,7 @@ get the case-by-case pass before stage 6.
 | test_favorites | 5 | covered (by case) | `views/views.test.ts` |
 | test_inbox_email | 14 | ported (by case) | `worker/delivery.test.ts`, `email.test.ts` |
 | test_inbox_push | 12 | covered (by area) | `worker/delivery.test.ts`, `notifications/notifications.test.ts` |
-| test_inbox_telegram | 9 | covered (by area) | `worker/delivery.test.ts`, `notifications/notifications.test.ts` |
+| test_inbox_telegram | 9 | covered + ported (by case) | `worker/delivery.test.ts` (settings, read state and retry added), `notifications/notifications.test.ts` |
 | test_inbox | 24 | covered (by case) | `notifications/inbox.test.ts`, `model.test.ts`, `notifications/notifications.test.ts` (bell) |
 | test_integration | 50 | no TS code | the monitoring loop acting side (`scheduler/worker.py` run_rule_cycle); another session ports it with its tests. Decisions are covered by `rules/decide.test.ts` |
 | test_legal_pages | 6 | other check | static site pages |
@@ -63,14 +63,14 @@ get the case-by-case pass before stage 6.
 | test_rate_limit | 10 | covered (by area) | `client-address.test.ts`, `auth/sign-in.test.ts`, `workspaces/public-invite.test.ts`, `uploads/images.test.ts` |
 | test_react_frontend_contract | 33 | other check | greps the frontend source; partly replaced by `scripts/*-browser.mjs` |
 | test_restore_check | 16 | other check | `scripts/restore_db.sh`, `drill_restore.sh` |
-| test_rule_examples | 9 | covered (by area) | `rules/labels.test.ts`, `rules/rules.test.ts`. The simulator test dies with `scripts/rule_simulator.py` |
+| test_rule_examples | 9 | covered + ported (by case) | `rules/labels.test.ts` (concurrent opening, older examples, owner marker added). The simulator test dies with `scripts/rule_simulator.py` |
 | test_rule_simulator | 14 | dies | developer tool `scripts/rule_simulator.py`, or rewrite |
 | test_rule_validation | 9 | covered | `rules/validation.test.ts` (+ parity) |
 | test_rules | 64 | covered (by area) | `rules/engine.test.ts` (+ `engine_parity.py`); freeze the parity cases into fixtures before Python goes |
 | test_rules_shadow | 3 | covered | `rules/decide.test.ts` |
 | test_server_proxy | 13 | dies | the Python proxy in front of the TS server |
 | test_service_worker | 4 | other check | `scripts/service-worker-browser.mjs` |
-| test_sync_bootstrap, test_sync_log, test_sync_stream | 12 + 10 + 31 | ported + covered (by area) | `sync/*.cases.ts`, `sync/log.test.ts` (ported), `worker/worker.test.ts` (compaction) |
+| test_sync_bootstrap, test_sync_log, test_sync_stream | 12 + 10 + 31 | ported + covered (by case) | `sync/*.cases.ts`, `sync/log.test.ts` (ported), `worker/worker.test.ts` (compaction) |
 | test_teams | 10 | covered + ported (by case) | `workspaces/teams.test.ts`, `workspaces/default-team.test.ts` (ported) |
 | test_timezones | 3 | covered + ported | `accounts/clock.test.ts`, `worker/day-boundary.test.ts` |
 | test_turnstile | 4 | covered (by case) | `email.test.ts` |
