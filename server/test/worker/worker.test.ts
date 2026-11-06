@@ -46,13 +46,14 @@ describe('job ownership (TS_WORKER_JOBS)', () => {
       telegram: telegramBot('', Fastify().log),
       sendPush: null,
       owned: new Set(),
+      redis: {} as Redis,
       exclusive: async () => true,
     });
-    expect(Object.keys(definitions).sort()).toEqual(['account_day_boundary', 'account_sync', 'inbox_email', 'inbox_push', 'inbox_telegram', 'sync_log_compaction', 'worker_watchdog']);
+    expect(Object.keys(definitions).sort()).toEqual(['account_day_boundary', 'account_sync', 'inbox_email', 'inbox_push', 'inbox_telegram', 'rules_shadow', 'sync_log_compaction', 'worker_watchdog']);
     // The watchdog ran in the API's loop (services/worker_watchdog.py).
     const watchdog = /CHECK_INTERVAL_SECONDS = (\d+)/.exec(pythonSource('services/worker_watchdog.py'));
     expect(definitions.worker_watchdog?.everyMs).toBe(Number(watchdog![1]) * 1000);
-    for (const [job, definition] of Object.entries(definitions).filter(([job]) => job !== 'worker_watchdog')) {
+    for (const [job, definition] of Object.entries(definitions).filter(([job]) => job !== 'worker_watchdog' && job !== 'rules_shadow')) {
       const match = new RegExp(`\\("${job}", \\w+, \\{"(\\w+)": (\\d+)\\}\\)`).exec(source);
       expect(match, `${job} in services/worker.py`).not.toBeNull();
       expect(definition.everyMs).toBe(Number(match![2]) * units[match![1]]);

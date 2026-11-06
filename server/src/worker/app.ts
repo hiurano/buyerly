@@ -11,6 +11,7 @@ import { publishSyncBus } from '../sync/bus.ts';
 import { compactSyncLog } from '../sync/compaction.ts';
 import { SHARED_JOBS, parseJobList, withJobLock, type JobId } from './jobs.ts';
 import { runDayBoundaryCycle } from './day-boundary.ts';
+import { runRulesShadow } from '../rules/shadow.ts';
 import { AccountSync } from './account-sync.ts';
 import { MetaClient } from '../meta/client.ts';
 import { PostgresInventoryCache } from '../meta/inventory-cache.ts';
@@ -35,6 +36,8 @@ export interface WorkerContext {
   sendPush: SendPush | null;
   // The jobs TS_WORKER_JOBS gives this worker.
   owned: ReadonlySet<JobId>;
+  // The worker's Redis connection (run records, the sync bus, the rules shadow run's counts).
+  redis: Redis;
   // Runs a job under its advisory lock (jobs.ts withJobLock); false when held elsewhere.
   exclusive: (job: JobId, run: () => Promise<void>) => Promise<boolean>;
   metaFetch?: typeof fetch;
@@ -123,6 +126,18 @@ export function jobDefinitions(context: WorkerContext): Partial<Record<JobId, Jo
         if (stats.accounts_synced || stats.errors.length) log.info({ ...stats, errors: stats.errors.length }, 'Account sync cycle');
       },
     },
+    // The rules engine's shadow run (#611 stage 4): the TypeScript engine
+    // decides on what each Python monitoring cycle saw and the decisions are
+    // compared. It reads files and writes Redis only; Meta and the business
+    // tables are never touched.
+    rules_shadow: {
+      everyMs: 30_000,
+      run: async () => {
+        if (!config.rulesShadowDir) return;
+        const stats = await runRulesShadow({ directory: config.rulesShadowDir, redis: context.redis, log });
+        if (stats.captures || stats.errors) log.info({ ...stats }, 'Rules shadow run');
+      },
+    },
     // Every minute, as the API's loop did (services/worker_watchdog.py).
     worker_watchdog: {
       everyMs: CHECK_INTERVAL_MS,
@@ -163,6 +178,9 @@ export function buildWorker(config: Config, dataSource: DataSource, services: Pa
   // worker that refused to start would leave the jobs it knows run by no
   // one, since the older Python worker still skips them.
   if (unknown.length) app.log.warn(`TS_WORKER_JOBS names jobs this worker does not know: ${unknown.join(', ')}`);
+  if (!config.redisUrl) throw new Error('REDIS_URL is not set');
+  const redis = new Redis(config.redisUrl, { maxRetriesPerRequest: 1, lazyConnect: true });
+  redis.on('error', (error) => app.log.warn({ err: error }, 'Redis connection error'));
   const context: WorkerContext = {
     config,
     db,
@@ -171,18 +189,16 @@ export function buildWorker(config: Config, dataSource: DataSource, services: Pa
     telegram: services.telegram ?? telegramBot(config.telegramBotToken, app.log),
     sendPush: services.sendPush !== undefined ? services.sendPush : vapid ? pushSender(vapid, config.vapidSubject) : null,
     owned: jobs,
+    redis,
     exclusive: (job, run) => withJobLock(dataSource, job, run),
     ...(services.metaFetch ? { metaFetch: services.metaFetch } : {}),
   };
   const definitions = jobDefinitions(context);
   const missing = [...jobs].filter((job) => !definitions[job]);
   if (missing.length) throw new Error(`TS_WORKER_JOBS names jobs this worker cannot run yet: ${missing.join(', ')}`);
-  if (!config.redisUrl) throw new Error('REDIS_URL is not set');
 
   const owned = new Map<JobId, JobDefinition>([...jobs].map((job) => [job, definitions[job] as JobDefinition]));
   const notOwned = (Object.keys(SHARED_JOBS) as JobId[]).filter((job) => !jobs.has(job) && definitions[job]);
-  const redis = new Redis(config.redisUrl, { maxRetriesPerRequest: 1, lazyConnect: true });
-  redis.on('error', (error) => app.log.warn({ err: error }, 'Redis connection error'));
   let scheduler: Scheduler | null = null;
 
   app.get(WORKER_HEALTH_PATH, { logLevel: 'warn' }, async (request, reply): Promise<WorkerHealth> => {
