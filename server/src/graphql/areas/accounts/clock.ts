@@ -57,6 +57,11 @@ function dayFormat(timezoneName: string | null | undefined): Intl.DateTimeFormat
   return formats.get(canonical) ?? null;
 }
 
+// resolve_account_clock(...) is not None: a zone the system knows.
+export function knownTimezone(timezoneName: string | null | undefined): boolean {
+  return dayFormat(timezoneName) !== null;
+}
+
 export function localToday(timezoneName: string | null | undefined, now: Date): string {
   const format = dayFormat(timezoneName);
   if (!format) return now.toISOString().slice(0, 10);
