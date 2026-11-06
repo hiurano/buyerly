@@ -4,9 +4,9 @@ import http from 'node:http';
 import path from 'node:path';
 
 // Persist a secret-free, read-only production smoke result (#611 stage 5;
-// port of scripts/post_deploy_smoke.py, same checks, same result file, same
+// it replaced scripts/post_deploy_smoke.py with the same checks, result file,
 // stdout and exit codes). It runs inside a throwaway container of the release
-// image (scripts/run_post_deploy_smoke.sh) because the host has no Node:
+// image (run_post_deploy_smoke in scripts/deploy.sh) because the host has no Node:
 //   --network host         → SMOKE_BASE_URL reaches 127.0.0.1:8080 of the host
 //   /var/run/docker.sock   → DOCKER_SOCKET: docker inspect / exec of the services
 //
