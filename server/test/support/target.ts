@@ -132,6 +132,10 @@ export async function typescriptTarget(env: Record<string, string> = {}, build: 
     },
     verifyTurnstile: async () => true,
     telegram,
+    // No Meta from tests unless one answers for it (test/meta).
+    metaFetch: (async () => {
+      throw new TypeError('fetch failed', { cause: new Error('Meta is not reachable from tests') });
+    }),
   };
   // Indirect, so a test may replace a service after the app is built.
   const app = buildApp(config, connectDatabase(DATABASE_URL), {
