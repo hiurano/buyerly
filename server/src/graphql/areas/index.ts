@@ -2,6 +2,7 @@ import type { NonEmptyArray } from 'type-graphql';
 import { AccountsResolver } from './accounts/accounts.resolver.ts';
 import { AdSetsResolver } from './accounts/adsets.resolver.ts';
 import { AnalyticsResolver } from './accounts/analytics.resolver.ts';
+import { SearchResolver } from './accounts/search.resolver.ts';
 import { TeamsResolver } from './teams/teams.resolver.ts';
 import { UsersResolver } from './users/users.resolver.ts';
 import { InvitesResolver } from './workspaces/invites.resolver.ts';
@@ -22,6 +23,7 @@ import { WorkspacesResolver } from './workspaces/workspaces.resolver.ts';
 import { RuleLabelsResolver } from './rules/labels.resolver.ts';
 import { RulesResolver } from './rules/rules.resolver.ts';
 import { RuleAttachmentsResolver } from './rules/attachments.resolver.ts';
+import { RulePreviewResolver } from './rules/preview.resolver.ts';
 
 // Every area's resolvers: the one place a new area is registered. An area
 // lives in its own folder (areas/<area>/<area>.resolver.ts, plus whatever
@@ -47,9 +49,11 @@ export const RESOLVERS: NonEmptyArray<new () => object> = [
   AccountsResolver,
   AdSetsResolver,
   AnalyticsResolver,
+  SearchResolver,
   RuleLabelsResolver,
   RulesResolver,
   RuleAttachmentsResolver,
+  RulePreviewResolver,
   AuthResolver,
   SupportResolver,
   HealthResolver,

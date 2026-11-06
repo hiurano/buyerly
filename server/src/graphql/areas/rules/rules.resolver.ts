@@ -109,7 +109,7 @@ function draftSchema(create: boolean): Record<string, unknown> {
 
 interface Condition { metric?: string; operator?: string; value?: number; time_window?: string }
 interface Attachment { account_id: string; scope: { level: string; ids: string[] } }
-interface Draft {
+export interface Draft {
   name: string;
   action: string;
   level: string;
@@ -129,7 +129,7 @@ const CREATE = inputSchema<Record<string, unknown>>(draftSchema(true));
 
 // The model's defaults, then its model validators in pydantic's order:
 // RuleScopeItem's, RuleDraftRequest's, CreatePresetRequest's.
-function draft(input: unknown, create: boolean): Draft {
+export function draft(input: unknown, create: boolean): Draft {
   const body = (create ? CREATE : DRAFT).parse(input);
   const valueError = (message: string) => invalidInput([`Value error, ${message}`]);
   const conditions = (body.conditions as Condition[]).map((item) => ({
@@ -187,7 +187,7 @@ function draft(input: unknown, create: boolean): Draft {
 const actKey = (accountId: string): string => (accountId.startsWith('act_') ? accountId : `act_${accountId}`);
 
 // rules.py _preset_fields: the stored columns of a rule from the window.
-function presetFields(payload: Draft, conditions: Record<string, unknown>[]) {
+export function presetFields(payload: Draft, conditions: Record<string, unknown>[]) {
   return {
     name: strip(payload.name) || 'New rule',
     action: payload.action || 'turn_off',

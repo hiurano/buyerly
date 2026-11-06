@@ -17,6 +17,10 @@ export type Rule = Record<string, unknown>;
 
 export class RuleValueError extends Error {}
 
+// Python's AttributeError (.get on a non-mapping). The checks here treat it
+// as any failure; the engine, like Python's, lets it through (rules/engine.ts).
+export class RuleAttributeError extends RuleValueError {}
+
 const LEGACY_METRIC_ALIASES: Record<string, string> = { cpr: 'cpreg', cpa: 'legacy_cpa' };
 
 export const PUBLIC_RULE_METRICS = new Set([
@@ -44,13 +48,13 @@ const CONFLICTING_RULE_ACTIONS = [['turn_off', 'turn_on'], ['increase_budget', '
 // Python's whitespace (str.isspace), for strip() and float().
 const SPACE = '[\\t\\n\\v\\f\\r\\x1c-\\x20\\x85\\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]';
 const STRIP = new RegExp(`^${SPACE}+|${SPACE}+$`, 'g');
-const pyStrip = (value: string): string => value.replace(STRIP, '');
+export const pyStrip = (value: string): string => value.replace(STRIP, '');
 
-const isMapping = (value: unknown): value is Record<string, unknown> =>
+export const isMapping = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 // dict.get(key, default): the default only when the key is absent.
-function get(mapping: Record<string, unknown>, key: string, fallback: unknown = null): unknown {
+export function get(mapping: Record<string, unknown>, key: string, fallback: unknown = null): unknown {
   return Object.prototype.hasOwnProperty.call(mapping, key) ? mapping[key] : fallback;
 }
 
@@ -79,7 +83,7 @@ export function pyStr(value: unknown): string {
   return pyRepr(value);
 }
 
-function pyRepr(value: unknown): string {
+export function pyRepr(value: unknown): string {
   if (typeof value === 'string') {
     const quote = value.includes("'") && !value.includes('"') ? '"' : "'";
     const body = value.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
@@ -103,8 +107,19 @@ export function pyFloat(value: unknown): number {
     const special = SPECIAL_FLOAT.exec(text);
     if (special) return special[2].toLowerCase() === 'nan' ? NaN : (special[1] === '-' ? -Infinity : Infinity);
     if (FLOAT_TEXT.test(text)) return Number(text.replace(/_/g, ''));
+    throw new RuleValueError(`could not convert string to float: ${pyRepr(value)}`);
   }
-  throw new RuleValueError(`could not convert to float: ${pyRepr(value)}`);
+  // Python's TypeError, with its message: the engine quotes it ("Automation halted: …").
+  throw new RuleValueError(`float() argument must be a string or a real number, not '${pyTypeName(value)}'`);
+}
+
+// type(value).__name__ of a JSON value.
+export function pyTypeName(value: unknown): string {
+  if (value === null || value === undefined) return 'NoneType';
+  if (typeof value === 'boolean') return 'bool';
+  if (typeof value === 'number') return Number.isInteger(value) ? 'int' : 'float';
+  if (typeof value === 'string') return 'str';
+  return Array.isArray(value) ? 'list' : 'dict';
 }
 
 export function canonicalRuleMetric(metric: unknown): string {
@@ -113,7 +128,7 @@ export function canonicalRuleMetric(metric: unknown): string {
 }
 
 // Python truthiness of a JSON value, for `x or default`.
-function truthy(value: unknown): boolean {
+export function truthy(value: unknown): boolean {
   if (Array.isArray(value)) return value.length > 0;
   if (isMapping(value)) return Object.keys(value).length > 0;
   return Boolean(value);
@@ -182,7 +197,7 @@ export function normalizeRuntimeRule(rule: Rule): { rule: Rule; changed: boolean
 
 function asMapping(value: unknown): Record<string, unknown> {
   // Python would fail on .get of a non-mapping; the callers treat any failure alike.
-  if (!isMapping(value)) throw new RuleValueError(`'${pyStr(value)}' object has no attribute 'get'`);
+  if (!isMapping(value)) throw new RuleAttributeError(`'${pyTypeName(value)}' object has no attribute 'get'`);
   return value;
 }
 

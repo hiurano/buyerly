@@ -57,14 +57,14 @@ function dayFormat(timezoneName: string | null | undefined): Intl.DateTimeFormat
   return formats.get(canonical) ?? null;
 }
 
-function localToday(timezoneName: string | null | undefined, now: Date): string {
+export function localToday(timezoneName: string | null | undefined, now: Date): string {
   const format = dayFormat(timezoneName);
   if (!format) return now.toISOString().slice(0, 10);
   const parts = Object.fromEntries(format.formatToParts(now).map((part) => [part.type, part.value]));
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
-function daysBefore(day: string, offset: number): string {
+export function daysBefore(day: string, offset: number): string {
   const date = new Date(`${day}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() - offset);
   return date.toISOString().slice(0, 10);
