@@ -2,15 +2,16 @@ import { createHmac } from 'node:crypto';
 import type { FastifyBaseLogger } from 'fastify';
 
 // The Buyerly Telegram bot (core/telegram.py), the part the client API and
-// the webhook need: whether it is set up, its @username for t.me links, the
-// webhook's secret and one reply. Delivering Inbox notifications stays with
-// the Python worker until stage 4.
+// the webhook and the worker's Inbox delivery need: whether it is set up,
+// its @username for t.me links, the webhook's secret and sending a message.
 
 export const TELEGRAM_API_URL = 'https://api.telegram.org';
 
 export interface TelegramSendResult {
   ok: boolean;
   error: string;
+  // The person blocked the bot or deleted their account: retrying will not help.
+  unreachable?: boolean;
 }
 
 export interface TelegramBot {
@@ -19,8 +20,8 @@ export interface TelegramBot {
   webhookSecret(): string;
   // Asked from Telegram once per process; null when it cannot be had.
   username(): Promise<string | null>;
-  // An HTML message.
-  sendMessage(chatId: number, text: string): Promise<TelegramSendResult>;
+  // An HTML message, optionally with one link button.
+  sendMessage(chatId: number, text: string, button?: { label: string; url: string }): Promise<TelegramSendResult>;
 }
 
 export function telegramBot(token: string, log: FastifyBaseLogger, fetcher: typeof fetch = fetch): TelegramBot {
@@ -63,7 +64,7 @@ export function telegramBot(token: string, log: FastifyBaseLogger, fetcher: type
       }
       return username;
     },
-    async sendMessage(chatId, text) {
+    async sendMessage(chatId, text, button) {
       if (!token) {
         log.info('[DEV TELEGRAM] To: %s | %s', chatId, text.split('\n', 1)[0]);
         return { ok: true, error: '' };
@@ -74,9 +75,11 @@ export function telegramBot(token: string, log: FastifyBaseLogger, fetcher: type
           text,
           parse_mode: 'HTML',
           link_preview_options: { is_disabled: true },
+          ...(button ? { reply_markup: { inline_keyboard: [[{ text: button.label, url: button.url }]] } } : {}),
         });
-        if (response.ok) return { ok: true, error: '' };
+        if (response.status === 200) return { ok: true, error: '' };
         const error = await description(response);
+        if (response.status === 403 || error.toLowerCase().includes('chat not found')) return { ok: false, unreachable: true, error };
         log.error('Telegram sendMessage to %s failed: HTTP %d %s', chatId, response.status, error);
         return { ok: false, error };
       } catch (error) {
