@@ -40,18 +40,18 @@ import { userWorkspacesList } from '../workspaces/access.ts';
 // it; /api/admin/overview moves with Admin.
 
 // pydantic's request models, as JSON Schema; extra="forbid" everywhere.
-function bodySchema(properties: Record<string, object>, required: string[]): object {
+function bodySchema(properties: Record<string, object>, required: string[]): Record<string, unknown> {
   return { type: 'object', properties, required, additionalProperties: false };
 }
 const text = (minLength: number, maxLength: number) => ({ type: 'string', minLength, maxLength });
 const optionalText = (minLength: number, maxLength: number) => ({ type: ['string', 'null'], minLength, maxLength });
 
-const REQUEST_TEMPORARY_PASSWORD = bodySchema(
+export const REQUEST_TEMPORARY_PASSWORD = bodySchema(
   { email: text(3, 255), invite_token: optionalText(16, 255), turnstile_token: optionalText(0, 2048) },
   ['email'],
 );
-const VERIFY_TEMPORARY_PASSWORD = bodySchema({ email: text(3, 255), code: text(10, 20) }, ['email', 'code']);
-const VERIFY_EMAIL_LINK = bodySchema({ token: text(32, 255) }, ['token']);
+export const VERIFY_TEMPORARY_PASSWORD = bodySchema({ email: text(3, 255), code: text(10, 20) }, ['email', 'code']);
+export const VERIFY_EMAIL_LINK = bodySchema({ token: text(32, 255) }, ['token']);
 const REQUEST_EMAIL_CHANGE = bodySchema({ new_email: text(3, 255) }, ['new_email']);
 const VERIFY_EMAIL_CHANGE = bodySchema({ code: text(1, 20) }, ['code']);
 
@@ -205,8 +205,6 @@ function parseBool(raw: unknown): boolean | null {
 }
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
-  const cookies = () => ({ secure: app.config.sessionCookieSecure });
-
   // Email one single-use login link and its matching code. A new address
   // with no invitation is a sign-up: it must pass Cloudflare Turnstile first.
   app.post<{ Body: RequestTemporaryPasswordRequest }>(
@@ -215,25 +213,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       schema: { body: REQUEST_TEMPORARY_PASSWORD },
       preValidation: [rateLimit({ limit: 5, scope: 'otp_req', identityFields: ['email'] })],
     },
-    async (request) => {
-      const email = validEmail(request.body.email);
-      const issued = await app.db.transaction(async (tx) => {
-        const [allowed, invite] = await resolveLoginAuthorization(tx, email, { token: request.body.invite_token });
-        if (!allowed) throw new HttpError(403, 'This invitation is no longer valid. Ask for a new one.');
-        if (!invite) {
-          const hasAccount = await tx.exists(UserEntity, { where: { email: lowerEquals(email) } });
-          if (!hasAccount && !(await app.services.verifyTurnstile(request.body.turnstile_token, app.clientAddress.ip(request)))) {
-            throw new HttpError(400, "We couldn't verify you're human. Please try again.");
-          }
-        }
-        const scope = loginScope(email);
-        if (await app.otp.hasRecentActive(tx, scope)) throw new HttpError(429, CODE_SENT_RECENTLY);
-        return app.otp.create(tx, { email, purpose: OTP_LOGIN, scope, inviteId: invite?.id ?? null });
-      });
-      const webappUrl = (app.config.webappUrl || 'https://buyerly.app').replace(/\/+$/, '');
-      await deliver(app, issued, email, `${webappUrl}/auth/email/verify?token=${issued.linkToken}`);
-      return { ok: true, message: 'A temporary password has been sent to your email' };
-    },
+    async (request) => requestLoginCode(app, request, request.body),
   );
 
   // Atomically verify a delivered login code, then create or sign in the user.
@@ -243,17 +223,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       schema: { body: VERIFY_TEMPORARY_PASSWORD },
       preValidation: [rateLimit({ limit: 10, scope: 'verify_login_otp', identityFields: ['email'] })],
     },
-    async (request, reply): Promise<LoginResponse> => {
-      const email = validEmail(request.body.email);
-      return app.db.transaction(async (tx) => {
-        const result = await app.otp.consume(tx, loginScope(email), request.body.code);
-        if (result.status !== 'consumed' || result.purpose !== OTP_LOGIN) {
-          if (result.status === 'locked') throw afterCommit(new HttpError(401, TOO_MANY_ATTEMPTS));
-          throw afterCommit(new HttpError(401, 'Invalid or expired temporary password'));
-        }
-        return completePasswordlessLogin(tx, request, reply, email, result.inviteId);
-      });
-    },
+    async (request, reply) => verifyLoginCode(app, request, reply, request.body),
   );
 
   // Atomically exchange a delivered one-time email link for a session.
@@ -263,14 +233,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       schema: { body: VERIFY_EMAIL_LINK },
       preValidation: [rateLimit({ limit: 10, scope: 'verify_login_link', identityFields: ['token'] })],
     },
-    async (request, reply): Promise<LoginResponse> =>
-      app.db.transaction(async (tx) => {
-        const result = await app.otp.consumeMagicLink(tx, request.body.token);
-        if (result.status !== 'consumed' || result.purpose !== OTP_LOGIN || !result.email) {
-          throw afterCommit(new HttpError(401, 'This sign-in link is invalid or has expired'));
-        }
-        return completePasswordlessLogin(tx, request, reply, result.email, result.inviteId);
-      }),
+    async (request, reply) => verifyLoginLink(app, request, reply, request.body.token),
   );
 
   // Mail a code that attaches or changes the member's email.
@@ -302,34 +265,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   // Every account logged in to this browser, in the order they were added.
   // Reads only the cookies this browser sent; cookies of ended sessions are
   // dropped so their slots can take another account.
-  app.get('/api/auth/accounts', async (request, reply): Promise<BrowserAccountItem[]> =>
-    app.db.transaction(async (tx) => {
-      const live = await liveBrowserSessions(tx, request);
-      const liveSlots = new Set(live.map((item) => item.slot));
-      for (const { slot } of sessionCookieTokens(request)) {
-        if (!liveSlots.has(slot)) clearSessionCookies(reply, cookies(), slot);
-      }
-      const accounts: BrowserAccountItem[] = [];
-      const seen = new Set<number>();
-      for (const { slot, session } of live) {
-        if (seen.has(session.userId)) continue;
-        const user = await tx.findOneBy(UserEntity, { id: session.userId });
-        if (!user || !user.isApproved) continue;
-        seen.add(user.id);
-        accounts.push({
-          id: user.id,
-          username: user.username || '',
-          full_name: user.fullName || '',
-          email: user.email,
-          avatar_url: user.avatarUrl || '',
-          slot,
-          onboarding_completed: Boolean(user.onboardingCompleted),
-          workspaces: await userWorkspacesList(tx, user),
-        });
-      }
-      return accounts;
-    }),
-  );
+  app.get('/api/auth/accounts', async (request, reply) => browserAccounts(app, request, reply));
 
   // The member's signed-in browsers, most recently used first.
   app.get('/api/auth/sessions', { preValidation: [currentUser] }, async (request): Promise<WebSessionItem[]> =>
@@ -503,4 +439,100 @@ export async function verifyEmailChange(app: FastifyInstance, request: FastifyRe
     throw new HttpError(409, 'The email could not be activated because of a uniqueness conflict');
   }
   return { ok: true, message: 'Email confirmed and linked to your account', email, email_verified: true };
+}
+
+// Signing in, for the REST routes above and the GraphQL fields
+// (emailUserAccountAuthChallenge, emailTokenUserAccountAuth,
+// emailLinkUserAccountAuth, availableUsers): no session needed.
+
+// Email one single-use login link and its matching code. A new address
+// with no invitation is a sign-up: it must pass Cloudflare Turnstile first.
+export async function requestLoginCode(
+  app: FastifyInstance,
+  request: FastifyRequest,
+  body: RequestTemporaryPasswordRequest,
+): Promise<{ ok: boolean; message: string }> {
+  const email = validEmail(body.email);
+  const issued = await app.db.transaction(async (tx) => {
+    const [allowed, invite] = await resolveLoginAuthorization(tx, email, { token: body.invite_token });
+    if (!allowed) throw new HttpError(403, 'This invitation is no longer valid. Ask for a new one.');
+    if (!invite) {
+      const hasAccount = await tx.exists(UserEntity, { where: { email: lowerEquals(email) } });
+      if (!hasAccount && !(await app.services.verifyTurnstile(body.turnstile_token, app.clientAddress.ip(request)))) {
+        throw new HttpError(400, "We couldn't verify you're human. Please try again.");
+      }
+    }
+    const scope = loginScope(email);
+    if (await app.otp.hasRecentActive(tx, scope)) throw new HttpError(429, CODE_SENT_RECENTLY);
+    return app.otp.create(tx, { email, purpose: OTP_LOGIN, scope, inviteId: invite?.id ?? null });
+  });
+  const webappUrl = (app.config.webappUrl || 'https://buyerly.app').replace(/\/+$/, '');
+  await deliver(app, issued, email, `${webappUrl}/auth/email/verify?token=${issued.linkToken}`);
+  return { ok: true, message: 'A temporary password has been sent to your email' };
+}
+
+// Atomically verify a delivered login code, then create or sign in the user.
+export async function verifyLoginCode(
+  app: FastifyInstance,
+  request: FastifyRequest,
+  reply: FastifyReply,
+  body: VerifyTemporaryPasswordRequest,
+): Promise<LoginResponse> {
+  const email = validEmail(body.email);
+  return app.db.transaction(async (tx) => {
+    const result = await app.otp.consume(tx, loginScope(email), body.code);
+    if (result.status !== 'consumed' || result.purpose !== OTP_LOGIN) {
+      if (result.status === 'locked') throw afterCommit(new HttpError(401, TOO_MANY_ATTEMPTS));
+      throw afterCommit(new HttpError(401, 'Invalid or expired temporary password'));
+    }
+    return completePasswordlessLogin(tx, request, reply, email, result.inviteId);
+  });
+}
+
+// Atomically exchange a delivered one-time email link for a session.
+export async function verifyLoginLink(
+  app: FastifyInstance,
+  request: FastifyRequest,
+  reply: FastifyReply,
+  token: string,
+): Promise<LoginResponse> {
+  return app.db.transaction(async (tx) => {
+    const result = await app.otp.consumeMagicLink(tx, token);
+    if (result.status !== 'consumed' || result.purpose !== OTP_LOGIN || !result.email) {
+      throw afterCommit(new HttpError(401, 'This sign-in link is invalid or has expired'));
+    }
+    return completePasswordlessLogin(tx, request, reply, result.email, result.inviteId);
+  });
+}
+
+// Every account logged in to this browser, in the order they were added.
+// Reads only the cookies this browser sent; cookies of ended sessions are
+// dropped so their slots can take another account.
+export async function browserAccounts(app: FastifyInstance, request: FastifyRequest, reply: FastifyReply): Promise<BrowserAccountItem[]> {
+  return app.db.transaction(async (tx) => {
+    const live = await liveBrowserSessions(tx, request);
+    const liveSlots = new Set(live.map((item) => item.slot));
+    for (const { slot } of sessionCookieTokens(request)) {
+      if (!liveSlots.has(slot)) clearSessionCookies(reply, { secure: app.config.sessionCookieSecure }, slot);
+    }
+    const accounts: BrowserAccountItem[] = [];
+    const seen = new Set<number>();
+    for (const { slot, session } of live) {
+      if (seen.has(session.userId)) continue;
+      const user = await tx.findOneBy(UserEntity, { id: session.userId });
+      if (!user || !user.isApproved) continue;
+      seen.add(user.id);
+      accounts.push({
+        id: user.id,
+        username: user.username || '',
+        full_name: user.fullName || '',
+        email: user.email,
+        avatar_url: user.avatarUrl || '',
+        slot,
+        onboarding_completed: Boolean(user.onboardingCompleted),
+        workspaces: await userWorkspacesList(tx, user),
+      });
+    }
+    return accounts;
+  });
 }

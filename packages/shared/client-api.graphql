@@ -100,6 +100,17 @@ type Mutation {
   userEmailChangeVerify(input: JSON!): EmailChangePayload
 
   """
+  Mails a sign-in code and link; a new address without an invite passes Turnstile first.
+  """
+  emailUserAccountAuthChallenge(input: JSON!): JSON!
+
+  """Signs in with the emailed code, creating the account on first sign-in."""
+  emailTokenUserAccountAuth(input: JSON!): JSON!
+
+  """Signs in with the emailed one-time link."""
+  emailLinkUserAccountAuth(input: JSON!): JSON!
+
+  """
   Opens a time-limited support session in a workspace for a platform administrator.
   """
   supportSessionCreate(input: JSON!): SupportSessionPayload
@@ -363,6 +374,12 @@ type Query {
 
   """The user's signed-in browsers, most recently used first."""
   authenticationSessions: JSON!
+
+  """Every account signed in to this browser, in the order they were added."""
+  availableUsers: JSON!
+
+  """What an invite link offers, for the page shown before signing in."""
+  workspaceInviteDetails(token: String!): JSON!
 
   """Reliability signals and ad account health of the active workspace."""
   healthOverview: JSON!
