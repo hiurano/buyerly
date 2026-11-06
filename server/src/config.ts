@@ -54,6 +54,18 @@ export interface Config {
   // Compose mounts as the buyerly-uploads volume for both services.
   // SERVER_UPLOADS_DIR replaces it; the tests use a directory of their own.
   uploadsRoot: string;
+
+  // Meta (core/config.py): the pinned Graph API version and origin (the fake
+  // Meta on the local stack), the app and its Facebook Login for Business
+  // configuration, and the Fernet keys stored Meta tokens are encrypted with
+  // ("primary[,older decrypt-only keys]"), the same as the Python API's.
+  metaGraphVersion: string;
+  metaGraphBaseUrl: string;
+  metaAppId: string;
+  metaAppSecret: string;
+  metaLoginConfigId: string;
+  metaOauthRedirectUri: string;
+  metaTokenEncryptionKey: string;
 }
 
 // <repository>/uploads, from server/src/config.ts and server/dist/config.js alike.
@@ -122,5 +134,12 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     telegramBotToken: (env.TELEGRAM_BOT_TOKEN ?? '').replace(/^["' \t\r\n]+|["' \t\r\n]+$/g, ''),
     vapidPrivateKey: (env.VAPID_PRIVATE_KEY ?? '').trim(),
     uploadsRoot: env.SERVER_UPLOADS_DIR || DEFAULT_UPLOADS_ROOT,
+    metaGraphVersion: env.META_GRAPH_VERSION || 'v26.0',
+    metaGraphBaseUrl: env.META_GRAPH_BASE_URL || 'https://graph.facebook.com',
+    metaAppId: env.META_APP_ID ?? '',
+    metaAppSecret: env.META_APP_SECRET ?? '',
+    metaLoginConfigId: env.META_LOGIN_CONFIG_ID ?? '',
+    metaOauthRedirectUri: env.META_OAUTH_REDIRECT_URI ?? '',
+    metaTokenEncryptionKey: env.META_TOKEN_ENCRYPTION_KEY ?? '',
   };
 }
