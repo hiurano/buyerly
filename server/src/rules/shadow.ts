@@ -40,6 +40,8 @@ export interface PythonAction {
 
 export interface Capture extends DecisionInput {
   version: number;
+  // A cycle in which no account's rules were due (rules/shadow.py finish_cycle).
+  marker?: boolean;
   python: { outcomes: RuleOutcome[]; actions: PythonAction[]; stopped_early: boolean };
 }
 
@@ -181,6 +183,8 @@ export const utcDay = (seconds: number): string => new Date(seconds * 1000).toIS
 export interface DaySummary {
   day: string;
   captures: number;
+  // Captures that were cycle markers: no rule due anywhere, empty on both sides.
+  markers: number;
   cycles: number;
   clean: number;
   partial: number;
@@ -200,6 +204,7 @@ export async function readDay(redis: Redis, day: string): Promise<DaySummary> {
   return {
     day,
     captures: number('captures'),
+    markers: number('markers'),
     cycles,
     clean: number('clean'),
     partial: number('partial'),
@@ -285,6 +290,7 @@ async function record(redis: Redis, capture: Capture, comparison: Comparison, at
   const pipeline = redis.multi();
   pipeline.set(SINCE_KEY, String(at), 'NX');
   pipeline.hincrby(key, 'captures', 1);
+  if (capture.marker) pipeline.hincrby(key, 'markers', 1);
   if (!unexplained.length) pipeline.hincrby(key, 'clean', 1);
   if (capture.python.stopped_early) pipeline.hincrby(key, 'partial', 1);
   pipeline.hincrby(key, 'outcomes', comparison.outcomes);
