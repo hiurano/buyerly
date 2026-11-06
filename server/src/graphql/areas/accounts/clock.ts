@@ -5,7 +5,7 @@ import { strip } from './text.ts';
 // the account's own days.
 
 // Backward-compatible names Meta still returns, stored canonically.
-const META_TIMEZONE_ALIASES: Record<string, string> = {
+export const META_TIMEZONE_ALIASES: Record<string, string> = {
   'US/Hawaii': 'Pacific/Honolulu',
   HST: 'Pacific/Honolulu',
   'US/Alaska': 'America/Anchorage',
