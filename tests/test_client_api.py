@@ -16,6 +16,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 
 import httpx
+from graphql import get_named_type, is_object_type
 from fastapi import APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -468,7 +469,8 @@ def _document(name: str, variables: dict) -> str:
     kind, field = _schema_fields()[name]
     declared = ", ".join(f"${arg}: {field.args[arg].type}" for arg in variables)
     passed = ", ".join(f"{arg}: ${arg}" for arg in variables)
-    selection = " { success lastSyncId }" if kind == "mutation" else ""
+    # A payload is asked for its fields; signing in answers JSON itself.
+    selection = " { success lastSyncId }" if kind == "mutation" and is_object_type(get_named_type(field.type)) else ""
     return (
         f"{kind} Op{f'({declared})' if declared else ''} "
         f"{{ {name}{f'({passed})' if passed else ''}{selection} }}"
