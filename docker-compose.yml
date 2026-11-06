@@ -25,6 +25,13 @@ x-app: &app
     WEBAPP_URL: ${WEBAPP_URL:-https://buyerly.app}
     # The TypeScript server (#611); the API forwards it the paths it owns.
     SERVER_URL: http://server:8090
+    # BullMQ queues of the TypeScript worker (decision 54, #611 stage 4).
+    REDIS_URL: redis://redis:6379/0
+    # Background jobs the TypeScript worker owns; the Python worker skips
+    # them (core/worker_jobs.py). Moving one back to Python is
+    # TS_WORKER_JOBS=<the rest> in .env (an empty value moves all of them)
+    # and `docker compose up -d worker worker-ts api`.
+    TS_WORKER_JOBS: ${TS_WORKER_JOBS-sync_log_compaction}
     TZ: UTC
   volumes:
     - ./logs:/app/logs:z
@@ -50,6 +57,25 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
+
+  # Queues and schedules of the TypeScript worker (BullMQ, decision 54).
+  # BullMQ needs every key kept (noeviction); the append-only file keeps the
+  # schedules across restarts. The host is small: Redis gets a hard cap.
+  redis:
+    image: redis:7.4.11-alpine
+    container_name: buyerly-redis
+    restart: unless-stopped
+    logging: *default-logging
+    command: ["redis-server", "--appendonly", "yes", "--save", "", "--maxmemory", "96mb", "--maxmemory-policy", "noeviction"]
+    mem_limit: 160m
+    volumes:
+      - buyerly-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
 
   # One-off: `docker compose run --rm migrate` before a release starts.
   migrate:
@@ -137,6 +163,26 @@ services:
       retries: 4
       start_period: 15s
 
+  # The TypeScript worker (#611 stage 4), from the same image: the jobs in
+  # TS_WORKER_JOBS on BullMQ (server/src/worker/). It answers its health on
+  # 8091 inside the container only. On SIGTERM running jobs finish first.
+  worker-ts:
+    <<: *app
+    container_name: buyerly-worker-ts
+    command: ["node", "server/dist/worker/main.js"]
+    stop_grace_period: 60s
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8091/health/worker-ts').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
   # Nightly backup of the database and uploads, encrypted, to S3
   # (scripts/backup_service.sh). It lives here rather than in the host's cron
   # so a new server gets it from `deploy.sh` alone. deploy.sh starts it by
@@ -202,3 +248,5 @@ volumes:
     name: buyerly-postgres
   buyerly-uploads:
     name: buyerly-uploads
+  buyerly-redis:
+    name: buyerly-redis

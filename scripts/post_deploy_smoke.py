@@ -110,6 +110,7 @@ def _runtime_versions() -> dict:
     containers = {
         "buyerly-api": f"buyerly-app:{EXPECTED_SHA}",
         "buyerly-worker": f"buyerly-app:{EXPECTED_SHA}",
+        "buyerly-worker-ts": f"buyerly-app:{EXPECTED_SHA}",
     }
     observed = {}
     for container_name, expected_image in containers.items():
@@ -143,6 +144,26 @@ def _worker_heartbeat() -> dict:
         ],
     )
     return json.loads(output.splitlines()[-1])
+
+
+def _worker_ts_health() -> dict:
+    """The TypeScript worker (#611 stage 4): healthy, and no owned job's last run failed."""
+    output = _command(
+        "TypeScript worker health",
+        [
+            "docker",
+            "exec",
+            "buyerly-worker-ts",
+            "node",
+            "-e",
+            "fetch('http://127.0.0.1:8091/health/worker-ts').then(async (r) => { console.log(await r.text()); process.exit(r.ok ? 0 : 1); }, () => process.exit(1))",
+        ],
+    )
+    payload = json.loads(output.splitlines()[-1])
+    failed = [job for job, run in (payload.get("jobs") or {}).items() if run and run.get("outcome") == "error"]
+    if payload.get("status") != "ok" or failed:
+        raise RuntimeError("TypeScript worker is not healthy: " + ", ".join(failed or [str(payload.get("status"))]))
+    return payload
 
 
 def _internal_contracts() -> dict:
@@ -220,6 +241,7 @@ def main() -> int:
     _record(checks, "authentication_boundary", _auth_boundary)
     _record(checks, "runtime_versions", _runtime_versions)
     _record(checks, "worker_heartbeat", _worker_heartbeat)
+    _record(checks, "worker_ts_health", _worker_ts_health)
     _record(checks, "database_meta_isolation_summary", _internal_contracts)
     _record(checks, "reliability_metrics", lambda: _publish_reliability_metrics(checks))
 

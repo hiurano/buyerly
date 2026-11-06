@@ -83,9 +83,9 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("public_edge_ok", after_smoke)
 
     def test_production_roles_are_separate_services(self):
-        for service in ("db:", "api:", "worker:", "migrate:", "backup:", "tunnel:"):
+        for service in ("db:", "api:", "worker:", "worker-ts:", "redis:", "migrate:", "backup:", "tunnel:"):
             self.assertIn(f"  {service}", self.compose)
-        for retired in ("web:", "redis:", "bot:"):
+        for retired in ("web:", "bot:"):
             self.assertNotIn(f"\n  {retired}", self.compose)
         self.assertIn("postgres:16-alpine", self.compose)
         self.assertIn('command: ["python", "-m", "services.api"]', self.compose)
@@ -104,12 +104,14 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn('max-size: "20m"', self.compose)
         self.assertIn('max-file: "5"', self.compose)
         self.assertIn('compress: "true"', self.compose)
-        # x-app (api, worker, migrate), db and tunnel.
-        self.assertEqual(self.compose.count("logging: *default-logging"), 3)
+        # x-app (api, worker, worker-ts, server, migrate, backup), db, redis and tunnel.
+        self.assertEqual(self.compose.count("logging: *default-logging"), 4)
         for container_name in (
             "buyerly-db",
             "buyerly-api",
             "buyerly-worker",
+            "buyerly-worker-ts",
+            "buyerly-redis",
             "buyerly-backup",
             "buyerly-tunnel",
         ):
@@ -165,6 +167,7 @@ class TestDeployContract(unittest.TestCase):
             "authentication_boundary",
             "runtime_versions",
             "worker_heartbeat",
+            "worker_ts_health",
             "database_meta_isolation_summary",
             "reliability_metrics",
         ):
@@ -236,11 +239,35 @@ class TestDeployContract(unittest.TestCase):
         # It writes and serves the uploads the API used to (#611).
         self.assertIn("- buyerly-uploads:/app/uploads", service)
         self.assertIn("SERVER_URL: http://server:8090", self.compose)
-        self.assertEqual(self.script.count("docker compose up -d --no-deps api worker backup server"), 2)
+        self.assertIn("docker compose up -d --no-deps api worker worker-ts backup server", self.script)
         self.assertIn("wait_for_container buyerly-server", self.script)
         root = Path(__file__).parents[1]
         self.assertFalse((root / "frontend" / "Dockerfile").exists())
         self.assertFalse((root / "frontend" / "nginx.conf").exists())
+
+    def test_the_typescript_worker_and_redis(self):
+        # #611 stage 4, decision 54: BullMQ on a capped Redis that keeps every key.
+        redis = self.compose.split("\n  redis:\n", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("--maxmemory-policy\", \"noeviction", redis)
+        self.assertIn("--appendonly", redis)
+        self.assertIn("mem_limit:", redis)
+        self.assertIn("buyerly-redis:/data", redis)
+        self.assertIn("redis-cli", redis)
+        worker = self.compose.split("\n  worker-ts:\n", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("<<: *app", worker)
+        self.assertIn('command: ["node", "server/dist/worker/main.js"]', worker)
+        self.assertIn("/health/worker-ts", worker)
+        self.assertIn("stop_grace_period:", worker)
+        self.assertNotIn("ports:", worker)
+        self.assertIn("REDIS_URL: redis://redis:6379/0", self.compose)
+        self.assertIn("TS_WORKER_JOBS: ${TS_WORKER_JOBS-", self.compose)
+        self.assertIn("docker compose up -d db redis", self.script)
+        self.assertIn("wait_for_container buyerly-worker-ts", self.script)
+        # Rolling back to a release without the TypeScript worker stops it,
+        # since that release's Python worker runs every job itself.
+        rollback = self.script.split("rollback() {", 1)[1].split("\n}\n", 1)[0]
+        self.assertIn("server/dist/worker/main.js", rollback)
+        self.assertIn("docker compose stop worker-ts", rollback)
 
     def test_web_bundle_knows_its_release(self):
         # An open tab compares the release it was built from with /health/live
@@ -423,7 +450,8 @@ class TestDeployContract(unittest.TestCase):
             self.dockerfile,
         )
         # Started with every release and every rollback.
-        self.assertEqual(self.script.count("docker compose up -d --no-deps api worker backup"), 2)
+        self.assertIn("docker compose up -d --no-deps api worker worker-ts backup server", self.script)
+        self.assertIn("local services=(api worker backup server)", self.script)
 
     def test_empty_database_is_restored_from_offsite_before_migrations(self):
         restore = self.script.index("if ! restore_empty_server; then")

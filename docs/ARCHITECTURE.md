@@ -14,7 +14,7 @@ flowchart LR
     K <--> M[Meta API]
 ```
 
-Состав production задаёт [docker-compose.yml](../docker-compose.yml): `api`, `worker`, `server`, `db`, `tunnel` (Cloudflare Tunnel) и одноразовый `migrate`. Точки запуска находятся в `services/`. Один образ `buyerly-app`: frontend собирается на Node.js 24, код работает на Python 3.12, а новый сервер `server` — на Node.js 24 из того же образа. PostgreSQL 16 хранит данные; счётчики rate limit живут в памяти единственного процесса API.
+Состав production задаёт [docker-compose.yml](../docker-compose.yml): `api`, `worker`, `server`, `worker-ts`, `redis`, `db`, `tunnel` (Cloudflare Tunnel) и одноразовый `migrate`. Точки запуска находятся в `services/`. Один образ `buyerly-app`: frontend собирается на Node.js 24, код работает на Python 3.12, а новый сервер `server` — на Node.js 24 из того же образа. PostgreSQL 16 хранит данные; счётчики rate limit живут в памяти единственного процесса API.
 
 ### Переезд сервера на TypeScript (#611)
 
@@ -69,6 +69,8 @@ Vite собирает `frontend/dist`, и FastAPI сам отдаёт эти ф�
 Страница поиска `/<workspace>/search` (`/` и кнопка Search workspace) ищет по Enter GraphQL-запросом `search` (маршрут `GET /api/search`, [api/routers/search.py](../api/routers/search.py)): кампании, ad sets и объявления из сегодняшнего инвентаря `AnalyticsEntityFact` по часам каждого кабинета (того же, что показывает Ads Manager), правила и рекламные кабинеты workspace из адреса. Результат открывается по каноническому адресу записи, и список показывает её строку.
 
 ## Правила и worker
+
+Фоновые задачи переезжают на воркер TypeScript ([server/src/worker](../server/src/worker/), сервис `worker-ts`, #611 этап 4): BullMQ на Redis вместо APScheduler (запись №54), у каждой задачи своя очередь и job scheduler с интервалом Python-воркера, concurrency 1. Какие задачи у него — решает `TS_WORKER_JOBS`, Python пропускает их ([core/worker_jobs.py](../core/worker_jobs.py)); каждый запуск обоих воркеров держит общую advisory-блокировку задачи, поэтому одна задача не идёт в двух местах сразу. Новая задача: функция в `jobDefinitions` ([worker/app.ts](../server/src/worker/app.ts)), её номер блокировки в `SHARED_JOBS` обоих языков и тест того же поведения, что у Python. Сейчас на TS: компактизация журнала синхронизации ([sync/compaction.ts](../server/src/sync/compaction.ts)). Задачи с Meta (синхронизация и правила, суточные прогоны, аналитика, кэш инвентаря, здоровье аккаунтов, ротация токенов) остаются в Python до клиента Meta на TS.
 
 Правило хранится как `RulePreset`; при назначении его snapshot записывается в `Account.active_rules`. Область назначения сохраняется отдельно от определения правила. Редактирование preset обновляет назначения, сохраняя их scope.
 

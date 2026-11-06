@@ -79,6 +79,12 @@ class Settings(BaseSettings):
         default="/health/server/,/api/auth/,/api/me/,/api/onboarding/avatar/,/api/onboarding/workspace/logo/,/uploads/,/api/sync/,/api/invites/,/api/graphql/,/api/telegram/webhook/,/api/meta/oauth/,/api/meta/invites/public/",
         description="Comma-separated path prefixes forwarded to SERVER_URL",
     )
+    # Background jobs the TypeScript worker runs (#611 stage 4,
+    # core/worker_jobs.py); the Python worker skips them.
+    TS_WORKER_JOBS: str = Field(
+        default="",
+        description="Comma-separated job ids the TypeScript worker owns (inbox_email, inbox_telegram, inbox_push, sync_log_compaction, worker_watchdog)",
+    )
     SERVICE_WORKER: bool = Field(
         default=True,
         description="Serve the app's service worker; false serves the kill switch that unregisters it (#499)",

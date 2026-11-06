@@ -18,6 +18,9 @@ x-app-environment: &app-environment
   META_TOKEN_ENCRYPTION_KEY: CKOJW1eA4PLOe59rNqizKftdfj0lN17_CIFSpe7ihLw=
   META_GRAPH_BASE_URL: http://fake-meta:8090
   SERVER_URL: http://server:8090
+  # BullMQ queues of the TypeScript worker (#611 stage 4); TS_WORKER_JOBS as in production.
+  REDIS_URL: redis://redis:6379/0
+  TS_WORKER_JOBS: ${TS_WORKER_JOBS-sync_log_compaction}
   # File events do not cross the Windows bind mount; watch by polling.
   WATCHFILES_FORCE_POLLING: "true"
   TZ: UTC
@@ -135,7 +138,39 @@ services:
       db:
         condition: service_healthy
 
+  # The TypeScript worker's queues, as in production (docker-compose.yml).
+  redis:
+    image: redis:7.4.11-alpine
+    command: ["redis-server", "--appendonly", "yes", "--save", "", "--maxmemory", "96mb", "--maxmemory-policy", "noeviction"]
+    mem_limit: 160m
+    volumes:
+      - buyerly-dev-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # The TypeScript worker (#611 stage 4): the jobs in TS_WORKER_JOBS. It runs
+  # what the `server` service compiles and restarts when that changes.
+  worker-ts:
+    image: node:24-slim
+    working_dir: /repo/server
+    command: ["node", "--watch", "dist/worker/main.js"]
+    # dist/ appears once the server's first compile is done: retry until then.
+    restart: unless-stopped
+    environment: *app-environment
+    volumes:
+      - .:/repo
+      - buyerly-dev-node-modules:/repo/node_modules
+    depends_on:
+      server:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
 volumes:
+  buyerly-dev-redis:
   buyerly-dev-postgres:
   buyerly-dev-uploads:
   buyerly-dev-node-modules:

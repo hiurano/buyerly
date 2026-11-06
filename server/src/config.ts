@@ -55,6 +55,12 @@ export interface Config {
   // SERVER_UPLOADS_DIR replaces it; the tests use a directory of their own.
   uploadsRoot: string;
 
+  // Redis (decision 54): the worker's BullMQ queues (worker/), and the sync
+  // bus between processes. Empty means none: the worker refuses to start.
+  redisUrl: string;
+  // Background jobs the TypeScript worker owns (#611 stage 4); the Python
+  // worker skips them (core/worker_jobs.py). Comma-separated job ids.
+  tsWorkerJobs: string;
   // Meta (core/config.py): the pinned Graph API version and origin (the fake
   // Meta on the local stack), the app and its Facebook Login for Business
   // configuration, and the Fernet keys stored Meta tokens are encrypted with
@@ -134,6 +140,8 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     telegramBotToken: (env.TELEGRAM_BOT_TOKEN ?? '').replace(/^["' \t\r\n]+|["' \t\r\n]+$/g, ''),
     vapidPrivateKey: (env.VAPID_PRIVATE_KEY ?? '').trim(),
     uploadsRoot: env.SERVER_UPLOADS_DIR || DEFAULT_UPLOADS_ROOT,
+    redisUrl: (env.REDIS_URL ?? '').trim(),
+    tsWorkerJobs: env.TS_WORKER_JOBS ?? '',
     metaGraphVersion: env.META_GRAPH_VERSION || 'v26.0',
     metaGraphBaseUrl: env.META_GRAPH_BASE_URL || 'https://graph.facebook.com',
     metaAppId: env.META_APP_ID ?? '',

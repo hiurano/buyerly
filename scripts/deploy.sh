@@ -153,10 +153,22 @@ rollback() {
     fi
     echo "[ROLLBACK] Returning to ${PREVIOUS_SHA}..."
     export APP_VERSION="${PREVIOUS_SHA}"
-    docker compose up -d --no-deps api worker backup server
+    # A release from before the TypeScript worker (#611 stage 4) runs every
+    # job on its Python worker, which ignores TS_WORKER_JOBS: stop worker-ts
+    # then, or both would run the moved jobs.
+    local services=(api worker backup server)
+    if docker run --rm --entrypoint test "buyerly-app:${PREVIOUS_SHA}" -f /app/server/dist/worker/main.js; then
+        services+=(worker-ts)
+    else
+        docker compose stop worker-ts || true
+    fi
+    docker compose up -d --no-deps "${services[@]}"
     wait_for_container buyerly-api || true
     wait_for_container buyerly-worker || true
     wait_for_container buyerly-server || true
+    if [[ " ${services[*]} " == *" worker-ts "* ]]; then
+        wait_for_container buyerly-worker-ts || true
+    fi
     record_running_version "${PREVIOUS_SHA}"
     echo "[ROLLBACK] Previous release restored."
 }
@@ -295,9 +307,13 @@ echo "[4/7] Building buyerly-app:${TARGET_SHA}..."
 docker compose build --pull api
 
 echo "[5/7] Migrating the database..."
-docker compose up -d db
+docker compose up -d db redis
 if ! wait_for_container buyerly-db; then
     docker compose logs --tail=120 db
+    exit 1
+fi
+if ! wait_for_container buyerly-redis; then
+    docker compose logs --tail=120 redis
     exit 1
 fi
 if ! restore_empty_server; then
@@ -310,7 +326,7 @@ if ! docker compose run --rm migrate; then
 fi
 
 echo "[6/7] Starting the release..."
-docker compose up -d --no-deps api worker backup server
+docker compose up -d --no-deps api worker worker-ts backup server
 if ! wait_for_container buyerly-api; then
     docker compose logs --tail=120 api
     rollback
@@ -324,6 +340,11 @@ fi
 if ! wait_for_container buyerly-worker \
       || ! wait_for_container_file buyerly-worker /tmp/buyerly-worker-day-boundary-cycle-complete; then
     docker compose logs --tail=160 worker
+    rollback
+    exit 1
+fi
+if ! wait_for_container buyerly-worker-ts; then
+    docker compose logs --tail=120 worker-ts
     rollback
     exit 1
 fi

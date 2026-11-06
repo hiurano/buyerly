@@ -250,6 +250,16 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      # The TypeScript worker's BullMQ queues (#611 stage 4).
+      redis:
+        image: redis:7.4.11-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
 
     steps:
       - name: Checkout Code
@@ -309,6 +319,7 @@ jobs:
           SCHEMA_DATABASE_URL: postgresql://buyerly:buyerly_secret@localhost:5432/buyerly_schema
           PYTHON_API_URL: http://127.0.0.1:18080
           PYTHON_API_LOG: ${{ github.workspace }}/logs/api.log
+          REDIS_URL: redis://127.0.0.1:6379/1
         run: |
           npm ci
           npm run typecheck
@@ -336,6 +347,30 @@ jobs:
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/health/server/ready)" = 503
           docker logs buyerly-server-ci
           docker rm -f buyerly-server-ci
+
+      # The worker as Compose runs it, on this job's Postgres and Redis: it
+      # schedules its jobs, runs them, reports them on its health route, and
+      # stops cleanly on SIGTERM (exit code 0).
+      - name: Run the TypeScript worker from the image
+        run: |
+          trap 'docker logs buyerly-worker-ts-ci 2>&1 | tail -50 || true' ERR
+          docker run -d --name buyerly-worker-ts-ci --network host -e APP_VERSION=ci \
+            -e DATABASE_URL=postgresql+asyncpg://buyerly:buyerly_secret@127.0.0.1:5432/buyerly_schema \
+            -e REDIS_URL=redis://127.0.0.1:6379/2 -e TS_WORKER_JOBS=sync_log_compaction \
+            buyerly-app:ci node server/dist/worker/main.js
+          health=""
+          for attempt in $(seq 30); do
+            health=$(curl -fsS http://127.0.0.1:8091/health/worker-ts || true)
+            if echo "${health}" | grep -q '"outcome":"ok"'; then break; fi
+            sleep 1
+          done
+          echo "${health}"
+          echo "${health}" | grep -q '"status":"ok"'
+          echo "${health}" | grep -q '"sync_log_compaction":{[^}]*"outcome":"ok"'
+          docker stop --time 30 buyerly-worker-ts-ci
+          docker logs buyerly-worker-ts-ci
+          test "$(docker inspect --format '{{.State.ExitCode}}' buyerly-worker-ts-ci)" = 0
+          docker rm buyerly-worker-ts-ci
 
   # One check to require in branch protection. Requiring the shards directly
   # would mean editing the protection rule every time their number changes.
