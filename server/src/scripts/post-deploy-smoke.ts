@@ -38,7 +38,7 @@ async function httpGet(urlPath: string): Promise<[number, Json]> {
   const body = await response.text();
   try {
     const parsed: unknown = JSON.parse(body);
-    return [response.status, parsed && typeof parsed === 'object' ? (parsed as Json) : {}];
+    return [response.status, parsed && typeof parsed === 'object' ? parsed : {}];
   } catch {
     if (response.ok) throw new Error('response is not JSON');
     return [response.status, {}];
@@ -83,7 +83,8 @@ function stdoutOf(stream: Buffer): string {
 async function dockerInspectImage(container: string): Promise<string> {
   const { status, data } = await dockerRequest('GET', `/containers/${encodeURIComponent(container)}/json`);
   if (status !== 200) throw new Error(`runtime image inspection failed with status ${status}`);
-  return String((JSON.parse(data.toString('utf8')) as Json).Config?.Image ?? '');
+  const inspected = JSON.parse(data.toString('utf8')) as { Config?: { Image?: string } };
+  return inspected.Config?.Image ?? '';
 }
 
 async function dockerExec(name: string, container: string, cmd: string[]): Promise<string> {

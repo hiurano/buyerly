@@ -47,7 +47,7 @@ async function start(options: { image?: string; workerTs?: object; internalOk?: 
     req.on('data', (c: Buffer) => chunks.push(c));
     req.on('end', () => {
       const url = req.url ?? '';
-      const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : {};
+      const body = (chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : {}) as { Cmd?: string[] };
       const send = (code: number, payload: Buffer | object) => {
         res.writeHead(code);
         res.end(Buffer.isBuffer(payload) ? payload : JSON.stringify(payload));
@@ -55,7 +55,7 @@ async function start(options: { image?: string; workerTs?: object; internalOk?: 
       let m = /^\/containers\/([^/]+)\/json$/.exec(url);
       if (m) return send(200, { Config: { Image: options.image ?? `buyerly-app:${SHA}` } });
       m = /^\/containers\/([^/]+)\/exec$/.exec(url);
-      if (m) { const id = `${m[1]}#${execs.size}`; execs.set(id, body.Cmd); return send(201, { Id: id }); }
+      if (m) { const id = `${m[1]}#${execs.size}`; execs.set(id, body.Cmd ?? []); return send(201, { Id: id }); }
       m = /^\/exec\/(.+)\/start$/.exec(decodeURIComponent(url));
       if (m) {
         const [container] = m[1].split('#');
@@ -87,8 +87,10 @@ describe('post-deploy smoke', () => {
     const env = await start({});
     const out = await smoke(env);
     expect(out.code).toBe(0);
-    const result = JSON.parse(await readFile(path.join(out.resultDir, `post-deploy-${SHA}.json`), 'utf8'));
-    expect(result.checks.map((c: { name: string }) => c.name)).toEqual([
+    const result = JSON.parse(await readFile(path.join(out.resultDir, `post-deploy-${SHA}.json`), 'utf8')) as {
+      checks: { name: string; details: object }[];
+    };
+    expect(result.checks.map((c) => c.name)).toEqual([
       'health_live', 'health_ready', 'server_health_ready', 'authentication_boundary', 'runtime_versions',
       'worker_heartbeat', 'worker_ts_health', 'database_meta_isolation_summary', 'reliability_metrics',
     ]);
