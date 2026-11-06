@@ -126,6 +126,7 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 | Метод и путь | Тело | Назначение |
 |---|---|---|
 | `POST /api/onboarding/personal-details` | `first_name`, `last_name?` | сохранение отображаемого имени после создания или принятия workspace; поле Title отсутствует; почту здесь не меняют |
+| GraphQL `fileUpload(input)` | `purpose` (`avatar` или `workspace_logo`), `content_type`, `filename`, `size` | подписанная ссылка на 10 минут (`uploadFile.upload_url`, `headers`), как `fileUpload` у Linear. Браузер кладёт байты файла `PUT`-ом на ссылку (без сессии: ссылка и есть разрешение) и получает `asset_url`; аватар берёт его через `userUpdate`, логотип — через обновление воркспейса. Больше 5 МБ — 400 |
 | `POST /api/onboarding/avatar` | `file` (multipart) | проверка реального содержимого и загрузка фотографии профиля (PNG, JPG, WEBP до 5 МБ) |
 | `DELETE /api/onboarding/avatar` | — | удаление аватара и возврат к инициальному бейджу |
 | `GET /api/onboarding/check-slug` | `slug` (query) | живая проверка доступности слага воркспейса в реальном времени |

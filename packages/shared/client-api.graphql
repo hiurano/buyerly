@@ -99,6 +99,9 @@ type Mutation {
   """Confirms the code and makes the new email the user's own."""
   userEmailChangeVerify(input: JSON!): EmailChangePayload
 
+  """A signed link to PUT a file to: an avatar or a workspace logo."""
+  fileUpload(input: JSON!): UploadPayload
+
   """
   Mails a sign-in code and link; a new address without an invite passes Turnstile first.
   """
@@ -537,6 +540,12 @@ type TelegramPayload {
   success: Boolean!
   lastSyncId: Float!
   telegram: JSON
+}
+
+type UploadPayload {
+  success: Boolean!
+  lastSyncId: Float!
+  uploadFile: JSON
 }
 
 type UserPayload {

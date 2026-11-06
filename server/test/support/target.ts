@@ -53,7 +53,7 @@ export function fakeTelegram(token: string): FakeTelegram {
 }
 
 export interface HttpRequest {
-  method: 'GET' | 'POST' | 'DELETE';
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   path: string;
   headers: Record<string, string>;
   // JSON, or bytes sent as they are (a multipart form).

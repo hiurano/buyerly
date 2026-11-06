@@ -5,9 +5,11 @@ import fastifyStatic from '@fastify/static';
 import type { ImageUploadResponse, LogoUploadResponse } from '@buyerly/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { currentUser } from '../auth/plugin.ts';
+import { rateLimit } from '../http/rate-limit.ts';
 import { UserEntity } from '../entities/index.ts';
 import { HttpError, ValidationFailed } from '../http/errors.ts';
 import { ImageStorage, InvalidImageUpload, MAX_UPLOAD_BYTES } from '../uploads/images.ts';
+import { SIGNED_UPLOAD_PREFIX, verifyUpload } from '../uploads/signed.ts';
 
 // Image uploads (api/routers/onboarding.py: avatar and workspace logo) and
 // the files themselves under /uploads/ (api/server.py mounts them), on the
@@ -119,6 +121,34 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
     },
     preValidation: [currentUser],
   };
+
+  // The bytes of a file `fileUpload` granted (graphql/areas/uploads), PUT to
+  // its signed link (decision 55). The link is the grant: no session is
+  // needed. The answer is where the file is now; the avatar or logo takes it
+  // with the next userUpdate or workspace update, which check it is the
+  // user's own. Logos nobody took for a day are removed first.
+  await app.register(async (signed) => {
+    signed.addContentTypeParser('*', { parseAs: 'buffer', bodyLimit: UPLOAD_REQUEST_LIMIT }, (_request, body, done) => done(null, body));
+    signed.put<{ Params: { token: string } }>(
+      `${SIGNED_UPLOAD_PREFIX}:token`,
+      {
+        bodyLimit: UPLOAD_REQUEST_LIMIT,
+        onRequest: upload.onRequest,
+        preValidation: [rateLimit({ limit: 20, scope: 'signed_upload' })],
+      },
+      async (request): Promise<{ asset_url: string }> => {
+        const grant = verifyUpload(app.config.otpPepper, request.params.token);
+        if (!grant) throw new HttpError(403, 'This upload link is invalid or has expired');
+        const content = Buffer.isBuffer(request.body) ? request.body : Buffer.alloc(0);
+        const category = grant.p === 'avatar' ? 'avatars' : 'workspaces';
+        if (category === 'workspaces') await app.db.transaction((tx) => images.cleanupStaleWorkspaceLogos(tx));
+        const assetUrl = await stored(() =>
+          images.save(content, { filename: grant.n, contentType: grant.t || null, category, ownerUserId: grant.u }),
+        );
+        return { asset_url: assetUrl };
+      },
+    );
+  });
 
   // A new avatar for the member; the old one, if uploaded here, is removed.
   app.post('/api/onboarding/avatar', upload, async (request): Promise<ImageUploadResponse> => {

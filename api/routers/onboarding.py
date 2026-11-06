@@ -1,9 +1,10 @@
 import logging
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import List
+from typing import List, Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -38,10 +39,22 @@ from services.image_uploads import (
     is_owned_workspace_logo,
     save_image_upload,
 )
+from services.signed_uploads import SIGNED_UPLOAD_PREFIX, sign_upload, verify_upload
 from services.workspace_slugs import WorkspaceSlugUnavailable, allocate_workspace_slug
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Onboarding"])
+# The signed upload link itself, outside /api (api/server.py mounts it before /uploads).
+signed_uploads_router = APIRouter(tags=["Onboarding"])
+
+
+class FileUploadRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    purpose: Literal["avatar", "workspace_logo"]
+    content_type: str = Field(max_length=100)
+    filename: str = Field(min_length=1, max_length=255)
+    size: int = Field(ge=1)
 
 
 @router.post("/onboarding/personal-details", response_model=OnboardingStatusResponse)
@@ -324,6 +337,55 @@ async def upload_workspace_logo(
     except InvalidImageUpload as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"status": "ok", "logo_url": logo_url}
+
+
+@router.post(
+    "/onboarding/file-upload",
+    dependencies=[Depends(rate_limit_dep(limit=20, window_seconds=60, scope="file_upload"))],
+)
+async def request_file_upload(req: FileUploadRequest, user: User = Depends(get_current_user)):
+    """A signed link to PUT a file to (GraphQL `fileUpload`, as Linear's): an avatar or a workspace logo."""
+    if req.size > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=400, detail="The file must not exceed 5 MB")
+    token = sign_upload(user_id=user.id, purpose=req.purpose, filename=req.filename, content_type=req.content_type)
+    headers = {"Content-Type": req.content_type or "application/octet-stream"}
+    return {"upload_url": f"{SIGNED_UPLOAD_PREFIX}{token}", "headers": headers}
+
+
+@signed_uploads_router.put(
+    SIGNED_UPLOAD_PREFIX + "{token}",
+    dependencies=[Depends(rate_limit_dep(limit=20, window_seconds=60, scope="signed_upload"))],
+)
+async def put_signed_upload(token: str, request: Request):
+    """The bytes of a file `fileUpload` granted; the link is the grant, so no session is needed.
+
+    Answers where the file is now; the avatar or logo takes it with the next profile or workspace
+    update, which checks it is the user's own. Logos nobody took for a day are removed first.
+    """
+    grant = verify_upload(token)
+    if grant is None:
+        raise HTTPException(status_code=403, detail="This upload link is invalid or has expired")
+    # Outside /api the server's body cap does not apply: the same 6 MB here, and never more read.
+    length = request.headers.get("content-length", "")
+    if length.isdigit() and int(length) > 6 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="The request body exceeds the allowed size limit.")
+    content = b""
+    async for chunk in request.stream():
+        content += chunk
+        if len(content) > MAX_UPLOAD_BYTES:
+            break
+    content = content[: MAX_UPLOAD_BYTES + 1]
+    category = "avatars" if grant["p"] == "avatar" else "workspaces"
+    if category == "workspaces":
+        async with async_session_maker() as session:
+            await cleanup_stale_workspace_logos(session)
+    try:
+        asset_url = save_image_upload(
+            content, filename=grant["n"], content_type=grant["t"] or None, category=category, owner_user_id=grant["u"]
+        )
+    except InvalidImageUpload as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"asset_url": asset_url}
 
 
 @router.post("/onboarding/invites", response_model=OnboardingBulkInvitesResponse)

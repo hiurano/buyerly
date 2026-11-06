@@ -100,6 +100,7 @@ MetaInvitePayload = _payload("MetaInvitePayload", "meta_invite")
 MetaOAuthPayload = _payload("MetaOAuthPayload", "authorization")
 NotificationChannelsPayload = _payload("NotificationChannelsPayload", "notification_channels")
 OnboardingPayload = _payload("OnboardingPayload", "onboarding")
+UploadPayload = _payload("UploadPayload", "upload_file")
 RulePayload = _payload("RulePayload", "rule")
 RuleLabelPayload = _payload("RuleLabelPayload", "rule_label")
 RulesPayload = _payload("RulesPayload", "rules")
@@ -423,6 +424,7 @@ M_LOGOUT_SESSION = _routed("logoutSession", auth, auth.revoke_web_session)
 M_LOGOUT_ALL = _routed("logoutAllSessions", auth, auth.logout_all_web_sessions)
 M_EMAIL_CHANGE_REQUEST = _routed("userEmailChangeRequest", auth, auth.request_email_change)
 M_EMAIL_CHANGE_VERIFY = _routed("userEmailChangeVerify", auth, auth.verify_email_change)
+M_FILE_UPLOAD = _routed("fileUpload", onboarding, onboarding.request_file_upload)
 M_AUTH_CHALLENGE = _routed("emailUserAccountAuthChallenge", auth, auth.request_temporary_password)
 M_AUTH_CODE = _routed("emailTokenUserAccountAuth", auth, auth.verify_temporary_password)
 M_AUTH_LINK = _routed("emailLinkUserAccountAuth", auth, auth.verify_email_link)
@@ -516,6 +518,10 @@ class Mutation:
     @strawberry.mutation(description="Confirms the code and makes the new email the user's own.")
     async def user_email_change_verify(self, info: Info, input: JSON) -> Optional[EmailChangePayload]:
         return await _mutate(info, EmailChangePayload, M_EMAIL_CHANGE_VERIFY, req=input)
+
+    @strawberry.mutation(description="A signed link to PUT a file to: an avatar or a workspace logo.")
+    async def file_upload(self, info: Info, input: JSON) -> Optional[UploadPayload]:
+        return await _mutate(info, UploadPayload, M_FILE_UPLOAD, req=input)
 
     # Signing in
 

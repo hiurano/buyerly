@@ -19,9 +19,6 @@ class TestReactFrontendContract(unittest.TestCase):
         rest_prefixes = (
             "/api/graphql",
             "/api/sync/",
-            # Uploads are multipart, as Linear's go to its file storage rather than GraphQL.
-            "/api/onboarding/avatar",
-            "/api/onboarding/workspace/logo",
             # Facebook login through someone's invite, opened signed out.
             "/api/meta/invites/public/",
             "/api/meta/oauth/invite/",

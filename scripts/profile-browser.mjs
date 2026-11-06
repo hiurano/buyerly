@@ -74,15 +74,10 @@ try {
         user = { ...user, ...body };
         return route.fulfill({ json: { message: 'Profile updated', ...user } });
       }
-      if (verb === 'POST' && path === '/api/onboarding/avatar') {
-        writes.push('POST avatar');
-        user = { ...user, avatar_url: '/uploads/avatars/avatar_1_test.png' };
-        return route.fulfill({ json: { status: 'ok', avatar_url: user.avatar_url } });
-      }
-      if (verb === 'DELETE' && path === '/api/onboarding/avatar') {
-        writes.push('DELETE avatar');
-        user = { ...user, avatar_url: '' };
-        return route.fulfill({ json: { status: 'ok', avatar_url: '' } });
+      // fileUpload: a signed link, then the bytes PUT to it (decision 55).
+      if (verb === 'POST' && path === '/api/onboarding/file-upload') {
+        writes.push(`POST file-upload ${request.postDataJSON().purpose}`);
+        return route.fulfill({ json: { upload_url: '/uploads/signed/test-token', headers: { 'Content-Type': 'image/png' } } });
       }
       if (verb === 'GET' && path === '/api/auth/sessions') return route.fulfill({ json: [] });
       if (verb === 'GET' && path === '/api/inbox') {
@@ -108,6 +103,10 @@ try {
       return route.fulfill({ status: 404, json: { detail: 'Unexpected test request' } });
     });
     await page.route('**/uploads/avatars/**', route => route.fulfill({ contentType: 'image/png', body: PNG }));
+    await page.route('**/uploads/signed/**', (route) => {
+      writes.push(`${route.request().method()} signed upload`);
+      return route.fulfill({ json: { asset_url: '/uploads/avatars/avatar_1_test.png' } });
+    });
     const card = page.locator('.preferences-card-container--divided');
     const field = (name) => page.getByRole('textbox', { name, exact: true });
     const toastAlert = page.getByRole('alert');
@@ -208,8 +207,10 @@ try {
         'POST update-profile {"title":"Media buyer"}',
         'POST update-profile {"username":"bad name!"}',
         'POST update-profile {"username":"olga.o"}',
-        'POST avatar',
-        'DELETE avatar',
+        'POST file-upload avatar',
+        'PUT signed upload',
+        'POST update-profile {"avatar_url":"/uploads/avatars/avatar_1_test.png"}',
+        'POST update-profile {"avatar_url":""}',
       ]);
 
       // Sign-in is email-only, as in Linear: Security & access has no Password block.

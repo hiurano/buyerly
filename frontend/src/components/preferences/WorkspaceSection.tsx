@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
-import { apiRequest } from '@/lib/api';
+import { uploadFile } from '@/lib/uploads';
 import { deleteWorkspace, updateWorkspace } from '@/lib/workspaces';
 import type { Workspace } from '@/lib/types';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
@@ -117,12 +117,7 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({ workspace, o
   const uploadLogo = async (file: File) => {
     setUploading(true);
     try {
-      const form = new FormData();
-      form.append('file', file);
-      const { logo_url: logoUrl } = await apiRequest<{ logo_url: string }>('/api/onboarding/workspace/logo', {
-        method: 'POST',
-        body: form,
-      });
+      const logoUrl = await uploadFile(file, 'workspace_logo');
       await updateWorkspace(workspace.id, { logo_url: logoUrl });
       await onUserChanged();
     } catch (error) {
