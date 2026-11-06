@@ -6,6 +6,7 @@ import fp from 'fastify-plugin';
 import { currentUser } from '../auth/plugin.ts';
 import { ACCOUNT_HEADER_NAME } from '../auth/sessions.ts';
 import { HttpError } from '../http/errors.ts';
+import { subscribeSyncBus } from '../sync/bus.ts';
 import { DEFAULT_SYNC_TUNING, SyncHub, type SyncTuning } from '../sync/hub.ts';
 import { Closed, SocketSession } from '../sync/socket.ts';
 import { userWorkspaceMember } from '../workspaces/access.ts';
@@ -111,7 +112,12 @@ export const syncSocketRoutes = fp(async (app: FastifyInstance, options: SyncSoc
     for (const cookie of upgradeCookies.get(request) ?? []) headers.push(`Set-Cookie: ${cookie}`);
   });
   app.decorate('syncHub', new SyncHub(app.db, { ...DEFAULT_SYNC_TUNING, ...options.tuning }, app.log));
+  // The Redis sync bus (decision 54); without REDIS_URL, NOTIFY and polling do.
+  const unsubscribe = app.config.redisUrl
+    ? await subscribeSyncBus(app.config.redisUrl, () => app.syncHub.notify(), app.log)
+    : null;
   app.addHook('preClose', async () => {
+    await unsubscribe?.();
     await app.syncHub.stop();
     for (const client of app.websocketServer.clients) client.close(1001, 'server stopping');
   });

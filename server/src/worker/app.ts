@@ -7,8 +7,10 @@ import { resendSender, type SendEmail } from '../email/send.ts';
 import { deliverInboxEmails, deliverInboxPush, deliverInboxTelegram } from '../notifications/delivery.ts';
 import { telegramBot, type TelegramBot } from '../notifications/telegram.ts';
 import { pushSender, vapidKey, type SendPush } from '../notifications/web-push.ts';
+import { publishSyncBus } from '../sync/bus.ts';
 import { compactSyncLog } from '../sync/compaction.ts';
-import { SHARED_JOBS, parseJobList, type JobId } from './jobs.ts';
+import { SHARED_JOBS, parseJobList, withJobLock, type JobId } from './jobs.ts';
+import { CHECK_INTERVAL_MS, checkOnce } from './watchdog.ts';
 import { RUNS_KEY, startScheduler, type JobDefinition, type RunRecord, type Scheduler } from './scheduler.ts';
 
 // The TypeScript worker (#611 stage 4): Compose service `worker-ts`, from the
@@ -27,6 +29,10 @@ export interface WorkerContext {
   telegram: TelegramBot;
   // null without a VAPID key: desktop notifications are off.
   sendPush: SendPush | null;
+  // The jobs TS_WORKER_JOBS gives this worker.
+  owned: ReadonlySet<JobId>;
+  // Runs a job under its advisory lock (jobs.ts withJobLock); false when held elsewhere.
+  exclusive: (job: JobId, run: () => Promise<void>) => Promise<boolean>;
 }
 
 // What the jobs talk to outside the database; tests replace them.
@@ -38,7 +44,7 @@ export type WorkerServices = Pick<WorkerContext, 'sendEmail' | 'telegram' | 'sen
 export function jobDefinitions(context: WorkerContext): Partial<Record<JobId, JobDefinition>> {
   const { db, log, config } = context;
   const delivery = { db, log, webappUrl: config.webappUrl };
-  return {
+  const deliveries = {
     inbox_email: {
       everyMs: 60_000,
       run: async () => {
@@ -72,6 +78,23 @@ export function jobDefinitions(context: WorkerContext): Partial<Record<JobId, Jo
       },
     },
   };
+  return {
+    ...deliveries,
+    // Every minute, as the API's loop did (services/worker_watchdog.py).
+    worker_watchdog: {
+      everyMs: CHECK_INTERVAL_MS,
+      run: async () => {
+        const result = await checkOnce(db, log);
+        if (result.status !== 'critical') return;
+        // Inbox deliveries still on the stalled Python worker go out from
+        // here meanwhile, under their own locks; the ones this worker owns
+        // run on their own schedule anyway.
+        for (const job of ['inbox_email', 'inbox_telegram', 'inbox_push'] as const) {
+          if (!context.owned.has(job)) await context.exclusive(job, deliveries[job].run);
+        }
+      },
+    },
+  };
 }
 
 export interface WorkerHealth {
@@ -91,6 +114,8 @@ export function buildWorker(config: Config, dataSource: DataSource, services: Pa
   const app = Fastify({ logger: { level: config.logLevel } });
   const db = databaseOver(dataSource);
   const vapid = vapidKey(config.vapidPrivateKey, app.log);
+  const { jobs, unknown } = parseJobList(config.tsWorkerJobs);
+  if (unknown.length) throw new Error(`TS_WORKER_JOBS names unknown jobs: ${unknown.join(', ')}`);
   const context: WorkerContext = {
     config,
     db,
@@ -98,10 +123,9 @@ export function buildWorker(config: Config, dataSource: DataSource, services: Pa
     sendEmail: services.sendEmail ?? resendSender(config, app.log),
     telegram: services.telegram ?? telegramBot(config.telegramBotToken, app.log),
     sendPush: services.sendPush !== undefined ? services.sendPush : vapid ? pushSender(vapid, config.vapidSubject) : null,
+    owned: jobs,
+    exclusive: (job, run) => withJobLock(dataSource, job, run),
   };
-
-  const { jobs, unknown } = parseJobList(config.tsWorkerJobs);
-  if (unknown.length) throw new Error(`TS_WORKER_JOBS names unknown jobs: ${unknown.join(', ')}`);
   const definitions = jobDefinitions(context);
   const missing = [...jobs].filter((job) => !definitions[job]);
   if (missing.length) throw new Error(`TS_WORKER_JOBS names jobs this worker cannot run yet: ${missing.join(', ')}`);
@@ -143,6 +167,9 @@ export function buildWorker(config: Config, dataSource: DataSource, services: Pa
         notOwned,
         recordRun: async (job, record) => {
           await redis.hset(RUNS_KEY, job, JSON.stringify(record));
+          // Its writes (Inbox events, Telegram errors, compaction) reach open
+          // sync sockets now rather than at the hubs' next poll.
+          if (record.outcome === 'ok') await publishSyncBus(redis);
         },
       });
     },
