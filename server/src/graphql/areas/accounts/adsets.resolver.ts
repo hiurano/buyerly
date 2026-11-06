@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Arg, Ctx, Mutation, Query, Resolver } from 'type-graphql';
 import { recordAuditEvent } from '../../../audit/events.ts';
 import { rows } from '../../../database.ts';
+import { reactivateAdset } from '../../../meta/delivery.ts';
 import { accountAccess, allowsAccountPk } from '../../../workspaces/account-access.ts';
 import { mutated, type GraphQLContext } from '../../context.ts';
 import { RouteError } from '../../errors.ts';
@@ -10,9 +11,8 @@ import { JSONScalar } from '../../scalars.ts';
 import { normalizeCurrency, UNKNOWN_CURRENCY } from './currency.ts';
 import { ensureWriteAccess, refuseRecorded, scopeOf, visibleAccounts, type AccountRow } from './scope.ts';
 
-// The ad sets rules stopped (api/routers/adsets.py): the list and hiding a
-// card. adSetReactivate turns the ad set back on in Meta, so it stays on
-// Python until the Meta client moves (stage 4).
+// The ad sets rules stopped (api/routers/adsets.py): the list, turning one
+// back on in Meta (meta/delivery.ts) and hiding a card.
 
 interface StoppedRow {
   id: number;
@@ -54,6 +54,11 @@ export class AdSetsResolver {
         stopped_at: record.stopped_at,
       }));
     });
+  }
+
+  @Mutation(() => DeliveryPayload, { nullable: true, description: 'Turns a stopped ad set back on in Meta.' })
+  async adSetReactivate(@Arg('adSetId', () => String) adSetId: string, @Ctx() context: GraphQLContext): Promise<Payload> {
+    return mutated(context, DeliveryPayload, await reactivateAdset(context.app, context.user, adSetId));
   }
 
   @Mutation(() => DeliveryPayload, { nullable: true, description: 'Dismisses a stopped ad set from the list.' })

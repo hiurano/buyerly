@@ -27,6 +27,7 @@ import { RulesResolver } from './rules/rules.resolver.ts';
 import { RuleAttachmentsResolver } from './rules/attachments.resolver.ts';
 import { RulePreviewResolver } from './rules/preview.resolver.ts';
 import { MetaResolver } from './meta/meta.resolver.ts';
+import { DeliveryResolver } from './accounts/delivery.resolver.ts';
 
 // Every area's resolvers: the one place a new area is registered. An area
 // lives in its own folder (areas/<area>/<area>.resolver.ts, plus whatever
@@ -52,6 +53,7 @@ export const RESOLVERS: NonEmptyArray<new () => object> = [
   AccountsResolver,
   MetaResolver,
   AdSetsResolver,
+  DeliveryResolver,
   AnalyticsResolver,
   SearchResolver,
   RuleLabelsResolver,
