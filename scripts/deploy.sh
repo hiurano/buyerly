@@ -369,6 +369,18 @@ fi
 if ! APP_DIR="${APP_DIR}" EXPECTED_SHA="${TARGET_SHA}" \
     python3 "${SCRIPT_DIR}/post_deploy_smoke.py"; then
     echo "[ERROR] Post-deploy smoke failed; restoring the previous release."
+    # Which checks failed and why, as [ERROR] lines the Actions log shows.
+    SMOKE_RESULT="${APP_DIR}/logs/smoke/post-deploy-${TARGET_SHA}.json" python3 - <<'PY' || true
+import json, os
+try:
+    checks = json.load(open(os.environ["SMOKE_RESULT"])).get("checks", [])
+except (OSError, ValueError):
+    checks = []
+for check in checks:
+    if not check.get("ok"):
+        print(f"[ERROR] smoke {check.get('name')}: {str(check.get('error', ''))[:240]}")
+PY
+    docker compose logs --no-log-prefix --tail=15 worker-ts 2>&1 | cut -c1-300 | sed 's/^/[ERROR] worker-ts: /' || true
     rollback
     exit 1
 fi
