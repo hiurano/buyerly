@@ -120,6 +120,11 @@ const FIELDS = String.raw`({
   logoutAllSessions: (v) => ['POST', '/api/auth/logout-all' + qs({ keep_current: v.keepCurrent }), {}],
   userEmailChangeRequest: (v) => ['POST', '/api/auth/request-email-change', v.input],
   userEmailChangeVerify: (v) => ['POST', '/api/auth/verify-email-change', v.input],
+  availableUsers: () => ['GET', '/api/auth/accounts'],
+  workspaceInviteDetails: (v) => ['GET', '/api/invites/' + enc(v.token)],
+  emailUserAccountAuthChallenge: (v) => ['POST', '/api/auth/request-temporary-password', v.input],
+  emailTokenUserAccountAuth: (v) => ['POST', '/api/auth/verify-temporary-password', v.input],
+  emailLinkUserAccountAuth: (v) => ['POST', '/api/auth/verify-email-link', v.input],
   workspaceCreate: (v) => ['POST', '/api/workspaces', v.input],
   workspaceUpdate: (v) => ['PATCH', '/api/workspaces/' + v.id, v.input],
   workspaceDelete: (v) => ['DELETE', '/api/workspaces/' + v.id],
@@ -174,7 +179,8 @@ function install(fieldsSource) {
       if (detail && typeof detail === 'object' && !Array.isArray(detail)) extensions.detail = detail;
       return { error: { message, path: [path], extensions } };
     }
-    if (kind === 'query') return { value: payload };
+    // A field whose answer is JSON itself (signing in) has no selection: its value as it is.
+    if (kind === 'query' || !selection.trim()) return { value: payload };
     const result = {};
     for (const name of selection.split(/[\s,]+/).filter(Boolean)) {
       result[name] = name === 'success' ? true : name === 'lastSyncId' ? 0 : payload;

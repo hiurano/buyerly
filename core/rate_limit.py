@@ -234,13 +234,17 @@ def get_client_location(request: Request) -> str:
 async def _request_identity(request: Request, fields: tuple[str, ...]) -> str:
     if not fields:
         return ""
-    payload = {}
-    try:
-        content_type = request.headers.get("content-type", "").split(";", 1)[0].strip()
-        if content_type == "application/json":
-            payload = await request.json()
-    except (TypeError, ValueError):
+    # A GraphQL field running this route (api/client_api/bridge.py) puts its input there: that
+    # request's body is the GraphQL document.
+    payload = getattr(request.state, "field_input", None)
+    if not isinstance(payload, dict):
         payload = {}
+        try:
+            content_type = request.headers.get("content-type", "").split(";", 1)[0].strip()
+            if content_type == "application/json":
+                payload = await request.json()
+        except (TypeError, ValueError):
+            payload = {}
     if not isinstance(payload, dict):
         return ""
     for field in fields:

@@ -40,14 +40,14 @@ monitoring cycle делает обзор `degraded` или `critical`, даже 
 
 | Метод и путь | Тело | Результат |
 |---|---|---|
-| `POST /api/auth/request-temporary-password` | `email`, `invite_token?`, `turnstile_token?` | вход и регистрация по почте: любой почте высылает одно письмо с одноразовой ссылкой и кодом. Новой почте без приглашения нужен `turnstile_token` от виджета Cloudflare Turnstile, иначе 400 без письма (проверка выключена, пока на сервере не задан `TURNSTILE_SECRET_KEY`). Недействительное или чужое `invite_token` — 403 |
-| `POST /api/auth/verify-temporary-password` | `email`, `code` | атомарно потребляет общий login credential, повторно проверяет доступ и открывает web-сессию; аккаунт с неподтверждённой почтой не открывает (403) |
-| `POST /api/auth/verify-email-link` | `token` | атомарно потребляет тот же login credential по ссылке; после этого код также недействителен |
+| GraphQL `emailUserAccountAuthChallenge(input)`, без входа (REST `POST /api/auth/request-temporary-password`) | `email`, `invite_token?`, `turnstile_token?` | вход и регистрация по почте: любой почте высылает одно письмо с одноразовой ссылкой и кодом. Новой почте без приглашения нужен `turnstile_token` от виджета Cloudflare Turnstile, иначе 400 без письма (проверка выключена, пока на сервере не задан `TURNSTILE_SECRET_KEY`). Недействительное или чужое `invite_token` — 403 |
+| GraphQL `emailTokenUserAccountAuth(input)`, без входа (REST `POST /api/auth/verify-temporary-password`) | `email`, `code` | атомарно потребляет общий login credential, повторно проверяет доступ и открывает web-сессию; аккаунт с неподтверждённой почтой не открывает (403) |
+| GraphQL `emailLinkUserAccountAuth(input)`, без входа (REST `POST /api/auth/verify-email-link`) | `token` | атомарно потребляет тот же login credential по ссылке; после этого код также недействителен |
 | GraphQL `userEmailChangeRequest(input)` (REST `POST /api/auth/request-email-change`) | `new_email` | высылает 6-значный код подтверждения для привязки нового email |
 | GraphQL `userEmailChangeVerify(input)` (REST `POST /api/auth/verify-email-change`) | `code` | верифицирует OTP и активирует подтверждённый email |
 | `POST /api/auth/update-profile` | `first_name?`, `last_name?`, `email?`, `avatar_url?`, `full_name?`, `title?` (до 128), `username?` (до 40: буквы, цифры, `-` `_` `.`) | обновляет персональные данные профиля; пустое имя, неверный или занятый username — 400 с текстом Linear |
 | GraphQL `logout` (REST `POST /api/auth/logout` до B4) | — | немедленно отзывает текущую web-сессию; другие аккаунты этого браузера остаются |
-| `GET /api/auth/accounts` | — | аккаунты, вошедшие в этом браузере, в порядке добавления: `id`, `username`, `full_name`, `email`, `avatar_url`, `slot`, `onboarding_completed`, `workspaces`; cookie закончившихся сессий удаляет; без входа — пустой список |
+| GraphQL `availableUsers`, без входа (REST `GET /api/auth/accounts`) | — | аккаунты, вошедшие в этом браузере, в порядке добавления: `id`, `username`, `full_name`, `email`, `avatar_url`, `slot`, `onboarding_completed`, `workspaces`; cookie закончившихся сессий удаляет; без входа — пустой список |
 | GraphQL `authenticationSessions` (REST `GET /api/auth/sessions`) | — | список активных устройств с датами создания, истечения и последней активности и IP-адресом последней активности; `location` — место последней активности от Cloudflare («Helsinki, 18, FI»), пустое без Cloudflare |
 | GraphQL `logoutSession(sessionId)` (REST `DELETE /api/auth/sessions/{session_id}`) | — | отзывает выбранную собственную web-сессию |
 | GraphQL `logoutAllSessions(keepCurrent)` (REST `POST /api/auth/logout-all`) | `keep_current?` | отзывает все web-сессии пользователя; с `keep_current=true` текущая остаётся (Revoke all в Settings → Security & access) |
@@ -118,7 +118,7 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 | `POST /api/workspaces/{id}/invite-link` | — | owner/admin: включает ссылку (уже включённая не меняется), отдаёт `invite_url`; этой же ссылкой делится онбординг |
 | `POST /api/workspaces/{id}/invite-link/reset` | — | owner/admin: «Reset invite link», как у Linear — старая ссылка перестаёт работать, отдаётся новая |
 | `DELETE /api/workspaces/{id}/invite-link` | — | owner/admin: выключает ссылку, вступить по ней больше нельзя; `{"invite_url": null}` |
-| `GET /api/invites/{token}` | — | публичная проверка валидности токена приглашения перед вступлением |
+| GraphQL `workspaceInviteDetails(token)`, без входа (REST `GET /api/invites/{token}`) | — | публичная проверка валидности токена приглашения перед вступлением |
 | `POST /api/invites/{token}/accept` | — | атомарное принятие инвайта и добавление в команду; повтор уже вступившего пользователя идемпотентен |
 
 ## Онбординг (Onboarding Flow)

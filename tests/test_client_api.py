@@ -16,12 +16,13 @@ import unittest
 from datetime import datetime, timedelta, timezone
 
 import httpx
+from graphql import get_named_type, is_object_type
 from fastapi import APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import api.routes as api_routes_module
 from api.client_api import schema as client_schema  # the ClientSchema the endpoint serves
-from api.client_api.schema import ALSO_REST, ROUTES
+from api.client_api.schema import ALSO_REST, PUBLIC_FIELDS, ROUTES
 from api.meta_oauth import router as meta_oauth_router
 from api.routers import telegram as telegram_router
 from api.routes import ALL_REST_ROUTERS, rest_only
@@ -83,6 +84,8 @@ CASES = {
     "healthOverview": _case("GET", lambda f, n: "/api/health/overview", lambda f, n: {}),
     "viewer": _case("GET", lambda f, n: "/api/me", lambda f, n: {}),
     "authenticationSessions": _case("GET", lambda f, n: "/api/auth/sessions", lambda f, n: {}),
+    "availableUsers": _case("GET", lambda f, n: "/api/auth/accounts", lambda f, n: {}),
+    "workspaceInviteDetails": _case("GET", lambda f, n: f"/api/invites/{f.token[n]}", lambda f, n: {"token": f.token[n]}),
     "accountNotificationSetting": _case(
         "GET", lambda f, n: f"/api/accounts/{f.acc[n]}/notifications", lambda f, n: {"accountId": f.acc[n]}
     ),
@@ -160,6 +163,20 @@ CASES = {
     "userEmailChangeRequest": _case(
         "POST", lambda f, n: "/api/auth/request-email-change",
         lambda f, n: {"input": {"new_email": f"no-at-sign-{n}"}}, lambda f, n: {"new_email": f"no-at-sign-{n}"},
+    ),
+    "emailUserAccountAuthChallenge": _case(
+        "POST", lambda f, n: "/api/auth/request-temporary-password",
+        lambda f, n: {"input": {"email": f"no-at-sign-{n}"}}, lambda f, n: {"email": f"no-at-sign-{n}"},
+    ),
+    "emailTokenUserAccountAuth": _case(
+        "POST", lambda f, n: "/api/auth/verify-temporary-password",
+        lambda f, n: {"input": {"email": f"nobody-{n}@example.com", "code": "AAAAAAAAAA"}},
+        lambda f, n: {"email": f"nobody-{n}@example.com", "code": "AAAAAAAAAA"},
+    ),
+    "emailLinkUserAccountAuth": _case(
+        "POST", lambda f, n: "/api/auth/verify-email-link",
+        lambda f, n: {"input": {"token": f"no-such-link-{n}".ljust(40, "x")}},
+        lambda f, n: {"token": f"no-such-link-{n}".ljust(40, "x")},
     ),
     "userEmailChangeVerify": _case(
         "POST", lambda f, n: "/api/auth/verify-email-change",
@@ -452,7 +469,8 @@ def _document(name: str, variables: dict) -> str:
     kind, field = _schema_fields()[name]
     declared = ", ".join(f"${arg}: {field.args[arg].type}" for arg in variables)
     passed = ", ".join(f"{arg}: ${arg}" for arg in variables)
-    selection = " { success lastSyncId }" if kind == "mutation" else ""
+    # A payload is asked for its fields; signing in answers JSON itself.
+    selection = " { success lastSyncId }" if kind == "mutation" and is_object_type(get_named_type(field.type)) else ""
     return (
         f"{kind} Op{f'({declared})' if declared else ''} "
         f"{{ {name}{f'({passed})' if passed else ''}{selection} }}"
@@ -641,9 +659,24 @@ class TestClientApi(unittest.IsolatedAsyncioTestCase):
 
     async def test_signed_out_requests_are_refused_before_any_field_runs(self):
         for name in CASES:
+            if name in PUBLIC_FIELDS:
+                continue
             status, _ = await self._graphql("anonymous", name)
             rest_status, _ = await self._rest("anonymous", name)
             self.assertEqual((rest_status, status), (401, 401), name)
+
+    async def test_signing_in_runs_signed_out_as_its_routes_do(self):
+        self.assertTrue(PUBLIC_FIELDS <= set(CASES))
+        compared = await self._assert_same_as_rest("anonymous", skip=set(CASES) - PUBLIC_FIELDS)
+        self.assertEqual(compared, len(PUBLIC_FIELDS))
+        # Any other field alongside them needs the session again.
+        response = await self.client.post(GRAPHQL, json={"query": "{ availableUsers viewer }"})
+        self.assertEqual(response.status_code, 401)
+        # And only a JSON body runs them, so a cross-site form cannot sign a browser in.
+        response = await self.client.post(
+            GRAPHQL, content=b'{"query": "{ availableUsers }"}', headers={"Content-Type": "text/plain"}
+        )
+        self.assertNotEqual(response.status_code, 200)
 
     async def test_a_write_needs_the_csrf_token_as_rest_does(self):
         cookie_only = {"Cookie": self.headers["owner"]["Cookie"]}

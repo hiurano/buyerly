@@ -19,11 +19,6 @@ class TestReactFrontendContract(unittest.TestCase):
         rest_prefixes = (
             "/api/graphql",
             "/api/sync/",
-            # Signing in, still REST until it moves to GraphQL too (decision 55).
-            "/api/auth/accounts",
-            "/api/auth/request-temporary-password",
-            "/api/auth/verify-temporary-password",
-            "/api/auth/verify-email-link",
             # Uploads are multipart, as Linear's go to its file storage rather than GraphQL.
             "/api/onboarding/avatar",
             "/api/onboarding/workspace/logo",
@@ -31,8 +26,7 @@ class TestReactFrontendContract(unittest.TestCase):
             "/api/meta/invites/public/",
             "/api/meta/oauth/invite/",
         )
-        # An invite as a signed-out visitor sees it; accepting it is GraphQL.
-        rest_addresses = ("/api/invites/${encodeURIComponent(token)}",)
+        rest_addresses = ()
         for path in (ROOT / "frontend" / "src").rglob("*.ts*"):
             for match in re.finditer(r"""['`"](/api/[^'`"?]*)""", path.read_text()):
                 address = match.group(1)

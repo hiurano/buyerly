@@ -73,3 +73,19 @@ export function servedHere(body: unknown, served: ServedFields): boolean {
   }
   return operations > 0;
 }
+
+// Every root field of every operation in the request body (fragments
+// followed), or null when it does not parse.
+export function requestedRootFields(body: unknown): Set<string> | null {
+  const document = documentOf(body);
+  if (!document) return null;
+  const fragments = new Map<string, FragmentDefinitionNode>();
+  for (const definition of document.definitions) {
+    if (definition.kind === Kind.FRAGMENT_DEFINITION) fragments.set(definition.name.value, definition);
+  }
+  const fields = new Set<string>();
+  for (const definition of document.definitions) {
+    if (definition.kind === Kind.OPERATION_DEFINITION) rootFields(definition.selectionSet, fragments, fields);
+  }
+  return fields;
+}
