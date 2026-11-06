@@ -127,6 +127,28 @@ describe.skipIf(!DATABASE_URL)('client API', () => {
     expect((avatar.body as GraphQLAnswer).errors?.[0].message).toBe('avatar_url must start with https://, http:// or /uploads/avatars/');
   });
 
+  it('answers writes sent together each on their own', async () => {
+    // The client's transaction queue sends what is waiting as one document, a field per write.
+    const { browser } = await signedIn();
+    const label = (name: string) => ({ name, color: '#4cb782' });
+    const answer = await graphql(browser, `mutation Transactions($t0_input: JSON!, $t1_accountId: String!, $t1_input: JSON!, $t2_input: JSON!) {
+      t0: ruleLabelCreate(input: $t0_input) { success lastSyncId ruleLabel }
+      t1: accountUpdate(accountId: $t1_accountId, input: $t1_input) { success lastSyncId }
+      t2: ruleLabelCreate(input: $t2_input) { success lastSyncId ruleLabel } }`, {
+      t0_input: label('First'), t1_accountId: 'act_404', t1_input: {}, t2_input: label('Third'),
+    });
+    expect(answer.status).toBe(200);
+    const body = answer.body as GraphQLAnswer;
+    // The refused one is null with its error; the ones before and after it are made and answered.
+    const data = body.data as Record<string, { ruleLabel?: { name: string }; lastSyncId?: number } | null>;
+    expect(data.t0?.ruleLabel?.name).toBe('First');
+    expect(data.t1).toBeNull();
+    expect(data.t2?.ruleLabel?.name).toBe('Third');
+    expect(body.errors?.map((error) => error.path)).toEqual([['t1']]);
+    expect(body.errors?.[0].extensions?.statusCode).toBe(404);
+    expect(data.t0!.lastSyncId!).toBeLessThanOrEqual(data.t2!.lastSyncId!);
+  });
+
   it('keeps the limit on aliases', async () => {
     const { browser } = await signedIn();
     const aliases = Array.from({ length: 11 }, (_, index) => `w${index}: workspaces`).join(' ');

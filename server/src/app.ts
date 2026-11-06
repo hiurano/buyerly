@@ -105,6 +105,8 @@ export function buildApp(config: Config, database: Database | null, options: Bui
   app.addHook('onSend', async (_request, reply) => {
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+    // The Python API sends it too; old browsers still read it.
+    reply.header('X-XSS-Protection', '1; mode=block');
   });
 
   // Fastify's own 404 logs and returns the whole URL, query string included.

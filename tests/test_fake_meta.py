@@ -151,14 +151,7 @@ async def _no_wait(**_kwargs):
     return None
 
 
-class DevSeedGuardTest(unittest.TestCase):
-    def test_seed_refuses_without_the_local_flag(self):
-        from scripts import dev_seed
-
-        with patch.dict("os.environ", {"BUYERLY_DEV_SEED": ""}):
-            with self.assertRaises(SystemExit):
-                dev_seed.main()
-
+class FakeMetaIsLocalOnlyTest(unittest.TestCase):
     def test_production_talks_to_meta(self):
         from core.config import Settings
 

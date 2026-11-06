@@ -19,4 +19,4 @@
 | **[`og-image.png`](og-image.png)** | PNG 1200×630 | Превью карточки при отправке ссылки в Telegram/WhatsApp/Twitter |
 | **[`logo.png`](logo.png)** | PNG High-Res | Растровый экспорт в высоком разрешении |
 
-Растровые иконки (`favicon.ico`, `favicon-32x32.png`, `favicon.png`, `apple-touch-icon.png`, а также `frontend/public/buyerly-logo.png`) собирает `python3 scripts/build_icons.py` из того же контура, что и `favicon.svg`.
+Растровые иконки (`favicon.ico`, `favicon-32x32.png`, `favicon.png`, `apple-touch-icon.png`, а также `frontend/public/buyerly-logo.png`) собирает `node server/src/scripts/build-icons.ts` из того же контура, что и `favicon.svg`.

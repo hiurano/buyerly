@@ -1,0 +1,1361 @@
+{
+ "now": 1791379800.0,
+ "ads": {
+  "1202200000000003": [
+   0.3792545810307398,
+   13.678987030647264,
+   0.02116733260692758,
+   0.07886050873723949,
+   1.7015600911508408,
+   "ACTIVE"
+  ],
+  "1202200000000023": [
+   0.48152255736024413,
+   18.01196775475555,
+   0.01974447217485646,
+   0.04169039491826112,
+   1.503129416665319,
+   "ACTIVE"
+  ],
+  "1202200000000041": [
+   0.9996951086102627,
+   19.59685757710743,
+   0.011200688468364637,
+   0.0,
+   1.1351195758989572,
+   "PAUSED"
+  ]
+ },
+ "insights": {
+  "act_1000000000000001|account|today": [
+   {
+    "account_id": "1000000000000001",
+    "account_name": "NL \u00b7 Lead gen",
+    "spend": "287.29",
+    "impressions": "20550",
+    "reach": "14819",
+    "frequency": "1.386733",
+    "cpm": "13.980049",
+    "clicks": "357",
+    "unique_clicks": "325",
+    "inline_link_clicks": "251",
+    "cpc": "0.804734",
+    "ctr": "1.737226",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "251"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "192"
+     },
+     {
+      "action_type": "lead",
+      "value": "13"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "1.144582"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "1.496302"
+     },
+     {
+      "action_type": "lead",
+      "value": "22.099231"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "236"
+     }
+    ],
+    "date_start": "2026-10-07",
+    "date_stop": "2026-10-07"
+   }
+  ],
+  "act_1000000000000001|account|last_7d": [
+   {
+    "account_id": "1000000000000001",
+    "account_name": "NL \u00b7 Lead gen",
+    "spend": "3400.65",
+    "impressions": "237672",
+    "reach": "174535",
+    "frequency": "1.361744",
+    "cpm": "14.308164",
+    "clicks": "4448",
+    "unique_clicks": "4066",
+    "inline_link_clicks": "3107",
+    "cpc": "0.764535",
+    "ctr": "1.871487",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "3107"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "2390"
+     },
+     {
+      "action_type": "lead",
+      "value": "205"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "10"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "1.094512"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "1.422866"
+     },
+     {
+      "action_type": "lead",
+      "value": "16.588537"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "340.065000"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "2923"
+     }
+    ],
+    "date_start": "2026-09-30",
+    "date_stop": "2026-10-06"
+   }
+  ],
+  "act_1000000000000001|adset|today": [
+   {
+    "campaign_id": "1202000000000001",
+    "adset_id": "1202100000000002",
+    "adset_name": "Broad 25-54",
+    "spend": "67.32",
+    "impressions": "5920",
+    "reach": "4546",
+    "frequency": "1.302244",
+    "cpm": "11.371622",
+    "clicks": "139",
+    "unique_clicks": "127",
+    "inline_link_clicks": "93",
+    "cpc": "0.484317",
+    "ctr": "2.347973",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "93"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "67"
+     },
+     {
+      "action_type": "lead",
+      "value": "6"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "0.723871"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "1.004776"
+     },
+     {
+      "action_type": "lead",
+      "value": "11.220000"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "88"
+     }
+    ],
+    "date_start": "2026-10-07",
+    "date_stop": "2026-10-07"
+   },
+   {
+    "campaign_id": "1202000000000001",
+    "adset_id": "1202100000000005",
+    "adset_name": "Broad 35-65+",
+    "spend": "61.82",
+    "impressions": "4417",
+    "reach": "3052",
+    "frequency": "1.447248",
+    "cpm": "13.995925",
+    "clicks": "85",
+    "unique_clicks": "77",
+    "inline_link_clicks": "57",
+    "cpc": "0.727294",
+    "ctr": "1.924383",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "57"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "42"
+     },
+     {
+      "action_type": "lead",
+      "value": "2"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "1.084561"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "1.471905"
+     },
+     {
+      "action_type": "lead",
+      "value": "30.910000"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "54"
+     }
+    ],
+    "date_start": "2026-10-07",
+    "date_stop": "2026-10-07"
+   },
+   {
+    "campaign_id": "1202000000000010",
+    "adset_id": "1202100000000011",
+    "adset_name": "Finance interests",
+    "spend": "57.28",
+    "impressions": "3045",
+    "reach": "2430",
+    "frequency": "1.253086",
+    "cpm": "18.811166",
+    "clicks": "70",
+    "unique_clicks": "64",
+    "inline_link_clicks": "50",
+    "cpc": "0.818286",
+    "ctr": "2.298851",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "50"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "43"
+     },
+     {
+      "action_type": "lead",
+      "value": "4"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "1.145600"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "1.332093"
+     },
+     {
+      "action_type": "lead",
+      "value": "14.320000"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "47"
+     }
+    ],
+    "date_start": "2026-10-07",
+    "date_stop": "2026-10-07"
+   },
+   {
+    "campaign_id": "1202000000000010",
+    "adset_id": "1202100000000014",
+    "adset_name": "Lookalike 1%",
+    "spend": "100.87",
+    "impressions": "7168",
+    "reach": "4791",
+    "frequency": "1.496139",
+    "cpm": "14.072266",
+    "clicks": "63",
+    "unique_clicks": "57",
+    "inline_link_clicks": "51",
+    "cpc": "1.601111",
+    "ctr": "0.878906",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "51"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "40"
+     },
+     {
+      "action_type": "lead",
+      "value": "1"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "1.977843"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "2.521750"
+     },
+     {
+      "action_type": "lead",
+      "value": "100.870000"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "47"
+     }
+    ],
+    "date_start": "2026-10-07",
+    "date_stop": "2026-10-07"
+   }
+  ],
+  "act_1000000000000001|adset|last_7d": [
+   {
+    "campaign_id": "1202000000000001",
+    "adset_id": "1202100000000002",
+    "adset_name": "Broad 25-54",
+    "spend": "828.82",
+    "impressions": "74542",
+    "reach": "58719",
+    "frequency": "1.269470",
+    "cpm": "11.118832",
+    "clicks": "1783",
+    "unique_clicks": "1633",
+    "inline_link_clicks": "1183",
+    "cpc": "0.464846",
+    "ctr": "2.391940",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "1183"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "844"
+     },
+     {
+      "action_type": "lead",
+      "value": "79"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "5"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "0.700609"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "0.982014"
+     },
+     {
+      "action_type": "lead",
+      "value": "10.491392"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "165.764000"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "1118"
+     }
+    ],
+    "date_start": "2026-09-30",
+    "date_stop": "2026-10-06"
+   },
+   {
+    "campaign_id": "1202000000000001",
+    "adset_id": "1202100000000005",
+    "adset_name": "Broad 35-65+",
+    "spend": "686.92",
+    "impressions": "48457",
+    "reach": "33337",
+    "frequency": "1.453550",
+    "cpm": "14.175867",
+    "clicks": "936",
+    "unique_clicks": "856",
+    "inline_link_clicks": "623",
+    "cpc": "0.733889",
+    "ctr": "1.931609",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "623"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "461"
+     },
+     {
+      "action_type": "lead",
+      "value": "27"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "1.102600"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "1.490065"
+     },
+     {
+      "action_type": "lead",
+      "value": "25.441481"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "584"
+     }
+    ],
+    "date_start": "2026-09-30",
+    "date_stop": "2026-10-06"
+   },
+   {
+    "campaign_id": "1202000000000010",
+    "adset_id": "1202100000000011",
+    "adset_name": "Finance interests",
+    "spend": "924.63",
+    "impressions": "49063",
+    "reach": "38946",
+    "frequency": "1.259770",
+    "cpm": "18.845770",
+    "clicks": "1137",
+    "unique_clicks": "1040",
+    "inline_link_clicks": "819",
+    "cpc": "0.813219",
+    "ctr": "2.317429",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "819"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "709"
+     },
+     {
+      "action_type": "lead",
+      "value": "85"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "5"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "1.128974"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "1.304133"
+     },
+     {
+      "action_type": "lead",
+      "value": "10.878000"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "184.926000"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "771"
+     }
+    ],
+    "date_start": "2026-09-30",
+    "date_stop": "2026-10-06"
+   },
+   {
+    "campaign_id": "1202000000000010",
+    "adset_id": "1202100000000014",
+    "adset_name": "Lookalike 1%",
+    "spend": "960.28",
+    "impressions": "65610",
+    "reach": "43533",
+    "frequency": "1.507133",
+    "cpm": "14.636184",
+    "clicks": "592",
+    "unique_clicks": "537",
+    "inline_link_clicks": "482",
+    "cpc": "1.622095",
+    "ctr": "0.902301",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "482"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "376"
+     },
+     {
+      "action_type": "lead",
+      "value": "14"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "1.992282"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "2.553936"
+     },
+     {
+      "action_type": "lead",
+      "value": "68.591429"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "450"
+     }
+    ],
+    "date_start": "2026-09-30",
+    "date_stop": "2026-10-06"
+   }
+  ],
+  "act_1000000000000002|account|today": [
+   {
+    "account_id": "1000000000000002",
+    "account_name": "US \u00b7 Sweepstakes",
+    "spend": "143.95",
+    "impressions": "8263",
+    "reach": "5647",
+    "frequency": "1.463255",
+    "cpm": "17.421034",
+    "clicks": "134",
+    "unique_clicks": "120",
+    "inline_link_clicks": "85",
+    "cpc": "1.074254",
+    "ctr": "1.621687",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "85"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "63"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "6"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "1.693529"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "2.284921"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "23.991667"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "76"
+     }
+    ],
+    "date_start": "2026-10-07",
+    "date_stop": "2026-10-07"
+   }
+  ],
+  "act_1000000000000002|account|last_7d": [
+   {
+    "account_id": "1000000000000002",
+    "account_name": "US \u00b7 Sweepstakes",
+    "spend": "2777.88",
+    "impressions": "161095",
+    "reach": "111419",
+    "frequency": "1.445849",
+    "cpm": "17.243738",
+    "clicks": "2669",
+    "unique_clicks": "2432",
+    "inline_link_clicks": "1743",
+    "cpc": "1.040794",
+    "ctr": "1.656786",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "1743"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "1352"
+     },
+     {
+      "action_type": "lead",
+      "value": "33"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "154"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "1.593735"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "2.054645"
+     },
+     {
+      "action_type": "lead",
+      "value": "84.178182"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "18.038182"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "1632"
+     }
+    ],
+    "date_start": "2026-09-30",
+    "date_stop": "2026-10-06"
+   }
+  ],
+  "act_1000000000000002|adset|today": [
+   {
+    "campaign_id": "1202000000000020",
+    "adset_id": "1202100000000021",
+    "adset_name": "Broad 18-65+",
+    "spend": "55.05",
+    "impressions": "3628",
+    "reach": "2643",
+    "frequency": "1.372683",
+    "cpm": "15.173649",
+    "clicks": "54",
+    "unique_clicks": "48",
+    "inline_link_clicks": "35",
+    "cpc": "1.019444",
+    "ctr": "1.488423",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "35"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "27"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "2"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "1.572857"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "2.038889"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "27.525000"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "31"
+     }
+    ],
+    "date_start": "2026-10-07",
+    "date_stop": "2026-10-07"
+   },
+   {
+    "campaign_id": "1202000000000020",
+    "adset_id": "1202100000000025",
+    "adset_name": "Broad \u00b7 Mobile",
+    "spend": "36.68",
+    "impressions": "2094",
+    "reach": "1428",
+    "frequency": "1.466387",
+    "cpm": "17.516714",
+    "clicks": "14",
+    "unique_clicks": "12",
+    "inline_link_clicks": "8",
+    "cpc": "2.620000",
+    "ctr": "0.668577",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "8"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "6"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "4.585000"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "6.113333"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "6"
+     }
+    ],
+    "date_start": "2026-10-07",
+    "date_stop": "2026-10-07"
+   },
+   {
+    "campaign_id": "1202000000000028",
+    "adset_id": "1202100000000029",
+    "adset_name": "LAL 2% registrations",
+    "spend": "52.22",
+    "impressions": "2541",
+    "reach": "1576",
+    "frequency": "1.612310",
+    "cpm": "20.550964",
+    "clicks": "66",
+    "unique_clicks": "60",
+    "inline_link_clicks": "42",
+    "cpc": "0.791212",
+    "ctr": "2.597403",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "42"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "30"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "4"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "1.243333"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "1.740667"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "13.055000"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "39"
+     }
+    ],
+    "date_start": "2026-10-07",
+    "date_stop": "2026-10-07"
+   }
+  ],
+  "act_1000000000000002|adset|last_7d": [
+   {
+    "campaign_id": "1202000000000020",
+    "adset_id": "1202100000000021",
+    "adset_name": "Broad 18-65+",
+    "spend": "1237.80",
+    "impressions": "81002",
+    "reach": "58815",
+    "frequency": "1.377234",
+    "cpm": "15.281104",
+    "clicks": "1229",
+    "unique_clicks": "1120",
+    "inline_link_clicks": "812",
+    "cpc": "1.007160",
+    "ctr": "1.517246",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "812"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "655"
+     },
+     {
+      "action_type": "lead",
+      "value": "17"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "74"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "1.524384"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "1.889771"
+     },
+     {
+      "action_type": "lead",
+      "value": "72.811765"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "16.727027"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "764"
+     }
+    ],
+    "date_start": "2026-09-30",
+    "date_stop": "2026-10-06"
+   },
+   {
+    "campaign_id": "1202000000000020",
+    "adset_id": "1202100000000025",
+    "adset_name": "Broad \u00b7 Mobile",
+    "spend": "596.05",
+    "impressions": "33800",
+    "reach": "22813",
+    "frequency": "1.481611",
+    "cpm": "17.634615",
+    "clicks": "260",
+    "unique_clicks": "233",
+    "inline_link_clicks": "172",
+    "cpc": "2.292500",
+    "ctr": "0.769231",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "172"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "142"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "1"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "3.465407"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "4.197535"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "596.050000"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "155"
+     }
+    ],
+    "date_start": "2026-09-30",
+    "date_stop": "2026-10-06"
+   },
+   {
+    "campaign_id": "1202000000000028",
+    "adset_id": "1202100000000029",
+    "adset_name": "LAL 2% registrations",
+    "spend": "944.03",
+    "impressions": "46293",
+    "reach": "29791",
+    "frequency": "1.553926",
+    "cpm": "20.392500",
+    "clicks": "1180",
+    "unique_clicks": "1079",
+    "inline_link_clicks": "759",
+    "cpc": "0.800025",
+    "ctr": "2.548981",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "759"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "555"
+     },
+     {
+      "action_type": "lead",
+      "value": "16"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "79"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "1.243781"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "1.700955"
+     },
+     {
+      "action_type": "lead",
+      "value": "59.001875"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "11.949747"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "713"
+     }
+    ],
+    "date_start": "2026-09-30",
+    "date_stop": "2026-10-06"
+   }
+  ],
+  "act_1000000000000003|account|today": [
+   {
+    "account_id": "1000000000000003",
+    "account_name": "DE \u00b7 E-commerce",
+    "spend": "273.38",
+    "impressions": "24138",
+    "reach": "19739",
+    "frequency": "1.222858",
+    "cpm": "11.325710",
+    "clicks": "517",
+    "unique_clicks": "473",
+    "inline_link_clicks": "381",
+    "cpc": "0.528781",
+    "ctr": "2.141851",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "381"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "303"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "8"
+     },
+     {
+      "action_type": "purchase",
+      "value": "12"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "0.717533"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "0.902244"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "34.172500"
+     },
+     {
+      "action_type": "purchase",
+      "value": "22.781667"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "361"
+     }
+    ],
+    "date_start": "2026-10-07",
+    "date_stop": "2026-10-07"
+   }
+  ],
+  "act_1000000000000003|account|last_7d": [
+   {
+    "account_id": "1000000000000003",
+    "account_name": "DE \u00b7 E-commerce",
+    "spend": "3072.00",
+    "impressions": "276167",
+    "reach": "225736",
+    "frequency": "1.223407",
+    "cpm": "11.123704",
+    "clicks": "5912",
+    "unique_clicks": "5427",
+    "inline_link_clicks": "4394",
+    "cpc": "0.519621",
+    "ctr": "2.140734",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "4394"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "3537"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "92"
+     },
+     {
+      "action_type": "purchase",
+      "value": "138"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "0.699135"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "0.868533"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "33.391304"
+     },
+     {
+      "action_type": "purchase",
+      "value": "22.260870"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "4163"
+     }
+    ],
+    "date_start": "2026-09-30",
+    "date_stop": "2026-10-06"
+   }
+  ],
+  "act_1000000000000003|adset|today": [
+   {
+    "campaign_id": "1202000000000032",
+    "adset_id": "1202100000000033",
+    "adset_name": "Advantage+ audience",
+    "spend": "202.57",
+    "impressions": "12965",
+    "reach": "9804",
+    "frequency": "1.322419",
+    "cpm": "15.624373",
+    "clicks": "256",
+    "unique_clicks": "233",
+    "inline_link_clicks": "203",
+    "cpc": "0.791289",
+    "ctr": "1.974547",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "203"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "162"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "4"
+     },
+     {
+      "action_type": "purchase",
+      "value": "5"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "0.997882"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "1.250432"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "50.642500"
+     },
+     {
+      "action_type": "purchase",
+      "value": "40.514000"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "192"
+     }
+    ],
+    "date_start": "2026-10-07",
+    "date_stop": "2026-10-07"
+   },
+   {
+    "campaign_id": "1202000000000037",
+    "adset_id": "1202100000000038",
+    "adset_name": "Catalog \u00b7 Viewed 14d",
+    "spend": "70.81",
+    "impressions": "11173",
+    "reach": "9935",
+    "frequency": "1.124610",
+    "cpm": "6.337600",
+    "clicks": "261",
+    "unique_clicks": "240",
+    "inline_link_clicks": "178",
+    "cpc": "0.271303",
+    "ctr": "2.335989",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "178"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "141"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "4"
+     },
+     {
+      "action_type": "purchase",
+      "value": "7"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "0.397809"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "0.502199"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "17.702500"
+     },
+     {
+      "action_type": "purchase",
+      "value": "10.115714"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "169"
+     }
+    ],
+    "date_start": "2026-10-07",
+    "date_stop": "2026-10-07"
+   }
+  ],
+  "act_1000000000000003|adset|last_7d": [
+   {
+    "campaign_id": "1202000000000032",
+    "adset_id": "1202100000000033",
+    "adset_name": "Advantage+ audience",
+    "spend": "2269.15",
+    "impressions": "149482",
+    "reach": "113088",
+    "frequency": "1.321820",
+    "cpm": "15.180089",
+    "clicks": "2946",
+    "unique_clicks": "2700",
+    "inline_link_clicks": "2372",
+    "cpc": "0.770248",
+    "ctr": "1.970806",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "2372"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "1938"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "48"
+     },
+     {
+      "action_type": "purchase",
+      "value": "57"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "0.956640"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "1.170872"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "47.273958"
+     },
+     {
+      "action_type": "purchase",
+      "value": "39.809649"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "2245"
+     }
+    ],
+    "date_start": "2026-09-30",
+    "date_stop": "2026-10-06"
+   },
+   {
+    "campaign_id": "1202000000000037",
+    "adset_id": "1202100000000038",
+    "adset_name": "Catalog \u00b7 Viewed 14d",
+    "spend": "802.85",
+    "impressions": "126685",
+    "reach": "112648",
+    "frequency": "1.124609",
+    "cpm": "6.337372",
+    "clicks": "2966",
+    "unique_clicks": "2727",
+    "inline_link_clicks": "2022",
+    "cpc": "0.270684",
+    "ctr": "2.341240",
+    "actions": [
+     {
+      "action_type": "link_click",
+      "value": "2022"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "1599"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "44"
+     },
+     {
+      "action_type": "purchase",
+      "value": "81"
+     }
+    ],
+    "cost_per_action_type": [
+     {
+      "action_type": "link_click",
+      "value": "0.397057"
+     },
+     {
+      "action_type": "landing_page_view",
+      "value": "0.502095"
+     },
+     {
+      "action_type": "complete_registration",
+      "value": "18.246591"
+     },
+     {
+      "action_type": "purchase",
+      "value": "9.911728"
+     }
+    ],
+    "outbound_clicks": [
+     {
+      "action_type": "outbound_click",
+      "value": "1918"
+     }
+    ],
+    "date_start": "2026-09-30",
+    "date_stop": "2026-10-06"
+   }
+  ]
+ }
+}

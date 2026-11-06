@@ -219,7 +219,7 @@ def create_app() -> FastAPI:
             )
         return JSONResponse(status_code=404, content={"detail": "Document not found"})
 
-    # One page per release, built by scripts/build_changelog.py (#435).
+    # One page per release, built by server/src/scripts/build-changelog.ts (#435).
     @app.get("/changelog/{slug}", include_in_schema=False)
     async def serve_changelog_release(slug: str):
         release_path = frontend_dir / "changelog" / f"{slug}.html"

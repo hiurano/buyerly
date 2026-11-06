@@ -12,7 +12,7 @@
 # cookie never replaces the one of localhost:5173 or of another preview.
 # Sign in with "Continue with email": dev@buyerly.localhost; the code and link
 # are in `scripts/preview.sh logs` after "[DEV EMAIL]". Everything is local
-# test data from compose.dev.yaml and scripts/dev_seed.py; nothing reaches
+# test data from compose.dev.yaml and server/src/scripts/dev-seed.ts; nothing reaches
 # production or Meta.
 set -euo pipefail
 

@@ -59,7 +59,7 @@ export interface InventoryCacheProvider {
 export interface MetaClientOptions {
   // META_GRAPH_VERSION, like v26.0.
   graphVersion: string;
-  // META_GRAPH_BASE_URL: Meta, or the fake Meta (scripts/fake_meta.py).
+  // META_GRAPH_BASE_URL: Meta, or the fake Meta (server/src/scripts/fake-meta.ts).
   baseUrl: string;
   // META_APP_SECRET, for appsecret_proof; empty sends none.
   appSecret: string;

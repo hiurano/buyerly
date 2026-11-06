@@ -103,6 +103,35 @@ describe.skipIf(!DATABASE_URL)('views and favorites', () => {
       expect((await views(buyer)).views).toEqual({});
     });
 
+    it('keeps views and defaults per workspace, and an ads manager level its own view', async () => {
+      const me = await owner();
+      const elsewhere = await createWorkspace(db, me.user);
+      const there: Member = { browser: await signIn(me.user, elsewhere), user: me.user, workspace: elsewhere };
+      await graphql(me, SAVE, { key: 'ads-manager.campaigns', input: { settings: { ordering: 'spend' } } });
+      await graphql(me, SAVE, { key: 'ads-manager.adsets', input: { settings: { ordering: 'name' } } });
+      await graphql(me, DEFAULT, { key: 'rules', input: { settings: RULES_VIEW } });
+      expect(await views(me)).toEqual({
+        views: { 'ads-manager.campaigns': { ordering: 'spend' }, 'ads-manager.adsets': { ordering: 'name' } },
+        defaults: { rules: RULES_VIEW },
+      });
+      expect(await views(there)).toEqual({ views: {}, defaults: {} });
+      // Defaults are checked like views.
+      expect(refusal(await graphql(there, DEFAULT, { key: 'Rules', input: { settings: RULES_VIEW } }))).toEqual([404, 'Unknown view.']);
+      expect(refusal(await graphql(there, DEFAULT, { key: 'rules', input: { settings: { filters: ['x'.repeat(20_000)] } } })))
+        .toEqual([422, 'View settings must be under 16 KB']);
+    });
+
+    it('refuses a signed-out request, and drops the views of a member who leaves', async () => {
+      expect((await new Browser(target).post('/api/graphql', { query: '{ viewSettings }' })).status).toBe(401);
+      const me = await owner();
+      const buyer = await joined(me.workspace);
+      await graphql(buyer, SAVE, { key: 'rules', input: { settings: RULES_VIEW } });
+      const member = await db.getRepository(WorkspaceMemberEntity).findOneByOrFail({ workspaceId: me.workspace.id, userId: buyer.user.id });
+      expect(await db.getRepository(ViewSettingEntity).countBy({ memberId: member.id })).toBe(1);
+      await db.getRepository(WorkspaceMemberEntity).delete({ id: member.id });
+      expect(await db.getRepository(ViewSettingEntity).countBy({ memberId: member.id })).toBe(0);
+    });
+
     it('resets a view, also one never changed', async () => {
       const me = await owner();
       await graphql(me, SAVE, { key: 'rules', input: { settings: RULES_VIEW } });

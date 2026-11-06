@@ -9,7 +9,7 @@ interface BuyerlyIconProps extends Omit<React.SVGProps<SVGSVGElement>, 'name'> {
 }
 
 /**
- * Every icon in the app, by its role. Drawn from Phosphor Bold (scripts/build_buyerly_icons.py),
+ * Every icon in the app, by its role. Drawn from Phosphor Bold (server/src/scripts/build-buyerly-icons.ts),
  * filled shapes on a 256 grid: at 14px (sidebar, toolbars) the line is ~1.3px and at 16px (menus)
  * 1.5px, as Linear's. Colour comes from `currentColor`, so each place sets its own idle/hover tone.
  */

@@ -37,7 +37,7 @@ from core.timezones import (
 )
 from meta_api.client import MetaClient
 from core.metrics import meta_date_preset, normalize_rule_level
-from rules.shadow import start_capture as start_shadow_capture
+from rules.shadow import finish_cycle as finish_shadow_cycle, start_capture as start_shadow_capture
 from rules.engine import (
     RULE_ACTION_BY_TYPE,
     RuleAction,
@@ -2276,6 +2276,7 @@ class MonitoringWorker:
             result = await session.execute(stmt.order_by(Account.id))
             accounts = result.scalars().all()
             if not accounts:
+                finish_shadow_cycle(self._current_cycle_id, self._clock())
                 await self._persist_runtime_state(
                     stats=stats,
                     started_at=started_at,
@@ -3063,6 +3064,7 @@ class MonitoringWorker:
 
             await session.commit()
 
+        finish_shadow_cycle(self._current_cycle_id, self._clock())
         await self._persist_runtime_state(
             stats=stats,
             started_at=started_at,
