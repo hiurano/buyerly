@@ -140,6 +140,36 @@ describe.skipIf(!DATABASE_URL)('search', () => {
     expect((await search(me, { q: 'konto', status: ['active'] })).results).toEqual([]);
   });
 
+  it("shows today's inventory of monitored accounts, in the address's workspace only", async () => {
+    const me = await owner();
+    await fact(me, 'campaign', '120001', 'Test Campaign', me.account.accountId, day(0));
+    // Gone from Meta since yesterday: no longer inventory Ads Manager shows.
+    await fact(me, 'campaign', '120199', 'Test campaign removed yesterday', me.account.accountId, day(1));
+    // An ad account Buyerly no longer monitors keeps its old facts.
+    const disabled = await db.getRepository(AccountEntity).save(db.getRepository(AccountEntity).create({
+      accountId: `act_${Math.floor(Math.random() * 1e9)}`, name: 'Test disabled account', ownerUserId: me.user.id, workspaceId: me.workspace.id,
+      timezoneName: 'UTC', currency: 'USD', rulesEnabled: false, isActive: false,
+    }));
+    await fact({ ...me, account: disabled }, 'campaign', '120301', 'Test campaign of a disabled account', disabled.accountId, day(0));
+    // Another workspace's data never shows, even when its name matches exactly.
+    const neighbour = await owner();
+    await fact(neighbour, 'campaign', '120401', 'Test Campaign', neighbour.account.accountId, day(0));
+    await db.getRepository(AccountEntity).update({ id: neighbour.account.id }, { name: 'Test neighbour account' });
+
+    const names = async (member: Member, kind: string): Promise<string[]> => (await search(member, { q: 'test', kind })).results.map((result) => result.name);
+    expect(await names(me, 'campaign')).toEqual(['Test Campaign']);
+    expect(await names(me, 'account')).toEqual(['Test account']);
+    expect(await names(neighbour, 'campaign')).toEqual(['Test Campaign']);
+    expect(await names(neighbour, 'account')).toEqual(['Test neighbour account']);
+
+    // The address decides the workspace, and a stranger's is refused.
+    const stranger = new Browser(target, { 'x-workspace-slug': neighbour.workspace.slug });
+    expect((await stranger.signIn(me.user.email!)).status).toBe(200);
+    const refusedAnswer = await stranger.post('/api/graphql', { query: SEARCH, variables: { q: 'test' } }, stranger.csrf());
+    const body = refusedAnswer.body as GraphQLAnswer;
+    expect(refusedAnswer.status === 403 || body.errors?.[0].extensions?.statusCode === 403).toBe(true);
+  });
+
   it('refuses what the search page never sends', async () => {
     const me = await owner();
     expect(await refused(me, { q: '   ' })).toEqual([422, 'Type something to search for.']);

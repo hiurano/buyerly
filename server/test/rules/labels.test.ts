@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { DataSource } from 'typeorm';
-import { UserEntity, WorkspaceMemberEntity, type WorkspaceEntity } from '../../src/entities/index.ts';
+import { RuleGroupEntity, RulePresetEntity, UserEntity, WorkspaceMemberEntity, type WorkspaceEntity } from '../../src/entities/index.ts';
 import { Browser } from '../support/browser.ts';
 import { createUser, createWorkspace, testDatabase } from '../support/db.ts';
 import { DATABASE_URL, contractTarget, type Target } from '../support/target.ts';
@@ -128,6 +128,52 @@ describe.skipIf(!DATABASE_URL)('rule labels', () => {
     expect(await labels(me)).toEqual([]);
     const [{ count }] = await select<{ count: number }>('SELECT count(*)::int AS count FROM rule_presets WHERE workspace_id = $1', [me.workspace.id]);
     expect(count).toBe(5);
+  });
+
+  it('gives the set once to members opening Rules at the same time', async () => {
+    const me = await owner();
+    const members = [await joined(me.workspace, 'member'), await joined(me.workspace, 'member'), me];
+    const opened = await Promise.all(members.map((member) => labels(member)));
+    expect(new Set(opened.map((list) => list.map((label) => label.id).join())).size).toBe(1);
+    expect(opened[0].map((label) => label.name)).toEqual(['NL launch']);
+    const [{ count }] = await select<{ count: number }>('SELECT count(*)::int AS count FROM rule_presets WHERE workspace_id = $1', [me.workspace.id]);
+    expect(count).toBe(5);
+    const [markers] = await select<{ owners: number[] }>('SELECT array_agg(owner_user_id) AS owners FROM rule_examples_bootstrap WHERE workspace_id = $1', [me.workspace.id]);
+    // The marker sits on the owner, whoever opened Rules first.
+    expect(markers.owners).toEqual([me.user.id]);
+  });
+
+  it('adds the current set once to a workspace with the older examples, and leaves those as edited', async () => {
+    const me = await owner();
+    const member = await joined(me.workspace, 'member');
+    // Version 1 left a marker per member and its own examples, which may have been edited since.
+    const presets = db.getRepository(RulePresetEntity);
+    const old = await presets.save(presets.create({
+      workspaceId: me.workspace.id, ownerUserId: member.user.id, name: 'Example · Stop with no leads after 20', action: 'turn_off',
+      conditions: [{ metric: 'spend', operator: 'gte', value: 25, time_window: 'today' }, { metric: 'leads', operator: 'eq', value: 0, time_window: 'today' }],
+    }));
+    const oldLabels = db.getRepository(RuleGroupEntity);
+    await oldLabels.save(oldLabels.create({ workspaceId: me.workspace.id, ownerUserId: member.user.id, name: 'Example · Launch control' }));
+    await select('INSERT INTO rule_examples_bootstrap (workspace_id, owner_user_id, version, created_at) VALUES ($1, $2, 1, now()), ($1, $3, 1, now())', [me.workspace.id, me.user.id, member.user.id]);
+
+    expect((await labels(member)).map((label) => label.name).sort()).toEqual(['Example · Launch control', 'NL launch']);
+    await labels(me);
+    await labels(member);
+    const names = await select<{ name: string }>('SELECT name FROM rule_presets WHERE workspace_id = $1 ORDER BY id', [me.workspace.id]);
+    expect(names.map((row) => row.name)).toEqual(['Example · Stop with no leads after 20', '$3 and no click', '$3.50 and one click', '$4 and no lead', '$7 and no registration', '$12 ceiling']);
+    expect((await presets.findOneByOrFail({ id: old.id })).conditions[0]).toMatchObject({ value: 25 });
+    const markers = await select<{ owner_user_id: number; version: number }>('SELECT owner_user_id, version FROM rule_examples_bootstrap WHERE workspace_id = $1', [me.workspace.id]);
+    expect(Object.fromEntries(markers.map((row) => [row.owner_user_id, row.version]))).toEqual({ [me.user.id]: 2, [member.user.id]: 1 });
+  });
+
+  it('puts the owner’s marker on a workspace whose owner never opened Rules', async () => {
+    const me = await owner();
+    const member = await joined(me.workspace, 'member');
+    await select('INSERT INTO rule_examples_bootstrap (workspace_id, owner_user_id, version, created_at) VALUES ($1, $2, 1, now())', [me.workspace.id, member.user.id]);
+    expect((await labels(member)).map((label) => label.name)).toEqual(['NL launch']);
+    expect((await labels(member)).map((label) => label.name)).toEqual(['NL launch']);
+    const markers = await select<{ owner_user_id: number; version: number }>('SELECT owner_user_id, version FROM rule_examples_bootstrap WHERE workspace_id = $1', [me.workspace.id]);
+    expect(Object.fromEntries(markers.map((row) => [row.owner_user_id, row.version]))).toEqual({ [me.user.id]: 2, [member.user.id]: 1 });
   });
 
   it('creates, renames and recolors labels with unique names', async () => {
