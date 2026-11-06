@@ -164,7 +164,7 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
     expect(hidden.data).not.toHaveProperty('access_token');
 
     const before = await entries('User', [users.owner.id]);
-    await db.query(`UPDATE users SET auth_token = 'legacy', onboarding_step = 'completed' WHERE id = $1`, [users.owner.id]);
+    await db.query(`UPDATE users SET auth_token = $2, onboarding_step = 'completed' WHERE id = $1`, [users.owner.id, `legacy-${Math.random().toString(36).slice(2)}`]);
     expect(await entries('User', [users.owner.id])).toHaveLength(before.length);
 
     // The owner of both workspaces: both hear of a rename.
