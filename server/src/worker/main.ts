@@ -7,7 +7,13 @@ import { DEFAULT_WORKER_PORT, buildWorker } from './app.ts';
 
 const config = readConfig();
 const port = Number(process.env.WORKER_PORT ?? DEFAULT_WORKER_PORT);
-const worker = buildWorker(config, createBuyerlyDataSource(config.databaseUrl, { poolSize: 5 }));
+let worker: ReturnType<typeof buildWorker>;
+try {
+  worker = buildWorker(config, createBuyerlyDataSource(config.databaseUrl, { poolSize: 5 }));
+} catch (error) {
+  console.error('Buyerly worker refused to start:', error instanceof Error ? error.message : error);
+  process.exit(1);
+}
 
 let stopping = false;
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {

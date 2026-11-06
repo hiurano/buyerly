@@ -353,6 +353,7 @@ jobs:
       # stops cleanly on SIGTERM (exit code 0).
       - name: Run the TypeScript worker from the image
         run: |
+          trap 'docker logs buyerly-worker-ts-ci 2>&1 | tail -50 || true' ERR
           docker run -d --name buyerly-worker-ts-ci --network host -e APP_VERSION=ci \
             -e DATABASE_URL=postgresql+asyncpg://buyerly:buyerly_secret@127.0.0.1:5432/buyerly_schema \
             -e REDIS_URL=redis://127.0.0.1:6379/2 -e TS_WORKER_JOBS=sync_log_compaction \
