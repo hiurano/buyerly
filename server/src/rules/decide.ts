@@ -180,7 +180,17 @@ export function accountDayEnd(timezoneName: string | null, now: number): number 
 // ---------------------------------------------------------------------------
 // The decision
 
-const jsonDict = (value: unknown): Record<string, unknown> => (isMapping(value) ? value : {});
+// MonitoringWorker._json_dict: a mapping, or JSON text holding one (json.loads(value or "{}")).
+function jsonDict(value: unknown): Record<string, unknown> {
+  if (isMapping(value)) return value;
+  if (typeof value !== 'string' && value !== null && value !== undefined && value !== 0 && value !== false) return {};
+  try {
+    const parsed: unknown = JSON.parse(typeof value === 'string' && value ? value : '{}');
+    return isMapping(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
 
 // MonitoringWorker._state_matches
 function stateMatches(observed: Record<string, unknown>, desired: Record<string, unknown>): boolean {
