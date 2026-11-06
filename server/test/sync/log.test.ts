@@ -1,10 +1,23 @@
-import type { DataSource } from 'typeorm';
+import type { DataSource, EntityManager } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ActingMember } from '../../src/workspaces/access.ts';
 import { changesSince, memberSyncGroups } from '../../src/sync/log.ts';
 import { testDatabase } from '../support/db.ts';
 import { DATABASE_URL, type Target } from '../support/target.ts';
-import { syncWorld, type SyncWorld } from '../support/sync-world.ts';
+import { save, syncWorld, type SyncWorld } from '../support/sync-world.ts';
+import {
+  AuditEventEntity,
+  FavoriteEntity,
+  InboxNotificationStateEntity,
+  TeamAccountEntity,
+  TeamEntity,
+  TeamMemberEntity,
+  WorkspaceMemberEntity,
+} from '../../src/entities/index.ts';
+
+const teamKey = () => `T${Math.floor(Math.random() * 1e6)}`;
+const favorite = (manager: EntityManager, memberId: number, path: string) =>
+  manager.save(FavoriteEntity, manager.create(FavoriteEntity, { memberId, kind: 'page', path, title: path }));
 
 // The change log the database triggers fill (tests/test_sync_log.py): one
 // entry per write, in the write's transaction, with the groups that may see
@@ -49,15 +62,12 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
 
   it('leaves one entry for each write, with the groups of whoever may see it', async () => {
     const { ws, members, teams } = world;
-    const [team] = await db.query<{ id: number }[]>(
-      `INSERT INTO teams (workspace_id, name, key) VALUES ($1, 'Growth', $2) RETURNING id`,
-      [ws.id, `G${Math.floor(Math.random() * 1e6)}`.slice(0, 7)],
-    );
+    const team = await save(db, TeamEntity, { workspaceId: ws.id, name: 'Growth', key: teamKey() });
     const created = await last('Team', team.id);
     expect(created).toMatchObject({ action: 'insert', sync_groups: [`team:${team.id}`] });
     expect(created.data.name).toBe('Growth');
 
-    await db.query(`INSERT INTO team_members (team_id, member_id) VALUES ($1, $2)`, [team.id, members.owner.id]);
+    await save(db, TeamMemberEntity, { teamId: team.id, memberId: members.owner.id });
     const [joined] = await db.query<{ id: number }[]>('SELECT id FROM team_members WHERE team_id = $1', [team.id]);
     expect(await last('TeamMember', joined.id)).toMatchObject({ sync_groups: [`team:${team.id}`, `member:${members.owner.id}`] });
 
@@ -92,10 +102,8 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
     await second.startTransaction();
     const path = (name: string) => `${name}-${Math.random().toString(36).slice(2)}`;
     const [a, b] = [path('a'), path('b')];
-    const insert = (runner: typeof first, value: string) =>
-      runner.query(`INSERT INTO favorites (member_id, kind, path, title) VALUES ($1, 'page', $2, $2) RETURNING id`, [members.owner.id, value]) as Promise<{ id: number }[]>;
-    const [ida] = await insert(first, a);
-    const [idb] = await insert(second, b);
+    const ida = await favorite(first.manager, members.owner.id, a);
+    const idb = await favorite(second.manager, members.owner.id, b);
     // Written first, committed last: it comes after in the log.
     await second.commitTransaction();
     await first.commitTransaction();
@@ -108,7 +116,7 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
     const ids = await db.transaction(async (tx) => {
       const made: number[] = [];
       for (const name of ['c', 'd', 'e']) {
-        const [row] = await tx.query<{ id: number }[]>(`INSERT INTO favorites (member_id, kind, path, title) VALUES ($1, 'page', $2, $2) RETURNING id`, [members.owner.id, path(name)]);
+        const row = await favorite(tx, members.owner.id, path(name));
         made.push(row.id);
       }
       return made;
@@ -123,7 +131,7 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
     const runner = db.createQueryRunner();
     await runner.connect();
     await runner.startTransaction();
-    const [row] = (await runner.query(`INSERT INTO favorites (member_id, kind, path, title) VALUES ($1, 'page', 'pending', 'P') RETURNING id`, [world.members.owner.id])) as { id: number }[];
+    const row = await favorite(runner.manager, world.members.owner.id, 'pending');
     const pending = (await runner.query(`SELECT sync_id FROM sync_actions WHERE model = 'Favorite' AND model_id = $1`, [String(row.id)])) as { sync_id: string | null }[];
     expect(pending).toHaveLength(1);
     expect(pending[0].sync_id).toBeNull();
@@ -142,9 +150,10 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
     expect(latest).toHaveLength(3);
     expect(latest.every((entry) => entry.action === 'update' && JSON.stringify(entry.data) === '{"note":"bulk"}')).toBe(true);
 
-    const [team] = await db.query<{ id: number }[]>(`INSERT INTO teams (workspace_id, name, key) VALUES ($1, 'Doomed', $2) RETURNING id`, [ws.id, `D${Math.floor(Math.random() * 1e5)}`]);
-    await db.query('INSERT INTO team_members (team_id, member_id) VALUES ($1, $2), ($1, $3)', [team.id, members.buyer.id, members.guest.id]);
-    await db.query('INSERT INTO team_accounts (team_id, account_id) VALUES ($1, $2)', [team.id, accounts.loose.id]);
+    const team = await save(db, TeamEntity, { workspaceId: ws.id, name: 'Doomed', key: teamKey() });
+    await save(db, TeamMemberEntity, { teamId: team.id, memberId: members.buyer.id });
+    await save(db, TeamMemberEntity, { teamId: team.id, memberId: members.guest.id });
+    await save(db, TeamAccountEntity, { teamId: team.id, accountId: accounts.loose.id });
     const [mark] = await db.query<{ max: string | null }[]>('SELECT max(id) FROM sync_actions');
     await db.query('DELETE FROM teams WHERE id = $1', [team.id]);
     const gone = await db.query<Entry[]>(
@@ -167,7 +176,7 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
     expect(await entries('User', [users.owner.id])).toHaveLength(before.length);
 
     // The owner of both workspaces: both hear of a rename.
-    await db.query(`INSERT INTO workspace_members (workspace_id, user_id, role) VALUES ($1, $2, 'member')`, [other.id, users.owner.id]);
+    await save(db, WorkspaceMemberEntity, { workspaceId: other.id, userId: users.owner.id, role: 'member' });
     await db.query(`UPDATE users SET full_name = 'Olga O.' WHERE id = $1`, [users.owner.id]);
     const renamed = await last('User', users.owner.id);
     expect(renamed).toMatchObject({ data: { full_name: 'Olga O.' } });
@@ -195,12 +204,9 @@ describe.skipIf(!DATABASE_URL)('the sync change log', () => {
     });
 
     // An Inbox event follows its ad account; the member's state on it is theirs.
-    const [event] = await db.query<{ id: number }[]>(
-      `INSERT INTO audit_events (workspace_id, event_type, account_id) VALUES ($1, 'RULE_STOP', $2) RETURNING id`,
-      [ws.id, accounts.hidden.accountId],
-    );
-    const [loose] = await db.query<{ id: number }[]>(`INSERT INTO audit_events (workspace_id, event_type) VALUES ($1, 'TOKEN_ERROR') RETURNING id`, [ws.id]);
-    await db.query(`INSERT INTO inbox_notification_states (user_id, audit_event_id, is_read) VALUES ($1, $2, true)`, [users.owner.id, event.id]);
+    const event = await save(db, AuditEventEntity, { workspaceId: ws.id, eventType: 'RULE_STOP', accountId: accounts.hidden.accountId });
+    const loose = await save(db, AuditEventEntity, { workspaceId: ws.id, eventType: 'TOKEN_ERROR' });
+    await save(db, InboxNotificationStateEntity, { userId: users.owner.id, auditEventId: event.id, isRead: true });
     expect((await last('InboxEvent', event.id)).sync_groups).toEqual([`team:${teams.private.id}`]);
     expect((await last('InboxEvent', loose.id)).sync_groups).toEqual([`workspace:${ws.id}:members`]);
     const [state] = await db.query<{ id: number }[]>('SELECT id FROM inbox_notification_states WHERE audit_event_id = $1', [event.id]);
