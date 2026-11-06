@@ -1,56 +1,37 @@
-import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { MetaClient } from '../../src/meta/client.ts';
 import { MetaApiError } from '../../src/meta/errors.ts';
+import { buildFakeMetaApp } from '../../src/scripts/fake-meta.ts';
 
-// The port against the running fake Meta (scripts/fake_meta.py under
-// uvicorn, as compose.dev.yaml runs it): reads at every level, then writes
-// that change what the fake Meta reports and are put back. Python with
-// requirements.txt runs in CI; elsewhere set PYTHON, or the test is skipped.
+// The port against the running fake Meta (src/scripts/fake-meta.ts, as
+// compose.dev.yaml runs it): reads at every level, then writes that change
+// what the fake Meta reports and are put back.
 
-const REPO = join(import.meta.dirname, '../../..');
-const PYTHON = process.env.PYTHON ?? 'python3';
-const PORT = 18093;
 const ACCOUNT = 'act_1000000000000001';
 const ADSET = '1202100000000002';
 
-let server: ChildProcess | undefined;
-let available = false;
+let server: FastifyInstance;
+let PORT = 0;
 
 beforeAll(async () => {
-  server = spawn(PYTHON, ['-m', 'uvicorn', 'scripts.fake_meta:app', '--host', '127.0.0.1', '--port', String(PORT)], {
-    cwd: REPO,
-    env: { ...process.env, PYTHONPATH: REPO, FAKE_META_STATE: join(mkdtempSync(join(tmpdir(), 'fake-meta-')), 'state.json') },
-    stdio: 'ignore',
-  });
-  server.on('error', () => undefined);
-  for (let attempt = 0; attempt < 100 && server.exitCode === null; attempt += 1) {
-    try {
-      if ((await fetch(`http://127.0.0.1:${PORT}/health`)).ok) {
-        available = true;
-        break;
-      }
-    } catch {
-      // not up yet
-    }
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  if (!available && process.env.CI) throw new Error('the fake Meta did not start');
-}, 20_000);
+  ({ app: server } = buildFakeMetaApp({ statePath: join(mkdtempSync(join(tmpdir(), 'fake-meta-')), 'state.json') }));
+  await server.listen({ port: 0, host: '127.0.0.1' });
+  PORT = (server.server.address() as { port: number }).port;
+});
 
-afterAll(() => {
-  server?.kill();
+afterAll(async () => {
+  await server.close();
 });
 
 const client = () =>
   new MetaClient({ graphVersion: 'v26.0', baseUrl: `http://127.0.0.1:${PORT}`, appSecret: 'fake-secret', sleep: async () => undefined });
 
 describe('the Meta client against the fake Meta', () => {
-  it('reads an ad account at every level', async ({ skip }) => {
-    if (!available) skip();
+  it('reads an ad account at every level', async () => {
     const meta = client();
     const account = await meta.getAccountInfo(ACCOUNT, 'any-token');
     expect(account).toMatchObject({ id: ACCOUNT, currency: 'EUR', timezone_name: 'Europe/Amsterdam', status_label: 'Active (ACTIVE)' });
@@ -71,9 +52,8 @@ describe('the Meta client against the fake Meta', () => {
     expect((await meta.getCampaignsInventory(ACCOUNT, 'any-token')).length).toBeGreaterThan(0);
   });
 
-  it('writes status and budget, and Meta reports them', async ({ skip }) => {
-    if (!available) skip();
-    const meta = client();
+  it('writes status and budget, and Meta reports them', async () => {
+        const meta = client();
     await meta.setAdsetStatus(ADSET, 'any-token', 'PAUSED', ACCOUNT);
     expect(await meta.getEntityState(ADSET, 'any-token', 'adset', 'EUR')).toMatchObject({ status: 'PAUSED', daily_budget: 150 });
     await meta.updateEntityBudget(ADSET, 'any-token', 151.25, 'EUR', 'adset', ACCOUNT);
@@ -84,9 +64,8 @@ describe('the Meta client against the fake Meta', () => {
     expect(await meta.getAdsetState(ADSET, 'any-token', 'EUR')).toMatchObject({ status: 'ACTIVE', daily_budget: 150 });
   });
 
-  it('maps the fake Meta errors', async ({ skip }) => {
-    if (!available) skip();
-    await expect(client().getAccountInfo('act_404', 'any-token')).rejects.toThrow(MetaApiError);
+  it('maps the fake Meta errors', async () => {
+        await expect(client().getAccountInfo('act_404', 'any-token')).rejects.toThrow(MetaApiError);
     // An ad has no budget of its own: refused before any request.
     await expect(client().updateEntityBudget('1', 'any-token', 10, 'EUR', 'ad')).rejects.toThrow('An ad has no budget of its own.');
   });
