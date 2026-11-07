@@ -2,11 +2,12 @@ import Fastify from 'fastify';
 import type { DataSource } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { databaseOver } from '../../src/database.ts';
-import { checkIn, cycleStatus } from '../../src/worker/watchdog.ts';
+import type { Database } from '../../src/database.ts';
+import { checkIn, checkLocked, cycleStatus } from '../../src/worker/watchdog.ts';
 import { createUser, createWorkspace, testDatabase } from '../support/db.ts';
 import { DATABASE_URL } from '../support/target.ts';
 
-// The worker watchdog (services/worker_watchdog.py; tests/test_worker_watchdog.py).
+// The worker watchdog, which runs in the API server (#685).
 
 const log = Fastify({ logger: false }).log;
 const NOW = new Date('2026-10-07T12:00:00Z');
@@ -86,5 +87,32 @@ describe.skipIf(!DATABASE_URL)('stall and recovery notifications', () => {
       expect(state?.payload).toEqual({ recovered_at: '2026-10-07T12:00:00+00:00', stalled_since: '2026-10-07T11:52:48+00:00' });
       throw rollback;
     })).rejects.toBe(rollback);
+  });
+
+  // Two API processes during a deploy: only the one holding 611/5 checks.
+  it('skips a pass while another process holds the watchdog lock', async () => {
+    const other = await testDatabase();
+    const rollback = new Error('rollback');
+    // Every pass here is rolled back: the monitoring state is shared.
+    const base = databaseOver(dataSource);
+    const db: Database = { ...base, transaction: async (work) => {
+      let result: unknown;
+      await base.transaction(async (tx) => { result = await work(tx); throw rollback; }).catch((error: unknown) => {
+        if (error !== rollback) throw error;
+      });
+      return result as never;
+    } };
+    try {
+      const runner = other.createQueryRunner();
+      await runner.connect();
+      await runner.startTransaction();
+      await runner.query('SELECT pg_advisory_xact_lock(611, 5)');
+      expect(await checkLocked(db, log, NOW)).toBeNull();
+      await runner.rollbackTransaction();
+      await runner.release();
+      expect((await checkLocked(db, log, NOW))?.status).toMatch(/^(ok|warning|critical|unknown)$/);
+    } finally {
+      await other.destroy();
+    }
   });
 });

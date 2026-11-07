@@ -10,14 +10,14 @@ import type { DataSource } from 'typeorm';
 // The advisory lock each run holds, pg_try_advisory_lock(namespace, number):
 // two worker processes (an old and a new one while a deploy swaps them) never
 // run one job at once. The numbers are the ones the Python worker used; 8 was
-// the rules engine's shadow run.
+// the rules engine's shadow run, 5 the worker watchdog (now in the API
+// server, worker/watchdog.ts, which still locks 611/5).
 export const LOCK_NAMESPACE = 611;
 export const JOB_LOCKS = {
   inbox_email: 1,
   inbox_telegram: 2,
   inbox_push: 3,
   sync_log_compaction: 4,
-  worker_watchdog: 5,
   account_day_boundary: 6,
   account_sync: 7,
   monitoring: 9,
@@ -27,7 +27,7 @@ export type JobId = keyof typeof JOB_LOCKS;
 
 // Jobs earlier releases scheduled and this one no longer runs: their BullMQ
 // schedules are removed at start.
-export const RETIRED_JOBS: readonly string[] = ['rules_shadow'];
+export const RETIRED_JOBS: readonly string[] = ['rules_shadow', 'worker_watchdog'];
 
 // Runs `work` while holding the job's advisory lock on a connection of its
 // own; resolves to false without running it when another worker holds it.
