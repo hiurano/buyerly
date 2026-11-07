@@ -1,5 +1,3 @@
-import { spawn } from 'node:child_process';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { render, SCENARIOS, simulate, type SimulationResult } from '../../src/scripts/rule-simulator.ts';
 
@@ -7,15 +5,13 @@ import { render, SCENARIOS, simulate, type SimulationResult } from '../../src/sc
 // Each test runs one scenario of src/scripts/rule-simulator.ts through the
 // real worker, rule engine, Inbox history, undo and MetaClient retries, and
 // pins what is deterministic. The numbers are the ones tests/test_rule_simulator.py
-// pinned on the Python simulator (#611 stage 5), and docs/PILOT_SIMULATION.md
+// pinned on the Python simulator (#611 stage 5; PR #674 ran both simulators
+// on all 14 scenarios and compared the printed tables), and docs/PILOT_SIMULATION.md
 // quotes them. The simulator drops the schema of the disposable buyerly_test
 // database, so nothing else may use it while this file runs.
 
 const url = process.env.TEST_DATABASE_URL ?? '';
 if (!url && process.env.CI) throw new Error('TEST_DATABASE_URL must be set in CI');
-
-const REPO = join(import.meta.dirname, '../../..');
-const PYTHON = process.env.PYTHON ?? 'python3';
 
 const row = (result: SimulationResult, adsetId: string) => result.rows.find((item) => item.adset_id === adsetId)!;
 
@@ -181,36 +177,4 @@ describe.skipIf(!url)('the rule simulator', { timeout: 300_000 }, () => {
     expect([dead.final_status, dead.stop_success_events]).toEqual(['ACTIVE', 1]);
     expect(result.events['UNDO_ACTION:SUCCESS']).toBe(1);
   });
-});
-
-// Proof of the port, run while scripts/rule_simulator.py still existed: the
-// same scenarios through both simulators print the same tables (the retry
-// backoff seconds carry Meta-style jitter in Python and are left out).
-describe.skipIf(!url)('parity with the Python simulator', { timeout: 900_000 }, () => {
-  const normalized = (text: string) => text.replace(/backoff [\d.]+ s/g, 'backoff N s').trim();
-  const python = (name: string) =>
-    new Promise<{ status: number | null; stdout: string; stderr: string }>((resolve) => {
-      const child = spawn(PYTHON, ['-m', 'scripts.rule_simulator', '--scenario', name], {
-        cwd: REPO,
-        env: { ...process.env, PYTHONPATH: REPO, TEST_DATABASE_DISPOSABLE: 'buyerly_test', DATABASE_URL: url.replace(/^postgres(ql)?:/, 'postgresql+asyncpg:'), TEST_DATABASE_URL: url.replace(/^postgres(ql)?:/, 'postgresql+asyncpg:') },
-      });
-      let stdout = '';
-      let stderr = '';
-      child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()));
-      child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
-      child.on('error', (error) => resolve({ status: null, stdout, stderr: String(error) }));
-      child.on('close', (status) => resolve({ status, stdout, stderr }));
-    });
-
-  for (const name of Object.keys(SCENARIOS)) {
-    it(`prints the same ${name} table`, async () => {
-      const run = await python(name);
-      if (run.status !== 0) {
-        if (process.env.CI) throw new Error(`Python failed: ${run.stderr}`);
-        return;
-      }
-      const ours = render(await simulate(name));
-      expect(normalized(ours)).toBe(normalized(run.stdout));
-    });
-  }
 });

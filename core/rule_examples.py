@@ -2,8 +2,8 @@
 
 The set is a Netherlands lead-gen buyer's ad set test ladder: every dollar
 must buy the next step — a link click, a lead, a registration — or the ad set
-is dead. `scripts/rule_simulator.py` replays these same rules, so the set and
-the simulator cannot drift apart.
+is dead. The rule simulator (`server/src/scripts/rule-simulator.ts`) replays the
+TypeScript copy of these same rules.
 
 Examples are created once per workspace, unattached, under one label. A
 version marker remembers what a workspace already got: deleting an example is
