@@ -4,7 +4,7 @@
 export type PublicInviteStatus = 'pending' | 'not_found' | 'revoked' | 'expired' | 'accepted';
 
 /**
- * `GET /api/invites/{token}`: what the invite page shows before signing in.
+ * `workspaceInviteDetails(token)`: what the invite page shows before signing in.
  * Every field is always sent; the workspace fields are null unless `valid`.
  */
 export interface PublicInviteInfo {

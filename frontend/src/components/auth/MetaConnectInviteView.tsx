@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { apiRequest } from '@/lib/api';
+import { graphql } from '@/lib/graphql';
 import type { PublicMetaInviteInfo } from '@/lib/types';
 import { AuthFrame, AuthLoading, BuyerlyBrand } from './AuthFrame';
 
@@ -9,7 +9,7 @@ export const MetaConnectInviteView: React.FC<{ token: string }> = ({ token }) =>
 
   useEffect(() => {
     let active = true;
-    apiRequest<PublicMetaInviteInfo>(`/api/meta/invites/public/${encodeURIComponent(token)}`)
+    graphql<PublicMetaInviteInfo>('query MetaInviteDetails($token: String!) { metaInviteDetails(token: $token) }', { token })
       .then((result) => { if (active) setInvite(result); })
       .catch((requestError: unknown) => { if (active) setError(requestError instanceof Error ? requestError.message : 'This link is unavailable.'); });
     return () => { active = false; };

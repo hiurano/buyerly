@@ -19,7 +19,7 @@ Production: `https://buyerly.app`.
 
 Без web-сессии любой запрос получает 401: входа в обход сессии нет ни в одной среде. Обычный пользователь получает только свои данные. Администратор имеет расширенный операционный обзор там, где это предусмотрено endpoint.
 
-Не записывайте session cookie или Meta access token в документацию, URL, issue и логи. После `POST /api/auth/logout` текущая web-сессия немедленно перестаёт действовать.
+Не записывайте session cookie или Meta access token в документацию, URL, issue и логи. После мутации `logout` текущая web-сессия немедленно перестаёт действовать.
 
 ## Healthcheck
 
@@ -40,18 +40,18 @@ monitoring cycle делает обзор `degraded` или `critical`, даже 
 
 | Метод и путь | Тело | Результат |
 |---|---|---|
-| GraphQL `emailUserAccountAuthChallenge(input)`, без входа (REST `POST /api/auth/request-temporary-password`) | `email`, `invite_token?`, `turnstile_token?` | вход и регистрация по почте: любой почте высылает одно письмо с одноразовой ссылкой и кодом. Новой почте без приглашения нужен `turnstile_token` от виджета Cloudflare Turnstile, иначе 400 без письма (проверка выключена, пока на сервере не задан `TURNSTILE_SECRET_KEY`). Недействительное или чужое `invite_token` — 403 |
-| GraphQL `emailTokenUserAccountAuth(input)`, без входа (REST `POST /api/auth/verify-temporary-password`) | `email`, `code` | атомарно потребляет общий login credential, повторно проверяет доступ и открывает web-сессию; аккаунт с неподтверждённой почтой не открывает (403) |
-| GraphQL `emailLinkUserAccountAuth(input)`, без входа (REST `POST /api/auth/verify-email-link`) | `token` | атомарно потребляет тот же login credential по ссылке; после этого код также недействителен |
-| GraphQL `userEmailChangeRequest(input)` (REST `POST /api/auth/request-email-change`) | `new_email` | высылает 6-значный код подтверждения для привязки нового email |
-| GraphQL `userEmailChangeVerify(input)` (REST `POST /api/auth/verify-email-change`) | `code` | верифицирует OTP и активирует подтверждённый email |
+| GraphQL `emailUserAccountAuthChallenge(input)`, без входа (бывший REST `POST /api/auth/request-temporary-password`) | `email`, `invite_token?`, `turnstile_token?` | вход и регистрация по почте: любой почте высылает одно письмо с одноразовой ссылкой и кодом. Новой почте без приглашения нужен `turnstile_token` от виджета Cloudflare Turnstile, иначе 400 без письма (проверка выключена, пока на сервере не задан `TURNSTILE_SECRET_KEY`). Недействительное или чужое `invite_token` — 403 |
+| GraphQL `emailTokenUserAccountAuth(input)`, без входа (бывший REST `POST /api/auth/verify-temporary-password`) | `email`, `code` | атомарно потребляет общий login credential, повторно проверяет доступ и открывает web-сессию; аккаунт с неподтверждённой почтой не открывает (403) |
+| GraphQL `emailLinkUserAccountAuth(input)`, без входа (бывший REST `POST /api/auth/verify-email-link`) | `token` | атомарно потребляет тот же login credential по ссылке; после этого код также недействителен |
+| GraphQL `userEmailChangeRequest(input)` (бывший REST `POST /api/auth/request-email-change`) | `new_email` | высылает 6-значный код подтверждения для привязки нового email |
+| GraphQL `userEmailChangeVerify(input)` (бывший REST `POST /api/auth/verify-email-change`) | `code` | верифицирует OTP и активирует подтверждённый email |
 | `POST /api/auth/update-profile` | `first_name?`, `last_name?`, `email?`, `avatar_url?`, `full_name?`, `title?` (до 128), `username?` (до 40: буквы, цифры, `-` `_` `.`) | обновляет персональные данные профиля; пустое имя, неверный или занятый username — 400 с текстом Linear |
-| GraphQL `logout` (REST `POST /api/auth/logout` до B4) | — | немедленно отзывает текущую web-сессию; другие аккаунты этого браузера остаются |
-| GraphQL `availableUsers`, без входа (REST `GET /api/auth/accounts`) | — | аккаунты, вошедшие в этом браузере, в порядке добавления: `id`, `username`, `full_name`, `email`, `avatar_url`, `slot`, `onboarding_completed`, `workspaces`; cookie закончившихся сессий удаляет; без входа — пустой список |
-| GraphQL `authenticationSessions` (REST `GET /api/auth/sessions`) | — | список активных устройств с датами создания, истечения и последней активности и IP-адресом последней активности; `location` — место последней активности от Cloudflare («Helsinki, 18, FI»), пустое без Cloudflare |
-| GraphQL `logoutSession(sessionId)` (REST `DELETE /api/auth/sessions/{session_id}`) | — | отзывает выбранную собственную web-сессию |
-| GraphQL `logoutAllSessions(keepCurrent)` (REST `POST /api/auth/logout-all`) | `keep_current?` | отзывает все web-сессии пользователя; с `keep_current=true` текущая остаётся (Revoke all в Settings → Security & access) |
-| GraphQL `viewer` (REST `GET /api/me`; без `X-Workspace-Slug`) | — | `username`, `full_name`, `first_name`, `last_name`, `email`, `email_verified`, `unconfirmed_email`, `avatar_url`, `role`, `is_approved`, `active_workspace`, `workspaces` |
+| GraphQL `logout` (бывший REST `POST /api/auth/logout`) | — | немедленно отзывает текущую web-сессию; другие аккаунты этого браузера остаются |
+| GraphQL `availableUsers`, без входа (бывший REST `GET /api/auth/accounts`) | — | аккаунты, вошедшие в этом браузере, в порядке добавления: `id`, `username`, `full_name`, `email`, `avatar_url`, `slot`, `onboarding_completed`, `workspaces`; cookie закончившихся сессий удаляет; без входа — пустой список |
+| GraphQL `authenticationSessions` (бывший REST `GET /api/auth/sessions`) | — | список активных устройств с датами создания, истечения и последней активности и IP-адресом последней активности; `location` — место последней активности от Cloudflare («Helsinki, 18, FI»), пустое без Cloudflare |
+| GraphQL `logoutSession(sessionId)` (бывший REST `DELETE /api/auth/sessions/{session_id}`) | — | отзывает выбранную собственную web-сессию |
+| GraphQL `logoutAllSessions(keepCurrent)` (бывший REST `POST /api/auth/logout-all`) | `keep_current?` | отзывает все web-сессии пользователя; с `keep_current=true` текущая остаётся (Revoke all в Settings → Security & access) |
+| GraphQL `viewer` (бывший REST `GET /api/me`; без `X-Workspace-Slug`) | — | `username`, `full_name`, `first_name`, `last_name`, `email`, `email_verified`, `unconfirmed_email`, `avatar_url`, `role`, `is_approved`, `active_workspace`, `workspaces` |
 | GraphQL `adminOverview` | — | сводная таблица всех пользователей, воркспейсов, участников и инвайтов (только админ платформы) |
 | GraphQL `supportSessionCreate(input)` | `workspace_id`, `reason`, `duration_minutes?` | создание ограниченной по времени сессии техподдержки администратора платформы (5–240 мин) с обязательным обоснованием; событие `SUPPORT_SESSION_GRANTED` в журнале |
 | GraphQL `supportSessions(activeOnly = true)` | — | активные или все сессии техподдержки этого администратора, новые первыми |
@@ -118,7 +118,7 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 | `POST /api/workspaces/{id}/invite-link` | — | owner/admin: включает ссылку (уже включённая не меняется), отдаёт `invite_url`; этой же ссылкой делится онбординг |
 | `POST /api/workspaces/{id}/invite-link/reset` | — | owner/admin: «Reset invite link», как у Linear — старая ссылка перестаёт работать, отдаётся новая |
 | `DELETE /api/workspaces/{id}/invite-link` | — | owner/admin: выключает ссылку, вступить по ней больше нельзя; `{"invite_url": null}` |
-| GraphQL `workspaceInviteDetails(token)`, без входа (REST `GET /api/invites/{token}`) | — | публичная проверка валидности токена приглашения перед вступлением |
+| GraphQL `workspaceInviteDetails(token)`, без входа (бывший REST `GET /api/invites/{token}`) | — | публичная проверка валидности токена приглашения перед вступлением |
 | `POST /api/invites/{token}/accept` | — | атомарное принятие инвайта и добавление в команду; повтор уже вступившего пользователя идемпотентен |
 
 ## Онбординг (Onboarding Flow)
@@ -127,11 +127,9 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 |---|---|---|
 | `POST /api/onboarding/personal-details` | `first_name`, `last_name?` | сохранение отображаемого имени после создания или принятия workspace; поле Title отсутствует; почту здесь не меняют |
 | GraphQL `fileUpload(input)` | `purpose` (`avatar` или `workspace_logo`), `content_type`, `filename`, `size` | подписанная ссылка на 10 минут (`uploadFile.upload_url`, `headers`), как `fileUpload` у Linear. Браузер кладёт байты файла `PUT`-ом на ссылку (без сессии: ссылка и есть разрешение) и получает `asset_url`; аватар берёт его через `userUpdate`, логотип — через обновление воркспейса. Больше 5 МБ — 400 |
-| `POST /api/onboarding/avatar` | `file` (multipart) | проверка реального содержимого и загрузка фотографии профиля (PNG, JPG, WEBP до 5 МБ) |
-| `DELETE /api/onboarding/avatar` | — | удаление аватара и возврат к инициальному бейджу |
+| GraphQL `fileUpload(input)` | `purpose` (`avatar` или `workspace_logo`), `content_type`, `filename`, `size` | подписанная ссылка на 10 минут `/uploads/signed?token=…`, куда браузер без сессии отправляет байты файла (`PUT`, ответ `{"asset_url"}`); сервер проверяет реальное содержимое (PNG, JPG, WEBP до 5 МБ). Аватар берёт файл через `userUpdate({avatar_url})`, удаление — `avatar_url: ""`; логотип — через создание или изменение воркспейса |
 | `GET /api/onboarding/check-slug` | `slug` (query) | живая проверка доступности слага воркспейса в реальном времени |
 | `POST /api/onboarding/workspace` | `name`, `slug?`, `badge_color?`, `badge_text?`, `logo_url?` | создание первого воркспейса до настройки профиля; занятый slug возвращает `409` |
-| `POST /api/onboarding/workspace/logo` | `file` (multipart) | проверка реального содержимого и загрузка логотипа компании для воркспейса (PNG, JPG, WEBP до 5 МБ) |
 | `POST /api/onboarding/invites` | `invites[]` (`email`, `role`) | массовая отправка инвайтов на шаге 5 и завершение онбординга |
 | `POST /api/onboarding/skip` | — | быстрый пропуск шага инвайтов и завершение онбординга |
 
@@ -185,7 +183,7 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 | `POST /api/meta/invites` | `label?`, `expires_in_hours?` | создаёт защищённую одноразовую ссылку для привязки Facebook-профиля байера |
 | `GET /api/meta/invites` | — | возвращает список инвайт-ссылок рабочего пространства со статусами |
 | `DELETE /api/meta/invites/{invite_id}` | — | отзывает активную инвайт-ссылку до её использования |
-| `GET /api/meta/invites/public/{token}` | — | публичная проверка статуса инвайт-ссылки без авторизации для лендинга подключения |
+| GraphQL `metaInviteDetails(token)`, без входа (бывший REST `GET /api/meta/invites/public/{token}`) | — | публичная проверка статуса инвайт-ссылки без авторизации для лендинга подключения |
 | `GET /api/meta/connections` | — | список Meta-профилей текущего владельца без access token |
 | `DELETE /api/meta/connections/{connection_id}` | — | удаляет собственное подключение в активном workspace, отключает связанные кабинеты и их автоматику до переподключения |
 | `POST /api/meta/connections/{connection_id}/discover` | — | проверяет токен и обновляет полный список доступных кабинетов из `/me/adaccounts` |
@@ -331,7 +329,7 @@ Meta возвращает браузер на служебный callback `/api/
 
 ## Клиентский API (GraphQL)
 
-Как `client-api.linear.app/graphql` у Linear (#509): web-клиент читает всё, чего нет в sync, и делает все изменения через один endpoint `POST /api/graphql` (`{"query", "variables"}`). REST клиент использует только для sync (`/api/sync/*`), входа и сессий (`/api/auth/*`, `/api/me`), загрузки файлов (`/api/onboarding/avatar`, `/api/onboarding/workspace/logo`) и публичных ссылок (приглашение в workspace, подключение Facebook по приглашению). Вебхуки Meta и Telegram остаются REST, как и служебные маршруты, которые клиент не вызывает (`/api/summary`, `/api/settings*`, `/api/meta/oauth/config` и др.); администрирование платформы и обзор надёжности — поля `adminOverview`, `supportSessions`, `supportSessionCreate`, `supportSessionRevoke`, `healthOverview`. Маршруты, ставшие полями GraphQL, по HTTP больше не отдаются (#509): ниже они описаны как поведение своих полей.
+Как `client-api.linear.app/graphql` у Linear (#509): web-клиент читает всё, чего нет в sync, и делает все изменения через один endpoint `POST /api/graphql` (`{"query", "variables"}`). REST клиент использует только для sync (`/api/sync/*`), байтов файла по подписанной ссылке (`PUT /uploads/signed?token=…`) и переходов браузера по URL (OAuth Meta `/api/meta/oauth/invite/{token}` и callback); вход, сессии, профиль и публичные страницы приглашений — тоже GraphQL (решение №55, #685). Вебхуки Meta и Telegram остаются REST, как и служебные маршруты, которые клиент не вызывает (`/api/summary`, `/api/settings*`, `/api/meta/oauth/config` и др.); администрирование платформы и обзор надёжности — поля `adminOverview`, `supportSessions`, `supportSessionCreate`, `supportSessionRevoke`, `healthOverview`. Маршруты, ставшие полями GraphQL, по HTTP больше не отдаются (#509): ниже они описаны как поведение своих полей.
 
 Авторизация та же, что у REST: cookie сессии аккаунта из `X-Buyerly-Account`, `X-CSRF-Token` (запрос всегда POST; GET и GraphiQL выключены) и workspace из `X-Workspace-Slug`. Без сессии — HTTP 401, без CSRF — 403, до выполнения любого поля. Каждое поле — резолвер своей области ([server/src/graphql/areas](../server/src/graphql/areas/)) с проверками прав, rate limit и валидацией входа; контракт схемы — [packages/shared/client-api.graphql](../packages/shared/client-api.graphql), а [server/test/graphql/client-api.test.ts](../server/test/graphql/client-api.test.ts) и тесты областей проверяют поля для вышедшего, чужого workspace, гостя и участника.
 
@@ -567,8 +565,10 @@ Inbox, как в Linear, показывает события workspace как у
 Пример безопасного чтения профиля:
 
 ```bash
-curl -fsS https://buyerly.app/api/me \
-  -H 'Authorization: Bearer WEB_TOKEN_PLACEHOLDER'
+curl -fsS https://buyerly.app/api/graphql \
+  -H 'Authorization: Bearer WEB_TOKEN_PLACEHOLDER' \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"{ viewer }"}'
 ```
 
 ## Воркспейсы, Участники и Приглашения
@@ -588,7 +588,6 @@ curl -fsS https://buyerly.app/api/me \
 | `POST /api/workspaces/{workspace_id}/invite-link` | включить ссылку-приглашение |
 | `DELETE /api/workspaces/{workspace_id}/invite-link` | выключить ссылку-приглашение |
 | `POST /api/workspaces/{workspace_id}/invite-link/reset` | заменить ссылку-приглашение новой |
-| `GET /api/invites/{token}` | получение публичной информации о приглашении по токену |
 | `POST /api/invites/{token}/accept` | принятие приглашения и вступление в воркспейс |
 
 ## Онбординг и Профиль
@@ -596,11 +595,8 @@ curl -fsS https://buyerly.app/api/me \
 | Метод и путь | Назначение |
 |---|---|
 | `POST /api/onboarding/personal-details` | сохранение Name; фамилия опциональна, Title отсутствует |
-| `POST /api/onboarding/avatar` | загрузка аватара профиля |
-| `DELETE /api/onboarding/avatar` | удаление аватара профиля |
 | `GET /api/onboarding/check-slug` | проверка доступности slug воркспейса |
 | `POST /api/onboarding/workspace` | создание первого воркспейса на онбординге |
-| `POST /api/onboarding/workspace/logo` | загрузка логотипа создаваемого воркспейса |
 | `POST /api/onboarding/invites` | пакетная отправка приглашений на онбординге |
 | `POST /api/onboarding/skip` | быстрый пропуск шага онбординга |
 

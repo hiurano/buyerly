@@ -2,17 +2,13 @@ import { randomUUID } from 'node:crypto';
 import type {
   BrowserAccountItem,
   LoginResponse,
-  RequestEmailChangeRequest,
   RequestTemporaryPasswordRequest,
   UserProfileResponse,
-  VerifyEmailChangeRequest,
-  VerifyEmailLinkRequest,
   VerifyTemporaryPasswordRequest,
   WebSessionItem,
 } from '@buyerly/shared';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { IsNull, MoreThan, Not, QueryFailedError, Raw, type EntityManager, type FindOptionsWhere } from 'typeorm';
-import { authenticated, currentUser } from '../auth/plugin.ts';
 import {
   OTP_EMAIL_CHANGE,
   OTP_EMAIL_VERIFICATION,
@@ -31,15 +27,13 @@ import { afterCommit } from '../database.ts';
 import { otpVerificationEmail } from '../email/login-email.ts';
 import { UserEntity, WebSessionEntity, WorkspaceInviteEntity } from '../entities/index.ts';
 import { HttpError } from '../http/errors.ts';
-import { rateLimit } from '../http/rate-limit.ts';
 import { userWorkspacesList } from '../workspaces/access.ts';
 
 // Sign-in by emailed code or link, browser sessions, and the profile
-// (api/routers/auth.py), on the same paths and with the same answers.
-// /api/auth/update-profile is served by GraphQL (userUpdate) and moves with
-// it; /api/admin/overview moves with Admin.
+// (api/routers/auth.py), behind the GraphQL fields of graphql/areas/auth
+// (decision 55; the REST routes went in #685).
 
-// pydantic's request models, as JSON Schema; extra="forbid" everywhere.
+// The sign-in inputs, as JSON Schema; extra="forbid" everywhere.
 function bodySchema(properties: Record<string, object>, required: string[]): Record<string, unknown> {
   return { type: 'object', properties, required, additionalProperties: false };
 }
@@ -52,8 +46,6 @@ export const REQUEST_TEMPORARY_PASSWORD = bodySchema(
 );
 export const VERIFY_TEMPORARY_PASSWORD = bodySchema({ email: text(3, 255), code: text(10, 20) }, ['email', 'code']);
 export const VERIFY_EMAIL_LINK = bodySchema({ token: text(32, 255) }, ['token']);
-const REQUEST_EMAIL_CHANGE = bodySchema({ new_email: text(3, 255) }, ['new_email']);
-const VERIFY_EMAIL_CHANGE = bodySchema({ code: text(1, 20) }, ['code']);
 
 const CODE_SENT_RECENTLY = 'A code was sent recently. Wait one minute before requesting another.';
 const NOT_DELIVERED = 'The verification code email could not be delivered. Please try again later.';
@@ -197,116 +189,8 @@ async function deliver(
   });
 }
 
-function parseBool(raw: unknown): boolean | null {
-  const value = String(Array.isArray(raw) ? raw[raw.length - 1] : raw).trim().toLowerCase();
-  if (['1', 'true', 't', 'yes', 'y', 'on'].includes(value)) return true;
-  if (['0', 'false', 'f', 'no', 'n', 'off'].includes(value)) return false;
-  return null;
-}
-
-export async function authRoutes(app: FastifyInstance): Promise<void> {
-  // Email one single-use login link and its matching code. A new address
-  // with no invitation is a sign-up: it must pass Cloudflare Turnstile first.
-  app.post<{ Body: RequestTemporaryPasswordRequest }>(
-    '/api/auth/request-temporary-password',
-    {
-      schema: { body: REQUEST_TEMPORARY_PASSWORD },
-      preValidation: [rateLimit({ limit: 5, scope: 'otp_req', identityFields: ['email'] })],
-    },
-    async (request) => requestLoginCode(app, request, request.body),
-  );
-
-  // Atomically verify a delivered login code, then create or sign in the user.
-  app.post<{ Body: VerifyTemporaryPasswordRequest }>(
-    '/api/auth/verify-temporary-password',
-    {
-      schema: { body: VERIFY_TEMPORARY_PASSWORD },
-      preValidation: [rateLimit({ limit: 10, scope: 'verify_login_otp', identityFields: ['email'] })],
-    },
-    async (request, reply) => verifyLoginCode(app, request, reply, request.body),
-  );
-
-  // Atomically exchange a delivered one-time email link for a session.
-  app.post<{ Body: VerifyEmailLinkRequest }>(
-    '/api/auth/verify-email-link',
-    {
-      schema: { body: VERIFY_EMAIL_LINK },
-      preValidation: [rateLimit({ limit: 10, scope: 'verify_login_link', identityFields: ['token'] })],
-    },
-    async (request, reply) => verifyLoginLink(app, request, reply, request.body.token),
-  );
-
-  // Mail a code that attaches or changes the member's email.
-  app.post<{ Body: RequestEmailChangeRequest }>(
-    '/api/auth/request-email-change',
-    {
-      schema: { body: REQUEST_EMAIL_CHANGE },
-      preValidation: [rateLimit({ limit: 5, scope: 'email_change_req' }), currentUser],
-    },
-    async (request) => requestEmailChange(app, request.auth!.user.id, request.body.new_email),
-  );
-
-  // Atomically verify the code and make the new email the member's own.
-  app.post<{ Body: VerifyEmailChangeRequest }>(
-    '/api/auth/verify-email-change',
-    {
-      schema: { body: VERIFY_EMAIL_CHANGE },
-      preValidation: [rateLimit({ limit: 10, scope: 'verify_email_code' }), currentUser],
-    },
-    async (request) => verifyEmailChange(app, request, request.auth!.user.id, request.body.code),
-  );
-
-  // Log out this account; the browser's other accounts stay logged in (Linear).
-  app.post('/api/auth/logout', { preValidation: [currentUser] }, async (request, reply) => {
-    await logout(app, reply, request.auth!);
-    return { message: 'Signed out' };
-  });
-
-  // Every account logged in to this browser, in the order they were added.
-  // Reads only the cookies this browser sent; cookies of ended sessions are
-  // dropped so their slots can take another account.
-  app.get('/api/auth/accounts', async (request, reply) => browserAccounts(app, request, reply));
-
-  // The member's signed-in browsers, most recently used first.
-  app.get('/api/auth/sessions', { preValidation: [currentUser] }, async (request): Promise<WebSessionItem[]> =>
-    webSessions(app, request.auth!));
-
-  app.delete<{ Params: { sessionId: string } }>(
-    '/api/auth/sessions/:sessionId',
-    { preValidation: [currentUser] },
-    async (request, reply) => {
-      await endSession(app, reply, request.auth!, request.params.sessionId);
-      return { message: 'Session ended' };
-    },
-  );
-
-  // End every session of the member; with keep_current, all but this one.
-  app.post<{ Querystring: { keep_current?: string } }>(
-    '/api/auth/logout-all',
-    { preValidation: [currentUser] },
-    async (request, reply) => {
-      const raw = request.query.keep_current;
-      const keepCurrent = raw === undefined ? false : parseBool(raw);
-      if (keepCurrent === null) {
-        reply.code(422);
-        return {
-          detail: [{ type: 'bool_parsing', loc: ['query', 'keep_current'], msg: 'Input should be a valid boolean, unable to interpret input', input: raw }],
-        };
-      }
-      await endAllSessions(app, reply, request.auth!, keepCurrent);
-      return { message: keepCurrent ? 'Other sessions ended' : 'All sessions ended' };
-    },
-  );
-
-  // The profile lists every workspace, so it is not bound to the route's
-  // X-Workspace-Slug: a URL for a foreign workspace must not read as logged out.
-  app.get('/api/me', { preValidation: [authenticated] }, async (request): Promise<UserProfileResponse> =>
-    app.db.transaction((tx) => userProfile(tx, request.auth!.user.id)),
-  );
-}
-
-// What the REST routes above and the GraphQL fields (graphql/areas/auth)
-// both do; the routes go once the client uses the fields (decision 55).
+// What the GraphQL fields (graphql/areas/auth) do; their REST routes went
+// with decision 55 (#685).
 
 type Auth = NonNullable<FastifyRequest['auth']>;
 

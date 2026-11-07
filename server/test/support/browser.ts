@@ -1,5 +1,6 @@
-import { randomBytes, randomInt } from 'node:crypto';
-import { codeFrom, type HttpResponse, type Target } from './target.ts';
+import { randomInt } from 'node:crypto';
+import { asRest, graphqlRequest, operationFor } from './graphql-transport.ts';
+import { codeFrom, type HttpRequest, type HttpResponse, type Target } from './target.ts';
 
 // A browser for contract tests: keeps cookies as a browser would (set,
 // replaced, dropped when expired) and comes from an address of its own, so
@@ -13,29 +14,6 @@ export interface Response extends HttpResponse {
 
 function randomAddress(): string {
   return `10.${randomInt(256)}.${randomInt(256)}.${randomInt(1, 255)}`;
-}
-
-// One part of a multipart form: a file, or a plain value.
-export type FormPart =
-  | { name: string; filename: string; content: Buffer | string; type?: string }
-  | { name: string; value: string };
-
-// The form a browser sends for <input type="file"> (FormData).
-export function multipart(parts: FormPart[]): { body: Buffer; contentType: string } {
-  const boundary = `----BuyerlyTest${randomBytes(8).toString('hex')}`;
-  const chunks: Buffer[] = [];
-  for (const part of parts) {
-    let head = `--${boundary}\r\nContent-Disposition: form-data; name="${part.name}"`;
-    if ('filename' in part) {
-      head += `; filename="${part.filename}"\r\n`;
-      if (part.type) head += `Content-Type: ${part.type}\r\n`;
-      chunks.push(Buffer.from(`${head}\r\n`), Buffer.from(part.content), Buffer.from('\r\n'));
-    } else {
-      chunks.push(Buffer.from(`${head}\r\n\r\n${part.value}\r\n`));
-    }
-  }
-  chunks.push(Buffer.from(`--${boundary}--\r\n`));
-  return { body: Buffer.concat(chunks), contentType: `multipart/form-data; boundary=${boundary}` };
 }
 
 export class Browser {
@@ -80,13 +58,35 @@ export class Browser {
     };
     if (this.cookies.size) headers.cookie = [...this.cookies].map(([name, value]) => `${name}=${value}`).join('; ');
     if (options.json !== undefined) headers['content-type'] = 'application/json';
-    const response = await this.target.send({ method, path, headers, body: options.body ?? options.json });
-    this.remember(response.setCookies);
+    const sent: HttpRequest = { method, path, headers, body: options.body ?? options.json };
+    const operation = operationFor(sent);
+    const response = operation ? await this.viaGraphql(sent, operation) : await this.target.send(sent);
+    if (!operation) this.remember(response.setCookies);
     return {
       ...response,
       json: <T>() => response.body as T,
       cookieHeader: response.setCookies.join('\n'),
     };
+  }
+
+  // A REST path the server no longer routes, sent as its GraphQL operation
+  // (graphql-transport.ts). GraphQL is POST, so it needs the CSRF header a
+  // GET did not: the page always sends its account's, and a read here tries
+  // each account's until one is not refused for it.
+  private async viaGraphql(sent: HttpRequest, operation: NonNullable<ReturnType<typeof operationFor>>): Promise<HttpResponse> {
+    const tokens = 'x-csrf-token' in sent.headers || sent.method !== 'GET'
+      ? [sent.headers['x-csrf-token']]
+      : [...this.cookies].filter(([name]) => /^buyerly_csrf(_\d+)?$/.test(name)).map(([, value]) => value);
+    let response: HttpResponse | null = null;
+    for (const token of tokens.length ? tokens : [undefined]) {
+      const headers = { ...sent.headers };
+      if (token !== undefined) headers['x-csrf-token'] = token;
+      response = await this.target.send(graphqlRequest({ ...sent, headers }, operation));
+      const refused = response.status === 403 && (response.body as { detail?: unknown } | null)?.detail === 'CSRF check failed';
+      if (!refused) break;
+    }
+    this.remember(response!.setCookies);
+    return asRest(response!, operation);
   }
 
   get(path: string, headers?: Record<string, string>): Promise<Response> {
@@ -95,12 +95,6 @@ export class Browser {
 
   post(path: string, json?: unknown, headers?: Record<string, string>): Promise<Response> {
     return this.request('POST', path, { json, headers });
-  }
-
-  // A multipart form, as the page posts a chosen file.
-  postForm(path: string, parts: FormPart[], headers: Record<string, string> = {}): Promise<Response> {
-    const form = multipart(parts);
-    return this.request('POST', path, { body: form.body, headers: { 'content-type': form.contentType, ...headers } });
   }
 
   delete(path: string, headers?: Record<string, string>): Promise<Response> {

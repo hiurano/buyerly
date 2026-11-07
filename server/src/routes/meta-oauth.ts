@@ -1,14 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import { authenticated } from '../auth/plugin.ts';
 import { rateLimit } from '../http/rate-limit.ts';
-import { MetaNotConfigured, oauthCallback, publicMetaInviteInfo, startOAuthViaInvite } from '../meta/connections.ts';
+import { MetaNotConfigured, oauthCallback, startOAuthViaInvite } from '../meta/connections.ts';
 
 // The paths of connecting a Facebook profile that stay REST (decision 55:
-// the browser or Facebook arrives by URL): the invite landing page's info,
-// the OAuth start from an invite, Facebook's callback, and the signed-in
-// check of the settings (api/meta_oauth.py). The prefix /api/meta/oauth/
-// comes here whole through SERVER_PATHS, so every path under it lives here.
-// The rest of Meta connections is GraphQL (graphql/areas/meta).
+// the browser or Facebook arrives by URL): the OAuth start from an invite,
+// Facebook's callback, and the signed-in check of the settings
+// (api/meta_oauth.py). The rest of Meta connections, the invite landing
+// page's info (metaInviteDetails) included, is GraphQL (graphql/areas).
 
 export async function metaOAuthRoutes(app: FastifyInstance): Promise<void> {
   // oauth_config: which Facebook Login settings are present, never their values but the redirect URI.
@@ -28,12 +27,6 @@ export async function metaOAuthRoutes(app: FastifyInstance): Promise<void> {
       redirect_uri: config.metaOauthRedirectUri,
     };
   });
-
-  app.get<{ Params: { token: string } }>(
-    '/api/meta/invites/public/:token',
-    { preValidation: [rateLimit({ limit: 30, windowSeconds: 60, scope: 'meta_invite_public' })] },
-    async (request) => app.db.transaction((tx) => publicMetaInviteInfo(tx, request.params.token)),
-  );
 
   app.get<{ Params: { token: string } }>(
     '/api/meta/oauth/invite/:token',

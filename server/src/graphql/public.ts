@@ -2,13 +2,14 @@ import { Kind, parse, type DocumentNode, type FragmentDefinitionNode, type Selec
 import { MAX_TOKENS } from './limits.ts';
 
 // The fields a browser asks for before anyone has signed in (decision 55):
-// signing in and the invite page. A request whose every root field is one of
+// signing in and the invite pages. A request whose every root field is one of
 // these runs without a session, CSRF token or workspace; any other field in
 // it makes the whole request need them. Only JSON bodies get here, so a
 // cross-site form cannot sign a browser in.
 export const PUBLIC_FIELDS = new Set([
   'availableUsers',
   'workspaceInviteDetails',
+  'metaInviteDetails',
   'emailUserAccountAuthChallenge',
   'emailTokenUserAccountAuth',
   'emailLinkUserAccountAuth',

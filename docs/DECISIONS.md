@@ -591,10 +591,11 @@
   * Без GraphQL — только закрытый список служебных путей, которые им не сделать:
     * синхронизация: `/api/sync/bootstrap`, `/api/sync/archived-models`, `/api/sync/delta`, `/api/sync/ws` (отдельный протокол, как у Linear);
     * OAuth-редиректы и колбэки (Google, Meta) и вебхуки — туда приходит браузер или чужой сервер по URL;
-    * отдача файлов по ссылке (`/uploads/…`) и сам приём байтов файла по подписанной ссылке;
+    * отдача файлов по ссылке (`/uploads/…`) и сам приём байтов файла по подписанной ссылке (`PUT /uploads/signed?token=…`);
     * health-проверки (`/health/…`).
   * Новый путь вне GraphQL появляется только с дополнением этого списка.
 * **Как переходим:** сначала основа GraphQL на TS-сервере (#611, этап 3). Уже перенесённые 1:1 REST-пути (`/api/auth/*`, `/api/me`, `/api/invites/{token}`, загрузки) переводятся на GraphQL отдельными PR после неё: формат меняется не вместе с переездом, чтобы откат через `SERVER_PATHS` оставался простым. Остальные области этапа 3 переносятся сразу резолверами GraphQL.
+* **Итог (07.11.2026, #685):** вход и сессии, профиль (`viewer`), страницы приглашений в workspace и подключения Facebook (`workspaceInviteDetails`, `metaInviteDetails`) и загрузки (`fileUpload`) — GraphQL; REST-двойники `/api/auth/*`, `/api/me`, `/api/invites/{token}`, `/api/meta/invites/public/{token}`, `/api/onboarding/avatar`, `/api/onboarding/workspace/logo` удалены. Без GraphQL остались только пути из списка выше: sync, OAuth Meta (`/api/meta/oauth/*`), webhook Telegram, `/uploads/…` с `PUT /uploads/signed` и `/health/…`.
 
 ## Запись №56: Переезд на TypeScript завершён, Python удалён
 * **Дата:** 07.11.2026

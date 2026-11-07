@@ -141,7 +141,7 @@ async function authBoundary(): Promise<Json> {
   await graphql.text();
   statuses['/api/graphql'] = graphql.status;
   if (graphql.status !== 401) throw new Error('/api/graphql did not reject an unauthenticated request');
-  const protectedPaths = ['/api/meta/oauth/config', '/api/me', '/api/auth/sessions', '/api/sync/bootstrap', '/api/sync/delta?since=0'];
+  const protectedPaths = ['/api/meta/oauth/config', '/api/sync/bootstrap', '/api/sync/delta?since=0'];
   for (const urlPath of protectedPaths) {
     const [status] = await httpGet(urlPath);
     statuses[urlPath] = status;

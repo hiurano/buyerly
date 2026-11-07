@@ -95,7 +95,7 @@ describe('post-deploy smoke', () => {
     ]);
     expect(result).toMatchObject({ schema_version: 1, mode: 'read-only', meta_budget_mutations: 0, ok: true, release_sha: SHA });
     expect(Object.keys(result.checks[2].details)).toEqual([
-      '/api/graphql', '/api/meta/oauth/config', '/api/me', '/api/auth/sessions', '/api/sync/bootstrap', '/api/sync/delta?since=0',
+      '/api/graphql', '/api/meta/oauth/config', '/api/sync/bootstrap', '/api/sync/delta?since=0',
     ].sort()); // sorted like json.dumps(sort_keys=True)
     expect((await stat(path.join(out.resultDir, `post-deploy-${SHA}.json`))).mode & 0o777).toBe(0o600);
     expect(JSON.parse(out.stdout.trim().split('\n').at(-1) ?? '')).toEqual({
