@@ -17,28 +17,17 @@ x-app: &app
     - .env
   environment: &app-environment
     APP_VERSION: ${APP_VERSION:-local}
-    DATABASE_URL: postgresql+asyncpg://buyerly:${POSTGRES_PASSWORD:-buyerly-local-change-me}@db:5432/buyerly
+    DATABASE_URL: postgresql://buyerly:${POSTGRES_PASSWORD:-buyerly-local-change-me}@db:5432/buyerly
     # Only the tunnel reaches the API, from its fixed address below; it is
     # trusted to report the visitor's address in CF-Connecting-IP.
     CLOUDFLARE_TUNNEL_CIDRS: 172.30.0.10/32
     TRUSTED_PROXY_CIDRS: ""
     WEBAPP_URL: ${WEBAPP_URL:-https://buyerly.app}
-    # The TypeScript server (#611); the API forwards it the paths it owns.
-    SERVER_URL: http://server:8090
-    # BullMQ queues of the TypeScript worker (decision 54, #611 stage 4).
+    # BullMQ queues of the worker and the sync bus (decision 54).
     REDIS_URL: redis://redis:6379/0
-    # Background jobs the TypeScript worker owns; the Python worker skips
-    # them (core/worker_jobs.py). Moving one back to Python is
-    # TS_WORKER_JOBS=<the rest> in .env (an empty value moves all of them)
-    # and `docker compose up -d worker worker-ts api`.
-    TS_WORKER_JOBS: ${TS_WORKER_JOBS-sync_log_compaction,inbox_email,inbox_telegram,inbox_push,worker_watchdog,account_day_boundary,rules_shadow,account_sync,monitoring}
-    # The rules engine's shadow run (#611 stage 4): the Python worker leaves
-    # what its monitoring cycle saw and decided here, worker-ts compares.
-    RULES_SHADOW_DIR: /app/logs/rules-shadow
-    # The reverse run once worker-ts owns `monitoring`: it leaves each
-    # account's decision inputs here, the Python worker decides on them
-    # (rules/shadow_replay.py) and writes its decision to RULES_SHADOW_DIR.
-    RULES_SHADOW_REPLAY_DIR: /app/logs/rules-shadow-replay
+    # Read only by releases from before Python was removed (#611 stage 6),
+    # so a rollback to one still runs every job; the worker ignores it now.
+    TS_WORKER_JOBS: sync_log_compaction,inbox_email,inbox_telegram,inbox_push,worker_watchdog,account_day_boundary,account_sync,monitoring
     TZ: UTC
   volumes:
     - ./logs:/app/logs:z
@@ -84,7 +73,8 @@ services:
       retries: 20
       start_period: 5s
 
-  # One-off: `docker compose run --rm migrate` before a release starts.
+  # One-off: `docker compose run --rm migrate` before a release starts
+  # (TypeORM migrations, server/src/migrations).
   migrate:
     <<: *app
     container_name: buyerly-migrate
@@ -95,87 +85,41 @@ services:
       db:
         condition: service_healthy
 
-  # API, React app, public pages and uploads in one process.
+  # The TypeScript server (server/src/main.ts): GraphQL, sync, OAuth and
+  # webhooks, uploads, the React app and the public pages in one process.
+  # The tunnel's target at Cloudflare is http://api:8080, so the service keeps
+  # that name and port.
   api:
     <<: *app
     container_name: buyerly-api
-    command: ["python", "-m", "services.api"]
+    command: ["node", "server/dist/main.js"]
+    environment:
+      <<: *app-environment
+      SERVER_PORT: "8080"
     ports:
       # Loopback only, for checks on the server; visitors come through the tunnel.
       - "127.0.0.1:8080:8080"
-    environment:
-      <<: *app-environment
-      # The TypeScript server passes client API documents it does not answer
-      # yet back to the API (#611), with the visitor's address in
-      # X-Forwarded-For; only its fixed address below is trusted for that.
-      TRUSTED_PROXY_CIDRS: 172.30.0.20/32
     volumes:
       - ./logs:/app/logs:z
       - buyerly-uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready', timeout=3).read()"]
-      interval: 10s
-      timeout: 5s
-      retries: 8
-      start_period: 15s
-
-  # The TypeScript server (#611), from the same image. It takes over the
-  # backend one area at a time; until it fronts the site, the API forwards it
-  # the paths it owns (SERVER_PATHS), so it publishes no port of its own.
-  server:
-    <<: *app
-    container_name: buyerly-server
-    command: ["node", "server/dist/main.js"]
-    environment:
-      <<: *app-environment
-      # Its only client is the API, which appends the tunnel's address to
-      # X-Forwarded-For; trusting the Compose network lets the server read the
-      # visitor's address and place as the API does. Nothing else connects to
-      # it: it publishes no port and the tunnel routes to the API alone.
-      TRUSTED_PROXY_CIDRS: 172.30.0.0/24
-      # Client API documents not moved yet go back to the API (#611).
-      API_URL: http://api:8080
-    # The API's uploads directory (#611): avatars and logos are written and
-    # served here now, and both servers read and remove the same files.
-    volumes:
-      - buyerly-uploads:/app/uploads
-    networks:
-      default:
-        # Fixed, so the API can trust it as a proxy (TRUSTED_PROXY_CIDRS above).
-        ipv4_address: 172.30.0.20
-    depends_on:
-      db:
+      redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8090/health/server/ready').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health/ready').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 8
       start_period: 10s
 
+  # The worker (server/src/worker/): every background job on BullMQ. It
+  # answers its health on 8091 inside the container only. On SIGTERM running
+  # jobs finish first.
   worker:
     <<: *app
     container_name: buyerly-worker
-    command: ["python", "-m", "services.worker"]
-    depends_on:
-      db:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import time, sys; from pathlib import Path; p = Path('/tmp/buyerly-worker-heartbeat'); sys.exit(0 if p.is_file() and (time.time() - p.stat().st_mtime) < 45 else 1)"]
-      interval: 10s
-      timeout: 5s
-      retries: 4
-      start_period: 15s
-
-  # The TypeScript worker (#611 stage 4), from the same image: the jobs in
-  # TS_WORKER_JOBS on BullMQ (server/src/worker/). It answers its health on
-  # 8091 inside the container only. On SIGTERM running jobs finish first.
-  worker-ts:
-    <<: *app
-    container_name: buyerly-worker-ts
     command: ["node", "server/dist/worker/main.js"]
     stop_grace_period: 60s
     depends_on:

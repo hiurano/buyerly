@@ -5,10 +5,9 @@ import { RESOLVERS } from './areas/index.ts';
 import * as payloads from './payloads.ts';
 import { JSONScalar } from './scalars.ts';
 
-// The client API's schema on this server: TypeGraphQL classes from the areas
-// that have moved (areas/index.ts). Until every area has, it is a part of the
-// Python schema (api/client_api/schema.py), field for field; the rest is
-// answered by the Python API (routing.ts).
+// The client API's schema: TypeGraphQL classes from every area
+// (areas/index.ts), field for field the contract in
+// packages/shared/client-api.graphql (test/graphql/schema.test.ts).
 
 let built: GraphQLSchema | null = null;
 

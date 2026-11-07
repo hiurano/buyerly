@@ -3,12 +3,10 @@ import type { DataSource } from 'typeorm';
 import { EmailVerificationCodeEntity, UserEntity, WorkspaceInviteEntity } from '../../src/entities/index.ts';
 import { Browser } from '../support/browser.ts';
 import { createInvite, createUser, createWorkspace, testDatabase, unique } from '../support/db.ts';
-import { CONTRACT_TARGET, DATABASE_URL, codeFrom, contractTarget, type InProcessTarget, type Target } from '../support/target.ts';
+import { DATABASE_URL, codeFrom, contractTarget, type InProcessTarget, type Target } from '../support/target.ts';
 
 // Sign-in by emailed code and link: tests/test_api.py (the OTP tests),
 // tests/test_open_signup.py and tests/test_rate_limit.py, over HTTP.
-
-const inProcessOnly = CONTRACT_TARGET === 'python';
 
 describe.skipIf(!DATABASE_URL)('sign-in by email', () => {
   let target: Target;
@@ -69,7 +67,7 @@ describe.skipIf(!DATABASE_URL)('sign-in by email', () => {
     });
   });
 
-  it.skipIf(inProcessOnly)('answers 502 and spends the code when the email cannot be sent', async () => {
+  it('answers 502 and spends the code when the email cannot be sent', async () => {
     const { typescriptTarget } = await import('../support/target.ts');
     const failing: InProcessTarget = await typescriptTarget({ RESEND_API_KEY: 're_test_dummy_key' });
     try {
@@ -265,7 +263,7 @@ describe.skipIf(!DATABASE_URL)('sign-in by email', () => {
     expect(response.json().username).toMatch(/^user-[0-9a-f]{32}$/);
   });
 
-  it.skipIf(inProcessOnly)('asks for Turnstile only from a new address without an invitation', async () => {
+  it('asks for Turnstile only from a new address without an invitation', async () => {
     const { typescriptTarget } = await import('../support/target.ts');
     const guarded = await typescriptTarget({ TURNSTILE_SECRET_KEY: 'test-turnstile-secret' });
     try {

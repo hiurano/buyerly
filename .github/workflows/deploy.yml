@@ -155,87 +155,14 @@ jobs:
           path: /tmp/buyerly-*
           if-no-files-found: ignore
 
-  test:
-    name: Run Unit & Integration Tests (shard ${{ matrix.shard }})
-    runs-on: ubuntu-24.04
-    needs: frontend
-
-    # The shards run in parallel, each against its own Postgres, so
-    # the suite costs its slowest shard rather than its total. Keep the count
-    # in sync with --total below; scripts/ci_test_shard.py packs the individual
-    # tests, because a single module (test_api) is too heavy to be a unit.
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4, 5, 6]
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: buyerly
-          POSTGRES_PASSWORD: buyerly_secret
-          POSTGRES_DB: buyerly_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v7
-
-      # test_legal_pages asserts the legal documents reach the Vite build, so
-      # the shards need the artifact the frontend job produced.
-      - name: Download built frontend
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: frontend/dist
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-          cache: "pip"
-
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run Test Suite
-        env:
-          DATABASE_URL: postgresql+asyncpg://buyerly:buyerly_secret@localhost:5432/buyerly_test
-          TEST_DATABASE_URL: postgresql+asyncpg://buyerly:buyerly_secret@localhost:5432/buyerly_test
-          TEST_DATABASE_DISPOSABLE: buyerly_test
-          TRUSTED_PROXY_CIDRS: 127.0.0.1/32
-        run: |
-          set -o pipefail
-          test_ids=$(python scripts/ci_test_shard.py --shard ${{ matrix.shard }} --total 6)
-          if [ -z "${test_ids}" ]; then
-            echo "::error title=Empty test shard::Shard ${{ matrix.shard }} resolved to no tests"
-            exit 1
-          fi
-          echo "Shard ${{ matrix.shard }}/6: $(echo ${test_ids} | wc -w) tests"
-          python -m unittest ${test_ids} -v 2>&1 | tee /tmp/buyerly-test-output.log || {
-            failure_excerpt=$(grep -E -B 12 -A 35 '^(FAIL|ERROR):|Traceback|AssertionError|^FAILED|^Ran [0-9]+' /tmp/buyerly-test-output.log | tail -n 180 | tr '\n' ' ' | sed 's/%/%25/g')
-            echo "::error title=Unit test failure (shard ${{ matrix.shard }})::${failure_excerpt}"
-            exit 1
-          }
-
-  # The TypeScript server (#611): types, lint, tests, then the production
-  # image itself. Nothing else builds the Dockerfile before deploy, and the
-  # server runs on the Node binary copied into the Python image there.
+  # The server: types, lint, tests, then the production image itself.
+  # Nothing else builds the Dockerfile before deploy.
   server:
     name: TypeScript server and image
     runs-on: ubuntu-24.04
 
     # The entities' check (server/test/schema.test.ts) compares them with the
-    # schema Alembic builds, so the job migrates a Postgres of its own.
+    # schema the migrations build, so the job migrates a Postgres of its own.
     services:
       postgres:
         image: postgres:16-alpine
@@ -272,109 +199,13 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-          cache: "pip"
-
-      - name: Migrate the schema with Alembic
-        env:
-          DATABASE_URL: postgresql+asyncpg://buyerly:buyerly_secret@localhost:5432/buyerly_schema
-        run: |
-          pip install -r requirements.txt
-          python -m alembic upgrade head
-
-      # TypeORM takes the migrations over from Alembic (#611 stage 5): its
-      # baseline builds Alembic's schema on an empty database and is only
-      # recorded on a migrated one (scripts/ci_migration_parity.sh).
-      - name: TypeORM migrations equal Alembic's schema
+      - name: Migrate the schema with TypeORM
         run: |
           npm ci
           npm run build --workspace @buyerly/server
-          OUT=/tmp/migration-parity bash scripts/ci_migration_parity.sh
-
-      - name: Upload the schema dumps
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: migration-parity
-          path: /tmp/migration-parity
-          if-no-files-found: ignore
-
-      # The Python API on the same database, for the contract tests: the
-      # moved areas' tests run against both servers, and sessions and codes
-      # from one must work on the other (docs/DEVELOPMENT.md). Its log holds
-      # the emailed codes (DEV_EMAIL_LOG), which the tests read.
-      - name: Start the Python API for the contract tests
-        env:
-          DATABASE_URL: postgresql+asyncpg://buyerly:buyerly_secret@localhost:5432/buyerly_schema
-          API_HOST: 127.0.0.1
-          API_PORT: "18080"
-          # /uploads/ is one of the moved areas; the API serves it only with
-          # SERVE_STATIC, and runs without a built frontend all the same.
-          SERVE_STATIC: "true"
-          OTP_PEPPER: contract-test-otp-pepper
-          TRUSTED_PROXY_CIDRS: 127.0.0.1/32
-          WEBAPP_URL: https://buyerly.test
-          DEV_EMAIL_LOG: "true"
-          # Desktop notifications' key, the same as the server's in its
-          # tests (server/test/support/target.ts TEST_VAPID_PRIVATE_KEY).
-          VAPID_PRIVATE_KEY: Jktq3k5UFfBTLFB_MT7QCFPhMZvJyZiQvLJvTJ-D51Y
-          SERVER_URL: ""
-        run: |
-          nohup python -m services.api > /tmp/python-api.out 2>&1 &
-          for attempt in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:18080/health/ready; then exit 0; fi
-            sleep 1
-          done
-          cat /tmp/python-api.out
-          exit 1
-
-      # A second Python API whose Meta client talks to the Meta the tests
-      # answer (server/test/support/meta-recorder.ts, META_TEST_ENV in
-      # target.ts): the Meta write tests prove both servers send Meta the
-      # same requests and record the same history.
-      - name: Start a Python API with Meta answered by the tests
-        env:
-          DATABASE_URL: postgresql+asyncpg://buyerly:buyerly_secret@localhost:5432/buyerly_schema
-          API_HOST: 127.0.0.1
-          API_PORT: "18081"
-          OTP_PEPPER: contract-test-otp-pepper
-          TRUSTED_PROXY_CIDRS: 127.0.0.1/32
-          WEBAPP_URL: https://buyerly.test
-          DEV_EMAIL_LOG: "true"
-          VAPID_PRIVATE_KEY: Jktq3k5UFfBTLFB_MT7QCFPhMZvJyZiQvLJvTJ-D51Y
-          SERVER_URL: ""
-          META_GRAPH_BASE_URL: http://127.0.0.1:18094
-          META_APP_SECRET: contract-meta-secret
-          META_TOKEN_ENCRYPTION_KEY: CKOJW1eA4PLOe59rNqizKftdfj0lN17_CIFSpe7ihLw=
-        run: |
-          nohup python -m services.api > /tmp/python-meta-api.out 2>&1 &
-          for attempt in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:18081/health/ready; then exit 0; fi
-            sleep 1
-          done
-          cat /tmp/python-meta-api.out
-          exit 1
-
-      # The rules engine on real monitoring cycles (#611 stage 4): Python's
-      # cycle writes what it saw and decided (rules/shadow.py), and
-      # server/test/rules/decide.test.ts requires the TypeScript engine to
-      # decide every one of those cases exactly the same way.
-      - name: Record the Python rules engine's decisions
-        env:
-          DATABASE_URL: postgresql+asyncpg://buyerly:buyerly_secret@localhost:5432/buyerly_test
-          TEST_DATABASE_URL: postgresql+asyncpg://buyerly:buyerly_secret@localhost:5432/buyerly_test
-          TEST_DATABASE_DISPOSABLE: buyerly_test
-          TRUSTED_PROXY_CIDRS: 127.0.0.1/32
-          RULES_SHADOW_DIR: ${{ github.workspace }}/logs/rules-shadow-captures
-          RULES_SHADOW_SCENARIOS: "120"
-          RULES_SHADOW_MAX_FILES: "100000"
-        run: |
+          DATABASE_URL=postgresql://buyerly:buyerly_secret@localhost:5432/buyerly_schema node server/dist/migrate.js
+          # The rule simulator's test drops and rebuilds this one.
           PGPASSWORD=buyerly_secret psql -h localhost -U buyerly -d buyerly_schema -c 'CREATE DATABASE buyerly_test'
-          python -m unittest tests.test_rules_shadow tests.test_integration
-          echo "Captures: $(ls "$RULES_SHADOW_DIR" | wc -l)"
 
       - name: Typecheck, lint and test
         env:
@@ -382,19 +213,11 @@ jobs:
           # The rule simulator's test drops and rebuilds this disposable database.
           TEST_DATABASE_URL: postgresql+asyncpg://buyerly:buyerly_secret@localhost:5432/buyerly_test
           TEST_DATABASE_DISPOSABLE: buyerly_test
-          PYTHON_API_URL: http://127.0.0.1:18080
-          PYTHON_META_API_URL: http://127.0.0.1:18081
-          PYTHON_API_LOG: ${{ github.workspace }}/logs/api.log
           REDIS_URL: redis://127.0.0.1:6379/1
-          RULES_SHADOW_CAPTURES: ${{ github.workspace }}/logs/rules-shadow-captures
         run: |
-          npm ci
           npm run typecheck
           npm run lint
           npm test --workspace @buyerly/server
-          echo "::group::The same contract tests against the Python API"
-          (cd server && CONTRACT_TARGET=python npx vitest run test/auth test/uploads test/sync test/workspaces test/graphql test/views test/audit test/accounts test/notifications test/rules test/admin test/meta/connections.test.ts test/meta/connection-accounts.test.ts test/meta/delivery.test.ts)
-          echo "::endgroup::"
 
       - name: Build the production image
         run: docker build --build-arg APP_VERSION=ci -t buyerly-app:ci .
@@ -404,16 +227,15 @@ jobs:
       # prove Node, its dependencies and the compiled code work in the image.
       - name: Run the server from the image
         run: |
-          docker run -d --name buyerly-server-ci -e APP_VERSION=ci -p 127.0.0.1:8090:8090 buyerly-app:ci node server/dist/main.js
+          docker run -d --name buyerly-server-ci -e APP_VERSION=ci -e SERVER_PORT=8080 -p 127.0.0.1:8090:8080 buyerly-app:ci node server/dist/main.js
           for attempt in $(seq 30); do
-            if curl -fsS http://127.0.0.1:8090/health/server/live; then break; fi
+            if curl -fsS http://127.0.0.1:8090/health/live; then break; fi
             sleep 1
           done
           echo
-          test "$(curl -fsS http://127.0.0.1:8090/health/server/live)" = '{"status":"alive","version":"ci"}'
-          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/health/server/ready)" = 503
-          # The site it serves itself (#611 stage 6): probes, landing page, the React app.
           test "$(curl -fsS http://127.0.0.1:8090/health/live)" = '{"status":"alive","version":"ci"}'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/health/ready)" = 503
+          # The site: landing page, the React app, the service worker.
           curl -fsS http://127.0.0.1:8090/ | grep -qi '<html'
           curl -fsS http://127.0.0.1:8090/login | grep -q 'id="root"'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/sw.js)" = 200
@@ -423,33 +245,39 @@ jobs:
       # The worker as Compose runs it, on this job's Postgres and Redis: it
       # schedules its jobs, runs them, reports them on its health route, and
       # stops cleanly on SIGTERM (exit code 0).
-      - name: Run the TypeScript worker from the image
+      - name: Run the worker from the image
         run: |
-          trap 'docker logs buyerly-worker-ts-ci 2>&1 | tail -50 || true' ERR
-          docker run -d --name buyerly-worker-ts-ci --network host -e APP_VERSION=ci \
-            -e DATABASE_URL=postgresql+asyncpg://buyerly:buyerly_secret@127.0.0.1:5432/buyerly_schema \
-            -e REDIS_URL=redis://127.0.0.1:6379/2 -e TS_WORKER_JOBS=sync_log_compaction \
+          trap 'docker logs buyerly-worker-ci 2>&1 | tail -50 || true' ERR
+          # The worker runs every job, monitoring included: a database of its
+          # own, migrated by the image, rather than the tests' leftover data.
+          PGPASSWORD=buyerly_secret psql -h 127.0.0.1 -U buyerly -d buyerly_schema -c 'CREATE DATABASE buyerly_worker_ci'
+          docker run --rm --network host \
+            -e DATABASE_URL=postgresql://buyerly:buyerly_secret@127.0.0.1:5432/buyerly_worker_ci \
+            buyerly-app:ci node server/dist/migrate.js
+          docker run -d --name buyerly-worker-ci --network host -e APP_VERSION=ci \
+            -e DATABASE_URL=postgresql://buyerly:buyerly_secret@127.0.0.1:5432/buyerly_worker_ci \
+            -e REDIS_URL=redis://127.0.0.1:6379/2 \
             buyerly-app:ci node server/dist/worker/main.js
           health=""
           for attempt in $(seq 30); do
             health=$(curl -fsS http://127.0.0.1:8091/health/worker-ts || true)
-            if echo "${health}" | grep -q '"outcome":"ok"'; then break; fi
+            if echo "${health}" | grep -q '"sync_log_compaction":{[^}]*"outcome":"ok"'; then break; fi
             sleep 1
           done
           echo "${health}"
           echo "${health}" | grep -q '"status":"ok"'
           echo "${health}" | grep -q '"sync_log_compaction":{[^}]*"outcome":"ok"'
-          docker stop --time 30 buyerly-worker-ts-ci
-          docker logs buyerly-worker-ts-ci
-          test "$(docker inspect --format '{{.State.ExitCode}}' buyerly-worker-ts-ci)" = 0
-          docker rm buyerly-worker-ts-ci
+          docker stop --timeout 30 buyerly-worker-ci
+          docker logs buyerly-worker-ci
+          test "$(docker inspect --format '{{.State.ExitCode}}' buyerly-worker-ci)" = 0
+          docker rm buyerly-worker-ci
 
   # One check to require in branch protection. Requiring the shards directly
   # would mean editing the protection rule every time their number changes.
   ci:
     name: CI
     runs-on: ubuntu-24.04
-    needs: [frontend, browser, test, server]
+    needs: [frontend, browser, server]
     if: always()
 
     steps:
@@ -457,17 +285,16 @@ jobs:
         run: |
           frontend='${{ needs.frontend.result }}'
           browser='${{ needs.browser.result }}'
-          tests='${{ needs.test.result }}'
           server='${{ needs.server.result }}'
-          echo "frontend=${frontend} browser=${browser} tests=${tests} server=${server}"
-          if [ "${frontend}" != "success" ] || [ "${browser}" != "success" ] || [ "${tests}" != "success" ] || [ "${server}" != "success" ]; then
-            echo "::error title=CI failed::frontend=${frontend} browser=${browser} tests=${tests} server=${server}"
+          echo "frontend=${frontend} browser=${browser} server=${server}"
+          if [ "${frontend}" != "success" ] || [ "${browser}" != "success" ] || [ "${server}" != "success" ]; then
+            echo "::error title=CI failed::frontend=${frontend} browser=${browser} server=${server}"
             exit 1
           fi
 
   deploy:
     name: Deploy to Production VPS
-    needs: [frontend, browser, test, server]
+    needs: [frontend, browser, server]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -509,7 +336,7 @@ jobs:
                   | tail -n 20 \
                   | sed -E 's/(re_)[A-Za-z0-9_]{6,}/\1[REDACTED]/g' \
                   || true
-                grep -E '(MetaTokenError|RuntimeError|alembic\.util\.exc\.|sqlalchemy\.exc\.|ProgrammingError|OperationalError|IntegrityError|InvalidToken|ValueError|KeyError|FAILED:)' "${deploy_log}" \
+                grep -E '(MetaTokenError|Migration failed|QueryFailedError|Error:|FAILED:)' "${deploy_log}" \
                   | grep -Ev '(parameters:|UPDATE accounts|INSERT INTO)' \
                   | tail -n 12 \
                   | sed -E \
@@ -518,7 +345,7 @@ jobs:
                     -e 's#(://)[^:/[:space:]]+:[^@/[:space:]]+@#\1[REDACTED]@#g' \
                     -e 's/(password=)[^&[:space:]]+/\1[REDACTED]/Ig' \
                   || true
-                grep -E '(File "/app/|alembic\.runtime\.migration.*Running (upgrade|stamp))' "${deploy_log}" \
+                grep -E '(Applied migrations:|No pending migrations)' "${deploy_log}" \
                   | grep -Ev '(parameters:|UPDATE accounts|INSERT INTO)' \
                   | tail -n 24 \
                   || true
@@ -538,7 +365,7 @@ jobs:
             exit 0
           fi
           diagnostic=$(printf '%s\n' "${DEPLOY_OUTPUT}" \
-            | grep -E '(^(BUYERLY_DEPLOY_EXIT=|\[[0-9]+/[0-9]+\]|\[(ERROR|ROLLBACK|WARNING)\]|ERROR:|DETAIL:)|File "/app/|Running (upgrade|stamp)|MetaTokenError|RuntimeError|alembic\.util\.exc\.|sqlalchemy\.exc\.|ProgrammingError|OperationalError|IntegrityError|InvalidToken|ValueError|KeyError|FAILED:)' \
+            | grep -E '(^(BUYERLY_DEPLOY_EXIT=|\[[0-9]+/[0-9]+\]|\[(ERROR|ROLLBACK|WARNING)\]|ERROR:|DETAIL:)|Applied migrations:|No pending migrations|MetaTokenError|Migration failed|QueryFailedError|Error:|FAILED:)' \
             | tail -n 56 \
             | tr '\n' ' ')
           diagnostic=${diagnostic//%/%25}

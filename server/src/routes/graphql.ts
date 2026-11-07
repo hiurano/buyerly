@@ -5,21 +5,18 @@ import { currentUser } from '../auth/plugin.ts';
 import type { UserEntity } from '../entities/index.ts';
 import type { GraphQLContext } from '../graphql/context.ts';
 import { INTERNAL_ERROR, asRouteError } from '../graphql/errors.ts';
-import { forwardToPython } from '../graphql/forward.ts';
 import { MAX_TOKENS, maxAliases, maxDepth } from '../graphql/limits.ts';
 import { isPublicRequest } from '../graphql/public.ts';
-import { servedHere } from '../graphql/routing.ts';
-import { clientSchema, servedRootFields } from '../graphql/schema.ts';
+import { clientSchema } from '../graphql/schema.ts';
 
 // POST /api/graphql, the web client's API, as Linear's
 // client-api.linear.app/graphql (api/client_api; decision 55). The request
 // is authenticated before GraphQL runs, as every REST request is
 // (auth/plugin.ts currentUser): 401/403 in REST's shape, so every resolver
 // has a signed-in user scoped to the workspace in X-Workspace-Slug. What that
-// user may do is each field's own check. Documents with fields not moved yet
-// go to the Python API (graphql/routing.ts).
+// user may do is each field's own check.
 
-// The Python API's cap on request bodies (api/server.py).
+// The cap on request bodies (uploads go to their own signed link).
 const BODY_LIMIT = 6 * 1024 * 1024;
 
 // Yoga keeps its own `request` (the Fetch one) in the context; Fastify's goes in as `http`.
@@ -64,7 +61,6 @@ function limits(): Plugin<ServerContext> {
 
 export async function graphqlRoutes(app: FastifyInstance): Promise<void> {
   const schema = clientSchema();
-  const served = servedRootFields(schema);
   const yoga = createYoga<ServerContext, GraphQLContext>({
     schema,
     graphqlEndpoint: '/api/graphql',
@@ -83,22 +79,21 @@ export async function graphqlRoutes(app: FastifyInstance): Promise<void> {
     }),
   });
 
-  // The body stays bytes: forwarded as it came, or read by Yoga.
+  // The body stays bytes: Yoga reads it.
   app.removeAllContentTypeParsers();
   app.addContentTypeParser('*', { parseAs: 'buffer', bodyLimit: BODY_LIMIT }, (_request, body, done) => done(null, body));
 
   app.all('/api/graphql', { bodyLimit: BODY_LIMIT }, async (request, reply) => {
+    if (request.method !== 'POST') return reply.code(405).header('allow', 'POST').send({ detail: 'Method Not Allowed' });
     const raw = Buffer.isBuffer(request.body) ? request.body : undefined;
     let parsed: unknown = null;
-    if (request.method === 'POST' && raw && /^application\/json\b/i.test(request.headers['content-type'] ?? '')) {
+    if (raw && /^application\/json\b/i.test(request.headers['content-type'] ?? '')) {
       try {
         parsed = JSON.parse(raw.toString('utf8'));
       } catch {
         parsed = null;
       }
     }
-    if (!servedHere(parsed, served)) return forwardToPython(request, reply, raw);
-
     if (!isPublicRequest(parsed)) await currentUser(request, reply);
     const response = await yoga.fetch(
       'http://localhost/api/graphql',

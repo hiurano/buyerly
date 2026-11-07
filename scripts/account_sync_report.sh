@@ -2,8 +2,7 @@
 # Read-only report on what the account sync wrote, hour by hour (#611 stage 4).
 #
 # Run on the production server (ops-drill.yml, drill "account-sync-report")
-# before and after `account_sync` moves between the Python and the TypeScript
-# worker: the hours on either side of the switch should look alike. Prints
+# to see the facts are fresh and well formed. Prints
 # counts only, never account names, ids or amounts. The session is read-only
 # (default_transaction_read_only), so nothing here can write.
 set -euo pipefail
@@ -25,9 +24,6 @@ query() {
 echo "Account sync report, last ${HOURS} hours, $(date -u +%Y-%m-%dT%H:%MZ)"
 docker exec "${POSTGRES_CONTAINER}" true
 
-echo
-echo "== TS_WORKER_JOBS in the TypeScript worker (account_sync listed: TypeScript writes the rows)"
-docker exec "${WORKER_TS_CONTAINER:-buyerly-worker-ts}" printenv TS_WORKER_JOBS 2>/dev/null || echo "(worker-ts not running)"
 
 query "Fact writes per hour: rows, accounts, levels, rows not rounded to cents" "
 SELECT date_trunc('hour', updated_at) AS hour,

@@ -8,10 +8,9 @@ import { createUser, createWorkspace, testDatabase } from '../support/db.ts';
 import { DATABASE_URL, contractTarget, typescriptTarget, type InProcessTarget, type Target } from '../support/target.ts';
 
 // A workspace's Meta connections and their ad accounts (api/meta_oauth.py
-// list_connections, discover_accounts, import_accounts; #611 stage 4). The
-// contract part runs against both servers (CONTRACT_TARGET), where neither
-// has a token key, so a stored token cannot be read; reading ad accounts from
-// Meta and adding them, with Meta answered by the test, runs on this server.
+// list_connections, discover_accounts, import_accounts; #611 stage 4). The contract part has no token key, so a stored token
+// cannot be read; reading ad accounts from Meta and adding them, with Meta
+// answered by the test, runs on this server.
 
 type Row = Record<string, unknown>;
 interface Answer {

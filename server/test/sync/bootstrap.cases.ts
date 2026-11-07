@@ -14,7 +14,6 @@ import {
 import { SYNCED_TABLES } from '../../src/sync/log.ts';
 import { Browser } from '../support/browser.ts';
 import { save, syncWorld, idsOf, type SyncWorld, type Who } from '../support/sync-world.ts';
-import { CONTRACT_TARGET } from '../support/target.ts';
 import type { SyncContext } from './sync.test.ts';
 
 // GET /api/sync/bootstrap and /api/sync/archived-models (tests/test_sync_bootstrap.py).
@@ -101,7 +100,7 @@ export function bootstrapCases(context: SyncContext): void {
       const zipped = await browser.get('/api/sync/bootstrap', { 'accept-encoding': 'gzip' });
       expect(zipped.headers['content-encoding']).toBe('gzip');
       expect(zipped.headers['cache-control']).toBe('no-store');
-      // The Python API's CORS middleware adds Origin, on forwarded answers too.
+      // CORS adds Origin to the Vary header, on forwarded answers too.
       expect(zipped.headers['vary']).toMatch(/^Accept-Encoding\b/);
       expect(zipped.headers['content-type']).toBe('application/json');
       expect(zipped.json<SyncBootstrap>().models.Workspace[0].id).toBe(world.ws.id);
@@ -283,7 +282,7 @@ export function bootstrapCases(context: SyncContext): void {
       expect(payload.models.Favorite).toEqual([]);
     });
 
-    it.skipIf(CONTRACT_TARGET === 'python')('reads the rows and the sync id in one snapshot', async () => {
+    it('reads the rows and the sync id in one snapshot', async () => {
       // In-process: a write commits between the snapshot's first read and the models.
       const world = await syncWorld(context.db, context.target);
       const { bootstrapJson } = await import('../../src/sync/bootstrap.ts');

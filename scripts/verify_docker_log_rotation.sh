@@ -10,7 +10,6 @@ containers=(
     buyerly-db
     buyerly-api
     buyerly-worker
-    buyerly-worker-ts
     buyerly-redis
     buyerly-backup
 )

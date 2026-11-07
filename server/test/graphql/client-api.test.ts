@@ -6,8 +6,7 @@ import { Browser, type Response } from '../support/browser.ts';
 import { createUser, createWorkspace, testDatabase, unique } from '../support/db.ts';
 import { DATABASE_URL, contractTarget, type Target } from '../support/target.ts';
 
-// POST /api/graphql (tests/test_client_api.py): the fields this server
-// serves answer as the Python ones do, and the rest still answer, from Python.
+// POST /api/graphql (tests/test_client_api.py): the client API's GraphQL fields.
 
 interface GraphQLAnswer {
   data: Record<string, unknown> | null;
@@ -154,15 +153,5 @@ describe.skipIf(!DATABASE_URL)('client API', () => {
     const aliases = Array.from({ length: 11 }, (_, index) => `w${index}: workspaces`).join(' ');
     const answer = await graphql(browser, `{ ${aliases} }`);
     expect((answer.body as GraphQLAnswer).errors?.[0].message).toBe('11 aliases found. Allowed: 10');
-  });
-
-  it.skipIf(!process.env.PYTHON_API_URL)('answers the fields not moved yet as well', async () => {
-    const { browser } = await signedIn();
-    const answer = await graphql(browser, '{ inboxUnreadCount workspaces }');
-    expect(answer.status).toBe(200);
-    const { data, errors } = answer.body as GraphQLAnswer;
-    expect(errors).toBeUndefined();
-    expect(data!.inboxUnreadCount).toMatchObject({ unread_count: 0 });
-    expect(data!.workspaces).toHaveLength(1);
   });
 });

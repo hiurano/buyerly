@@ -34,20 +34,6 @@ wait_for_container() {
     return 1
 }
 
-wait_for_container_file() {
-    local container_name="$1"
-    local file_path="$2"
-    local deadline=$((SECONDS + HEALTH_TIMEOUT_SECONDS))
-    while (( SECONDS < deadline )); do
-        if docker exec "${container_name}" test -f "${file_path}" 2>/dev/null; then
-            return 0
-        fi
-        sleep 3
-    done
-    echo "[ERROR] ${container_name} did not complete the required scheduler cycle."
-    return 1
-}
-
 # Sets KEY=value in .env, replacing an earlier line.
 set_env_value() {
     local key="$1"
@@ -94,21 +80,8 @@ ensure_meta_token_encryption_key() {
     # A wrong key that is already set is never replaced: tokens encrypted with
     # it would be lost. The deploy stops before anything changes instead.
     primary_key="${configured_key%%,*}"
-    if ! META_KEY_CANDIDATE="${primary_key}" python3 - <<'PY'
-import base64
-import os
-import sys
-
-try:
-    decoded = base64.b64decode(
-        os.environ["META_KEY_CANDIDATE"].encode("ascii"),
-        altchars=b"-_",
-        validate=True,
-    )
-except (KeyError, UnicodeEncodeError, ValueError):
-    sys.exit(1)
-sys.exit(0 if len(decoded) == 32 else 1)
-PY
+    # A Fernet key: 32 bytes in URL-safe base64, which is 43 characters and "=".
+    if ! [[ "${primary_key}" =~ ^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]=$ ]]
     then
         echo "[ERROR] META_TOKEN_ENCRYPTION_KEY has an invalid primary Fernet key."
         return 1
@@ -153,22 +126,9 @@ rollback() {
     fi
     echo "[ROLLBACK] Returning to ${PREVIOUS_SHA}..."
     export APP_VERSION="${PREVIOUS_SHA}"
-    # A release from before the TypeScript worker (#611 stage 4) runs every
-    # job on its Python worker, which ignores TS_WORKER_JOBS: stop worker-ts
-    # then, or both would run the moved jobs.
-    local services=(api worker backup server)
-    if docker run --rm --entrypoint test "buyerly-app:${PREVIOUS_SHA}" -f /app/server/dist/worker/main.js; then
-        services+=(worker-ts)
-    else
-        docker compose stop worker-ts || true
-    fi
-    docker compose up -d --no-deps "${services[@]}"
+    docker compose up -d --no-deps api worker backup
     wait_for_container buyerly-api || true
     wait_for_container buyerly-worker || true
-    wait_for_container buyerly-server || true
-    if [[ " ${services[*]} " == *" worker-ts "* ]]; then
-        wait_for_container buyerly-worker-ts || true
-    fi
     record_running_version "${PREVIOUS_SHA}"
     echo "[ROLLBACK] Previous release restored."
 }
@@ -374,31 +334,16 @@ if ! docker compose run --rm migrate; then
 fi
 
 echo "[6/7] Starting the release..."
-docker compose up -d --no-deps api worker worker-ts backup server
+# The Python API and worker and the separate TypeScript server and worker of
+# the releases before #611 stage 6; the services are gone from Compose.
+docker rm -f buyerly-server buyerly-worker-ts >/dev/null 2>&1 || true
+docker compose up -d --no-deps api worker backup
 if ! wait_for_container buyerly-api; then
     docker compose logs --tail=120 api
     rollback
     exit 1
 fi
-if ! wait_for_container buyerly-server; then
-    docker compose logs --tail=120 server
-    rollback
-    exit 1
-fi
-if ! wait_for_container buyerly-worker \
-      || ! wait_for_container_file buyerly-worker /tmp/buyerly-worker-day-boundary-cycle-complete; then
-    docker compose logs --tail=160 worker
-    rollback
-    exit 1
-fi
-if ! wait_for_container buyerly-worker-ts; then
-    docker compose logs --tail=120 worker-ts
-    rollback
-    exit 1
-fi
-if docker compose logs --since=5m worker 2>&1 \
-    | grep -Eiq 'Failed to persist audit event.*(owner_id|owner_user_id)|NotNullViolation.*(owner_id|owner_user_id)'; then
-    echo "[ERROR] Worker audit ownership failure detected after a full scheduler cycle."
+if ! wait_for_container buyerly-worker; then
     docker compose logs --tail=160 worker
     rollback
     exit 1

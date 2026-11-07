@@ -31,10 +31,9 @@ import { DeliveryResolver } from './accounts/delivery.resolver.ts';
 
 // Every area's resolvers: the one place a new area is registered. An area
 // lives in its own folder (areas/<area>/<area>.resolver.ts, plus whatever
-// helpers it needs) and adds its class here; nothing else changes. A field
-// keeps the Python field's name, arguments, types and description
-// (test/graphql/schema.test.ts compares them), and the root fields served
-// here are no longer forwarded to the Python API (graphql/routing.ts).
+// helpers it needs) and adds its class here; nothing else changes. Every
+// field matches packages/shared/client-api.graphql: name, arguments, types
+// and description (test/graphql/schema.test.ts compares them).
 export const RESOLVERS: NonEmptyArray<new () => object> = [
   MembersResolver,
   InvitesResolver,

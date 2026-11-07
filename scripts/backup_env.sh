@@ -22,7 +22,7 @@ BACKUP_ENV_KEYS=(
 )
 OFFSITE_REQUIRED_KEYS=(S3_ENDPOINT_URL S3_BUCKET S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY)
 
-# Strip the dotenv quoting that python-dotenv (the app's reader) accepts for
+# Strip the dotenv quoting that Docker Compose's env_file reader accepts for
 # these simple values: surrounding quotes, or an unquoted value with an
 # inline ` # comment`.
 _backup_env_value() {

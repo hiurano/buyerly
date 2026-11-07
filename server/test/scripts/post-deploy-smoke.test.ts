@@ -60,9 +60,8 @@ async function start(options: { image?: string; workerTs?: object; internalOk?: 
       if (m) {
         const [container] = m[1].split('#');
         const cmd = (execs.get(m[1]) ?? []).join(' ');
-        if (container === 'buyerly-worker') return send(200, frame(JSON.stringify({ heartbeat_age_seconds: 1.5, day_boundary_cycle: true })));
-        if (container === 'buyerly-worker-ts') return send(200, frame(JSON.stringify(options.workerTs ?? { status: 'ok', jobs: { sync: { outcome: 'ok' } } })));
-        if (cmd.includes('smoke_checks')) return send(200, frame(JSON.stringify({ ok: options.internalOk ?? true, checks: [{ name: 'database_migrations', ok: options.internalOk ?? true }] })));
+        if (container === 'buyerly-worker') return send(200, frame(JSON.stringify(options.workerTs ?? { status: 'ok', jobs: { sync: { outcome: 'ok' } } })));
+        if (cmd.includes('smoke-checks.js') && !cmd.includes('--metrics')) return send(200, frame(JSON.stringify({ ok: options.internalOk ?? true, checks: [{ name: 'database_migrations', ok: options.internalOk ?? true }] })));
         return send(200, frame(''));
       }
       m = /^\/exec\/(.+)\/json$/.exec(decodeURIComponent(url));
@@ -83,7 +82,7 @@ async function smoke(env: Awaited<ReturnType<typeof start>>, sha = SHA) {
 }
 
 describe('post-deploy smoke', () => {
-  it('reports every check of the Python smoke and persists a 600 result', async () => {
+  it('reports every check and persists a 600 result', async () => {
     const env = await start({});
     const out = await smoke(env);
     expect(out.code).toBe(0);
@@ -91,26 +90,26 @@ describe('post-deploy smoke', () => {
       checks: { name: string; details: object }[];
     };
     expect(result.checks.map((c) => c.name)).toEqual([
-      'health_live', 'health_ready', 'server_health_ready', 'authentication_boundary', 'runtime_versions',
-      'worker_heartbeat', 'worker_ts_health', 'database_meta_isolation_summary', 'reliability_metrics',
+      'health_live', 'health_ready', 'authentication_boundary', 'runtime_versions',
+      'worker_health', 'database_meta_isolation_summary', 'reliability_metrics',
     ]);
     expect(result).toMatchObject({ schema_version: 1, mode: 'read-only', meta_budget_mutations: 0, ok: true, release_sha: SHA });
-    expect(Object.keys(result.checks[3].details)).toEqual([
+    expect(Object.keys(result.checks[2].details)).toEqual([
       '/api/graphql', '/api/summary', '/api/meta/oauth/config', '/api/me', '/api/auth/sessions', '/api/sync/bootstrap', '/api/sync/delta?since=0',
     ].sort()); // sorted like json.dumps(sort_keys=True)
     expect((await stat(path.join(out.resultDir, `post-deploy-${SHA}.json`))).mode & 0o777).toBe(0o600);
     expect(JSON.parse(out.stdout.trim().split('\n').at(-1) ?? '')).toEqual({
-      failed_checks: [], ok: true, release_sha: SHA, result_path: path.join(out.resultDir, `post-deploy-${SHA}.json`), worker_ts_jobs: { sync: 'ok' },
+      failed_checks: [], ok: true, release_sha: SHA, result_path: path.join(out.resultDir, `post-deploy-${SHA}.json`), worker_jobs: { sync: 'ok' },
     });
   });
 
-  it('fails with the Python messages and exit code 1', async () => {
+  it('fails with the messages and exit code 1', async () => {
     const env = await start({ image: 'buyerly-app:old', workerTs: { status: 'ok', jobs: { sync: { outcome: 'error' } } }, internalOk: false, ready: 'starting' });
     const out = await smoke(env);
     expect(out.code).toBe(1);
     expect(out.stdout).toContain('[ERROR] Smoke check health_ready failed: /health/ready returned an unexpected health response');
     expect(out.stdout).toContain('[ERROR] Smoke check runtime_versions failed: buyerly-api does not use the expected release');
-    expect(out.stdout).toContain('[ERROR] Smoke check worker_ts_health failed: TypeScript worker is not healthy: sync');
+    expect(out.stdout).toContain('[ERROR] Smoke check worker_health failed: worker is not healthy: sync');
     expect(out.stdout).toContain('[ERROR] Smoke check database_meta_isolation_summary failed: internal contracts failed: database_migrations');
   });
 

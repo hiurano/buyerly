@@ -1,7 +1,5 @@
-import { spawn, spawnSync } from 'node:child_process';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { join } from 'node:path';
 import Fastify from 'fastify';
 import type { DataSource } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -9,100 +7,20 @@ import { databaseOver } from '../../src/database.ts';
 import { AccountEntity } from '../../src/entities/index.ts';
 import { MetaClient } from '../../src/meta/client.ts';
 import { MetaTokenKeyring } from '../../src/meta/tokens.ts';
-import { classifyHealthError, safeHealthMessage } from '../../src/worker/account-health.ts';
-import { AccountSync, accountSyncInterval, intervalMinutes } from '../../src/worker/account-sync.ts';
-import { normalizeFacts } from '../../src/worker/analytics-facts.ts';
+import { AccountSync } from '../../src/worker/account-sync.ts';
 import { createUser, createWorkspace, testDatabase } from '../support/db.ts';
 import { DATABASE_URL } from '../support/target.ts';
 
 // The data half of the monitoring cycle (scheduler/worker.py
 // run_account_sync_cycle, services/analytics_store.py, account_health.py;
-// #611 stage 4). The same accounts, the same Meta answers and the same clock
-// go through the Python sync and through this one; the rows each leaves
-// behind and the requests each sends must be the same.
+// #611 stage 4). The same accounts, Meta answers and clock were proved in CI to
+// leave the same rows and send the same requests through the Python sync and
+// this one before Python was removed; what runs here is the TypeScript sync.
 
-const REPO = join(import.meta.dirname, '../../..');
-const PYTHON = process.env.PYTHON ?? 'python3';
 const log = Fastify({ logger: false }).log;
 const KEY = 'CKOJW1eA4PLOe59rNqizKftdfj0lN17_CIFSpe7ihLw=';
 // 15:00 UTC: 10:00 in New York, 17:00 in Kyiv, already the next day in Auckland.
 const CLOCK = Date.parse('2026-11-06T15:00:00Z') / 1000;
-
-const python = (script: string, input: unknown, env: Record<string, string> = {}) =>
-  spawnSync(PYTHON, ['-c', script], { cwd: REPO, input: JSON.stringify(input), env: { ...process.env, PYTHONPATH: REPO, ...env } });
-
-describe('pieces of the account sync', () => {
-  it('classifies, rounds and schedules as Python does', () => {
-    const errors = ['', 'Invalid OAuth access token', 'Meta API rate limit reached', 'boom: something__odd!!', 'Graph error with token=EAAB123secret in it', 'x'.repeat(300), 'Ünïcode ✓ failure'];
-    const facts = [
-      { entity_level: 'adset', entity_id: 7, spend: '0.125', impressions: '12.9', reach: null, frequency: 2.675, cpm: 0.375, cpc_link: '1.005', ctr: 'bad', daily_budget: 1e-3, status: '', raw_actions: 'x', date: '2026-11-06T00:00:00' },
-      { entity_level: '', entity_name: 'N'.repeat(300), spend: -0.125, clicks: true, leads: '7', cost_per_lead: 0, ctr_link: null, currency: 'eur', status: 'ACTIVE' },
-      { entity_level: 'campaign', entity_id: 'c1', spend: 1.115, frequency: 1.005, cpm: 10.555, cpc: 0.045, purchases: 2.9, cost_per_purchase: '3.335', effective_status: 'PAUSED' },
-    ];
-    const intervals = [null, '5', ' 7 ', '5.0', 5.7, 0, -3, true, [], {}, '1_0', 'x'];
-    const accounts = [
-      { rules_enabled: false, workspace_id: 1, active_rules: '[{"workspace_id": 1, "check_interval": 1}]' },
-      { rules_enabled: true, workspace_id: 1, active_rules: '[{"workspace_id": 1, "check_interval": 7}, {"workspace_id": 2, "check_interval": 1}]' },
-      { rules_enabled: true, workspace_id: 1, active_rules: '[{"workspace_id": 1, "check_interval": 30, "action": "PAUSE"}]' },
-      { rules_enabled: true, workspace_id: 1, active_rules: '[{"workspace_id": 1, "check_interval": 1, "enabled": false}, {"workspace_id": 1.0, "check_interval": "3"}]' },
-      { rules_enabled: true, workspace_id: null, active_rules: '[{"workspace_id": null, "check_interval": 1}]' },
-      { rules_enabled: true, workspace_id: 1, active_rules: 'not json' },
-    ];
-    const now = new Date('2026-11-06T15:00:00Z');
-    const ours = {
-      errors: errors.map((error) => ({ ...classifyHealthError(error), message: safeHealthMessage(error) })),
-      facts: normalizeFacts(3, 'act_9', facts, now).map(({ fetched_at: _, ...fact }) => fact),
-      intervals: intervals.map((value) => intervalMinutes(value, 10)),
-      accounts: accounts.map((account) => accountSyncInterval(account, { defaultInterval: 10, criticalInterval: 2 })),
-    };
-    const run = python(
-      `
-import json, sys
-from datetime import datetime, timezone
-from types import SimpleNamespace
-from unittest import mock
-import services.analytics_store as store
-from services.account_health import classify_health_error, safe_health_message
-from scheduler.worker import MonitoringWorker
-case = json.load(sys.stdin)
-captured = []
-class Captured(Exception):
-    pass
-class Insert:
-    def __init__(self, model): pass
-    def values(self, rows):
-        captured.extend(rows)
-        raise Captured
-import asyncio
-async def upsert():
-    session = SimpleNamespace(bind=SimpleNamespace(dialect=SimpleNamespace(name="postgresql")))
-    class Frozen(datetime):
-        @classmethod
-        def now(cls, tz=None):
-            return datetime(2026, 11, 6, 15, 0, tzinfo=timezone.utc)
-    with mock.patch.object(store, "pg_insert", Insert), mock.patch.object(store, "datetime", Frozen):
-        try:
-            await store.AnalyticsFactService.upsert_entity_facts(session, 3, "act_9", case["facts"])
-        except Captured:
-            pass
-asyncio.run(upsert())
-worker = MonitoringWorker(meta_client=object())
-print(json.dumps({
-    "errors": [dict(zip(("code", "cause"), classify_health_error(e)), message=safe_health_message(e)) for e in case["errors"]],
-    "facts": [{k: v for k, v in row.items() if k not in ("fetched_at", "updated_at")} for row in captured],
-    "intervals": [MonitoringWorker._interval_minutes(v, 10) for v in case["intervals"]],
-    "accounts": [worker._account_sync_interval(SimpleNamespace(**a), 10, 2) for a in case["accounts"]],
-}))
-`,
-      { errors, facts, intervals, accounts },
-    );
-    if (run.error || run.status !== 0) {
-      if (process.env.CI) throw new Error(`Python failed: ${run.stderr?.toString() ?? run.error?.message}`);
-      return;
-    }
-    expect(ours).toEqual(JSON.parse(run.stdout.toString()));
-  });
-});
 
 // A Graph API with fixed answers: the account, its inventory, and insights
 // that depend on the account, level and day asked for. A token named
@@ -200,7 +118,7 @@ describe.skipIf(!DATABASE_URL)('the account sync on the database', () => {
     await new Promise((resolve) => graph?.server.close(resolve));
   });
 
-  it('leaves the same rows and sends the same requests as the Python sync', async () => {
+  it('syncs the accounts, records their health and sends the requests', async () => {
     const owner = await createUser(dataSource);
     const workspace = await createWorkspace(dataSource, owner);
     const prefix = `act_${String(Date.now()).slice(-9)}`;
@@ -313,49 +231,15 @@ describe.skipIf(!DATABASE_URL)('the account sync on the database', () => {
     };
 
     await reset();
-    const pythonDatabase = DATABASE_URL.replace(/^postgres(ql)?:/, 'postgresql+asyncpg:');
-    // Not spawnSync: the Graph API answering Python runs in this process.
-    const run = await new Promise<{ status: number | null; stdout: string; stderr: string }>((resolve) => {
-      const child = spawn(PYTHON, [join(REPO, 'server/test/worker/account_sync_parity.py')], {
-        cwd: REPO,
-        env: { ...process.env, PYTHONPATH: REPO, DATABASE_URL: pythonDatabase, META_GRAPH_BASE_URL: graph.url(), META_APP_SECRET: 'parity-secret', META_TOKEN_ENCRYPTION_KEY: KEY },
-      });
-      let stdout = '';
-      let stderr = '';
-      child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()));
-      child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
-      child.on('error', (error) => resolve({ status: null, stdout, stderr: String(error) }));
-      child.on('close', (status) => resolve({ status, stdout, stderr }));
-      child.stdin.end(JSON.stringify({ clock: CLOCK, account_ids: accountIds }));
-    });
-    if (run.status !== 0) {
-      if (process.env.CI) throw new Error(`Python failed: ${run.stderr}`);
-      return;
-    }
-    const pythonStats = JSON.parse(run.stdout) as Record<string, unknown>;
-    const pythonRows = await snapshot();
-
-    await reset();
     const sync = new AccountSync({
       db: databaseOver(dataSource),
       log,
       tokenEncryptionKey: KEY,
       clock: () => CLOCK,
-      meta: new MetaClient({ graphVersion: 'v26.0', baseUrl: graph.url(), appSecret: 'parity-secret', sleep: async () => undefined }),
+      meta: new MetaClient({ graphVersion: 'v26.0', baseUrl: graph.url(), appSecret: 'test-secret', sleep: async () => undefined }),
     });
     const stats = await sync.run({ accountIds });
     const ours = await snapshot();
-
-    const { cycle_id: _python, ...pythonCounts } = pythonStats;
-    const { cycle_id: _ours, ...ourCounts } = stats;
-    expect(ourCounts).toEqual(pythonCounts);
-    expect(ours.accounts).toEqual(pythonRows.accounts);
-    expect(ours.health).toEqual(pythonRows.health);
-    expect(ours.audit).toEqual(pythonRows.audit);
-    expect(ours.states).toEqual(pythonRows.states);
-    expect(ours.connections).toEqual(pythonRows.connections);
-    expect(ours.facts).toEqual(pythonRows.facts);
-    expect(ours.requests).toEqual(pythonRows.requests);
 
     // The cases reach what they are for.
     expect(stats.accounts_skipped).toBe(1);

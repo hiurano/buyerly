@@ -1,11 +1,6 @@
-import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { gunzipSync } from 'node:zlib';
 import Fastify from 'fastify';
 import type { DataSource } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -13,20 +8,17 @@ import { databaseOver } from '../../src/database.ts';
 import { AccountEntity } from '../../src/entities/index.ts';
 import { MetaClient } from '../../src/meta/client.ts';
 import { PostgresInventoryCache } from '../../src/meta/inventory-cache.ts';
-import { type Capture, compareCapture } from '../../src/rules/shadow.ts';
 import { campaignEntities, entityWindows, RuleCycle, windowsByLevel } from '../../src/worker/rule-cycle.ts';
 import { createUser, createWorkspace, testDatabase } from '../support/db.ts';
 import { DATABASE_URL } from '../support/target.ts';
 
 // The rules half of the monitoring cycle (scheduler/worker.py run_rule_cycle;
-// #611 stage 4). The same accounts, rules, history and Meta go through
-// several Python rule cycles and then through as many TypeScript ones, at the
-// same clocks; the rows each leaves behind and the requests each sends to
-// Meta (reads and writes) must be the same. The Meta here keeps state: a
-// status or budget written is what the next read returns.
+// #611 stage 4). Accounts, rules, history and Meta go through several rule
+// cycles at fixed clocks; each case must reach the outcome it is for. Until
+// Python was removed (stage 6) the same run went through the Python cycle
+// too and every row and Meta request was compared. The Meta here keeps
+// state: a status or budget written is what the next read returns.
 
-const REPO = join(import.meta.dirname, '../../..');
-const PYTHON = process.env.PYTHON ?? 'python3';
 const log = Fastify({ logger: false }).log;
 const KEY = 'CKOJW1eA4PLOe59rNqizKftdfj0lN17_CIFSpe7ihLw=';
 const CLOCK = Date.parse('2026-11-06T15:00:00Z') / 1000;
@@ -208,7 +200,7 @@ describe.skipIf(!DATABASE_URL)('the rule cycle on the database', () => {
     await new Promise((resolve) => graph?.server.close(resolve));
   });
 
-  it('acts, records and leaves the same rows as the Python rule cycle', async () => {
+  it('acts, records and leaves its rows (proved equal to the Python rule cycle before it was removed)', async () => {
     const owner = await createUser(dataSource);
     const workspace = await createWorkspace(dataSource, owner);
     const prefix = `act_${String(Date.now()).slice(-9)}`;
@@ -375,37 +367,9 @@ describe.skipIf(!DATABASE_URL)('the rule cycle on the database', () => {
     };
 
     await reset();
-    const pythonDatabase = DATABASE_URL.replace(/^postgres(ql)?:/, 'postgresql+asyncpg:');
-    // Not spawnSync: the Graph API answering Python runs in this process.
-    const python = (script: string, env: Record<string, string>, input: unknown) =>
-      new Promise<{ status: number | null; stdout: string; stderr: string }>((resolve) => {
-        const child = spawn(PYTHON, [join(REPO, 'server/test/worker', script)], {
-          cwd: REPO,
-          env: { ...process.env, PYTHONPATH: REPO, DATABASE_URL: pythonDatabase, META_GRAPH_BASE_URL: graph.url(), META_APP_SECRET: 'parity-secret', META_TOKEN_ENCRYPTION_KEY: KEY, ...env },
-        });
-        let stdout = '';
-        let stderr = '';
-        child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()));
-        child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
-        child.on('error', (error) => resolve({ status: null, stdout, stderr: String(error) }));
-        child.on('close', (status) => resolve({ status, stdout, stderr }));
-        child.stdin.end(JSON.stringify(input));
-      });
-    const run = await python('rule_cycle_parity.py', {}, { clocks: CLOCKS, account_ids: accountIds });
-    if (run.status !== 0) {
-      if (process.env.CI) throw new Error(`Python failed: ${run.stderr}`);
-      return;
-    }
-    const pythonStats = JSON.parse(run.stdout) as Array<Record<string, unknown>>;
-    const pythonRows = await snapshot(pythonStats.map((stats) => String(stats.cycle_id)));
-
-    await reset();
     const db = databaseOver(dataSource);
     let now = CLOCK;
-    const shadowRoot = await mkdtemp(join(tmpdir(), 'rules-reverse-shadow-'));
-    const shadow = { captures: join(shadowRoot, 'captures'), requests: join(shadowRoot, 'requests') };
     const cycle = new RuleCycle({
-      shadow,
       db,
       log,
       tokenEncryptionKey: KEY,
@@ -420,19 +384,6 @@ describe.skipIf(!DATABASE_URL)('the rule cycle on the database', () => {
     }
     const ours = await snapshot(ourStats.map((stats) => String(stats.cycle_id)));
 
-    const counts = (list: Array<Record<string, unknown>>) => list.map(({ cycle_id: _, ...rest }) => rest);
-    expect(counts(ourStats)).toEqual(counts(pythonStats));
-    expect(ours.accounts).toEqual(pythonRows.accounts);
-    expect(ours.executions).toEqual(pythonRows.executions);
-    expect(ours.audit).toEqual(pythonRows.audit);
-    expect(ours.ruleStates).toEqual(pythonRows.ruleStates);
-    expect(ours.stopped).toEqual(pythonRows.stopped);
-    expect(ours.health).toEqual(pythonRows.health);
-    expect(ours.schedules).toEqual(pythonRows.schedules);
-    expect(ours.inventory).toEqual(pythonRows.inventory);
-    expect(ours.meta).toEqual(pythonRows.meta);
-    expect(ours.requests).toEqual(pythonRows.requests);
-
     // The cases reach what they are for.
     const events = new Set(ours.audit.map((row) => row.event_type));
     for (const type of ['STOP', 'STOP_CONFIRMATION_STARTED', 'INCREASE_BUDGET', 'DECREASE_BUDGET', 'NOTIFY_ONLY', 'RULE_ACTION_RECONCILED', 'TOKEN_EXPIRED']) {
@@ -445,29 +396,5 @@ describe.skipIf(!DATABASE_URL)('the rule cycle on the database', () => {
     expect(ours.meta.find((row) => row.id === `${ids(1)}_s4`)).toMatchObject({ status: 'PAUSED' });
     expect(ourStats.some((stats) => (stats.errors as string[]).some((error) => error.includes('window')))).toBe(true);
 
-    // The reverse shadow run: Python decides on what each TypeScript check
-    // saw (rules/shadow_replay.py), and the comparison of #670 finds the
-    // two decisions the same.
-    try {
-      const requests = (await readdir(shadow.requests)).filter((name) => name.endsWith('.json.gz'));
-      expect(requests.length).toBeGreaterThan(0);
-      const replay = await python('rule_replay_parity.py', { RULES_SHADOW_DIR: shadow.captures, RULES_SHADOW_REPLAY_DIR: shadow.requests, RULES_SHADOW_MAX_FILES: '100000' }, {});
-      expect(replay.status, replay.stderr).toBe(0);
-      expect(JSON.parse(replay.stdout)).toEqual({ requests: requests.length, captures: requests.length, errors: 0 });
-      expect(await readdir(shadow.requests)).toEqual([]);
-      const captures = (await readdir(shadow.captures)).filter((name) => name.endsWith('.json.gz'));
-      expect(captures).toHaveLength(requests.length);
-      let actions = 0;
-      for (const name of captures) {
-        const capture = JSON.parse(gunzipSync(await readFile(join(shadow.captures, name))).toString()) as Capture;
-        const comparison = compareCapture(capture);
-        expect(comparison.differences.filter((difference) => !difference.explained), name).toEqual([]);
-        expect(comparison.outcomesMatched, name).toBe(comparison.outcomes);
-        actions += comparison.actionsPython;
-      }
-      expect(actions).toBeGreaterThan(0);
-    } finally {
-      await rm(shadowRoot, { recursive: true, force: true });
-    }
   }, 180_000);
 });

@@ -1,8 +1,6 @@
 import { fileURLToPath } from 'node:url';
 
-// Settings from the environment, read once at start. The names match the
-// Python services' (core/config.py), since both run from the same .env while
-// the server moves to TypeScript (#611).
+// Settings from the environment (.env, docker-compose.yml), read once at start.
 
 export interface Config {
   port: number;
@@ -26,8 +24,6 @@ export interface Config {
   webappUrl: string;
   // Comma-separated origins allowed besides WEBAPP_URL (the sync socket checks them).
   corsOrigins: string;
-  // The Python API, for client API documents this server does not answer yet (graphql/routing.ts).
-  apiUrl: string;
   // A browser session ends after this many days without use.
   webSessionIdleDays: number;
   sessionCookieSecure: boolean;
@@ -39,8 +35,7 @@ export interface Config {
   devEmailLog: boolean;
   // Cloudflare Turnstile on sign-up; empty turns the check off.
   turnstileSecretKey: string;
-  // HMAC secret for stored OTP codes and link tokens; the same value as the
-  // Python API's, so a code issued by one server verifies on the other.
+  // HMAC secret for stored OTP codes and link tokens.
   otpPepper: string;
 
   // The Telegram bot (core/telegram.py); empty means no Telegram channel.
@@ -51,9 +46,8 @@ export interface Config {
   // The contact push services see with each desktop notification.
   vapidSubject: string;
 
-  // User images (avatars, workspace logos): the Python API's directory,
-  // <repository>/uploads (services/image_uploads.py UPLOADS_ROOT), which
-  // Compose mounts as the buyerly-uploads volume for both services.
+  // User images (avatars, workspace logos): <repository>/uploads, which
+  // Compose mounts as the buyerly-uploads volume.
   // SERVER_UPLOADS_DIR replaces it; the tests use a directory of their own.
   uploadsRoot: string;
 
@@ -68,19 +62,10 @@ export interface Config {
   // Redis (decision 54): the worker's BullMQ queues (worker/), and the sync
   // bus between processes. Empty means none: the worker refuses to start.
   redisUrl: string;
-  // Background jobs the TypeScript worker owns (#611 stage 4); the Python
-  // worker skips them (core/worker_jobs.py). Comma-separated job ids.
-  tsWorkerJobs: string;
-  // Where Python's monitoring cycle leaves the rules engine's captures for
-  // the shadow run (rules/shadow.py, rules/shadow.ts); both workers mount it.
-  rulesShadowDir: string;
-  // RULES_SHADOW_REPLAY_DIR: where the rule cycle leaves its decision inputs
-  // for the Python worker to decide on (the reverse shadow run).
-  rulesShadowReplayDir: string;
   // Meta (core/config.py): the pinned Graph API version and origin (the fake
   // Meta on the local stack), the app and its Facebook Login for Business
   // configuration, and the Fernet keys stored Meta tokens are encrypted with
-  // ("primary[,older decrypt-only keys]"), the same as the Python API's.
+  // ("primary[,older decrypt-only keys]").
   metaGraphVersion: string;
   metaGraphBaseUrl: string;
   metaAppId: string;
@@ -95,14 +80,13 @@ export const DEFAULT_UPLOADS_ROOT = fileURLToPath(new URL('../../uploads', impor
 // <repository>/frontend/dist, the React build.
 export const DEFAULT_FRONTEND_DIR = fileURLToPath(new URL('../../frontend/dist', import.meta.url));
 
-// Compose gives the Python services SQLAlchemy URLs
-// ("postgresql+asyncpg://…"); node-postgres wants the plain scheme.
+// An older .env may hold a SQLAlchemy URL ("postgresql+asyncpg://…");
+// node-postgres wants the plain scheme.
 export function postgresUrl(url: string): string {
   return url.replace(/^postgres(?:ql)?\+[a-z0-9]+:\/\//, 'postgresql://');
 }
 
-// LOG_LEVEL is shared with the Python services, which name two levels
-// differently; anything unknown falls back to info rather than failing start.
+// LOG_LEVEL also takes the older names warning and critical; anything unknown falls back to info rather than failing start.
 const LOG_LEVELS: Record<string, string> = {
   trace: 'trace', debug: 'debug', info: 'info', warn: 'warn', warning: 'warn',
   error: 'error', fatal: 'fatal', critical: 'fatal', silent: 'silent',
@@ -112,8 +96,7 @@ export function logLevel(value: string | undefined): string {
   return LOG_LEVELS[(value ?? '').trim().toLowerCase()] ?? 'info';
 }
 
-// pydantic's reading of a bool, which the Python services apply to the same
-// variables: 1/true/yes/on and 0/false/no/off, in any case.
+// A bool setting: 1/true/yes/on and 0/false/no/off, in any case.
 export function envBool(value: string | undefined, fallback: boolean): boolean {
   const clean = (value ?? '').trim().toLowerCase();
   if (['1', 'true', 't', 'yes', 'y', 'on'].includes(clean)) return true;
@@ -146,7 +129,6 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     cloudflareTunnelCidrs: env.CLOUDFLARE_TUNNEL_CIDRS ?? '',
     webappUrl: env.WEBAPP_URL ?? '',
     corsOrigins: env.CORS_ORIGINS ?? '',
-    apiUrl: env.API_URL ?? '',
     webSessionIdleDays: envInt('WEB_SESSION_IDLE_DAYS', env.WEB_SESSION_IDLE_DAYS, 90, 1, 365),
     sessionCookieSecure: envBool(env.SESSION_COOKIE_SECURE, true),
     resendApiKey: env.RESEND_API_KEY ?? '',
@@ -163,9 +145,6 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     serveStatic: envBool(env.SERVE_STATIC, true),
     serviceWorker: envBool(env.SERVICE_WORKER, true),
     redisUrl: (env.REDIS_URL ?? '').trim(),
-    tsWorkerJobs: env.TS_WORKER_JOBS ?? '',
-    rulesShadowDir: (env.RULES_SHADOW_DIR ?? '').trim(),
-    rulesShadowReplayDir: (env.RULES_SHADOW_REPLAY_DIR ?? '').trim(),
     metaGraphVersion: env.META_GRAPH_VERSION || 'v26.0',
     metaGraphBaseUrl: env.META_GRAPH_BASE_URL || 'https://graph.facebook.com',
     metaAppId: env.META_APP_ID ?? '',

@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { Redis } from 'ioredis';
 import type { DataSource } from 'typeorm';
@@ -10,34 +9,16 @@ import { compactedThrough, lastSyncId, needsBootstrap } from '../../src/sync/log
 import { readConfig } from '../../src/config.ts';
 import { telegramBot } from '../../src/notifications/telegram.ts';
 import { buildWorker, jobDefinitions } from '../../src/worker/app.ts';
-import { LOCK_NAMESPACE, SHARED_JOBS, parseJobList, withJobLock } from '../../src/worker/jobs.ts';
+import { JOB_LOCKS, LOCK_NAMESPACE, withJobLock } from '../../src/worker/jobs.ts';
 import { startScheduler, type RunRecord } from '../../src/worker/scheduler.ts';
 import { testDatabase } from '../support/db.ts';
 import { DATABASE_URL } from '../support/target.ts';
 
 const REDIS_URL = process.env.REDIS_URL ?? '';
-const repository = new URL('../../../', import.meta.url);
-const pythonSource = (path: string): string => readFileSync(new URL(path, repository), 'utf8');
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-describe('job ownership (TS_WORKER_JOBS)', () => {
-  it('reads known ids and reports the rest', () => {
-    const { jobs, unknown } = parseJobList(' inbox_email, ,sync_log_compaction,rules ');
-    expect([...jobs]).toEqual(['inbox_email', 'sync_log_compaction']);
-    expect(unknown).toEqual(['rules']);
-  });
-
-  it('uses the Python worker\'s lock numbers', () => {
-    const source = pythonSource('core/worker_jobs.py');
-    expect(source).toContain(`LOCK_NAMESPACE = ${LOCK_NAMESPACE}`);
-    const block = /SHARED_JOBS = \{([^}]*)\}/.exec(source)?.[1] ?? '';
-    const python = Object.fromEntries([...block.matchAll(/"(\w+)": (\d+)/g)].map((match) => [match[1], Number(match[2])]));
-    expect(python).toEqual(SHARED_JOBS);
-  });
-
-  it('runs every job on the Python worker\'s interval', () => {
-    const source = pythonSource('services/worker.py');
-    const units: Record<string, number> = { seconds: 1000, minutes: 60_000, hours: 3_600_000 };
+describe('the jobs', () => {
+  it('runs every job on its interval', () => {
     const definitions = jobDefinitions({
       config: readConfig({}),
       db: databaseOver({ options: {} } as unknown as DataSource),
@@ -45,25 +26,29 @@ describe('job ownership (TS_WORKER_JOBS)', () => {
       sendEmail: async () => true,
       telegram: telegramBot('', Fastify().log),
       sendPush: null,
-      owned: new Set(),
       redis: {} as Redis,
       exclusive: async () => true,
     });
-    expect(Object.keys(definitions).sort()).toEqual(['account_day_boundary', 'account_sync', 'inbox_email', 'inbox_push', 'inbox_telegram', 'monitoring', 'rules_shadow', 'sync_log_compaction', 'worker_watchdog']);
-    // The watchdog ran in the API's loop (services/worker_watchdog.py).
-    const watchdog = /CHECK_INTERVAL_SECONDS = (\d+)/.exec(pythonSource('services/worker_watchdog.py'));
-    expect(definitions.worker_watchdog?.everyMs).toBe(Number(watchdog![1]) * 1000);
-    for (const [job, definition] of Object.entries(definitions).filter(([job]) => job !== 'worker_watchdog' && job !== 'rules_shadow')) {
-      const match = new RegExp(`\\("${job}", \\w+, \\{"(\\w+)": (\\d+)\\}\\)`).exec(source);
-      expect(match, `${job} in services/worker.py`).not.toBeNull();
-      expect(definition.everyMs).toBe(Number(match![2]) * units[match![1]]);
-    }
+    const intervals = Object.fromEntries(Object.entries(definitions).map(([job, definition]) => [job, definition.everyMs]));
+    expect(intervals).toEqual({
+      inbox_email: 60_000,
+      inbox_telegram: 20_000,
+      inbox_push: 20_000,
+      sync_log_compaction: 86_400_000,
+      account_day_boundary: 60_000,
+      account_sync: 60_000,
+      monitoring: 60_000,
+      worker_watchdog: 60_000,
+    });
+    // Every job has its own advisory lock.
+    expect(Object.keys(JOB_LOCKS).sort()).toEqual(Object.keys(definitions).sort());
+    expect(new Set(Object.values(JOB_LOCKS)).size).toBe(Object.keys(JOB_LOCKS).length);
+    expect(LOCK_NAMESPACE).toBe(611);
   });
 
-  it('skips a job name it does not know, as the Python worker does', () => {
-    // A rollback keeps the newer TS_WORKER_JOBS default; the jobs this release knows must still run.
+  it('runs every job whatever TS_WORKER_JOBS says', () => {
     const config = readConfig({ TS_WORKER_JOBS: 'sync_log_compaction,no_such_job', REDIS_URL: 'redis://localhost:1', LOG_LEVEL: 'silent' });
-    expect(buildWorker(config, { options: {} } as unknown as DataSource).owned).toEqual(['sync_log_compaction']);
+    expect(buildWorker(config, { options: {} } as unknown as DataSource).jobs.sort()).toEqual(Object.keys(JOB_LOCKS).sort());
   });
 });
 
@@ -149,7 +134,7 @@ describe.skipIf(!DATABASE_URL || !REDIS_URL)('the BullMQ scheduler', () => {
     await dataSource?.destroy();
   });
 
-  it('runs an owned job on its interval, one run at a time, and stops on close', async () => {
+  it('runs a job on its interval, one run at a time, and stops on close', async () => {
     let active = 0;
     let most = 0;
     let runs = 0;
@@ -159,7 +144,7 @@ describe.skipIf(!DATABASE_URL || !REDIS_URL)('the BullMQ scheduler', () => {
       dataSource,
       log: Fastify({ logger: false }).log,
       prefix,
-      owned: new Map([[
+      jobs: new Map([[
         'inbox_push',
         {
           everyMs: 100,
@@ -173,7 +158,7 @@ describe.skipIf(!DATABASE_URL || !REDIS_URL)('the BullMQ scheduler', () => {
           },
         },
       ]]),
-      notOwned: ['sync_log_compaction'],
+      retired: ['sync_log_compaction'],
       recordRun: async (_job, record) => { records.push(record); },
     });
     const deadline = Date.now() + 10_000;

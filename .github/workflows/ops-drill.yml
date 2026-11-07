@@ -7,7 +7,7 @@ name: Ops drill (manual)
 #
 #   restore-local     scripts/drill_restore.sh: newest local backup into the
 #                     throwaway database buyerly_restore_drill (dropped after);
-#                     Alembic revision, schema, data, app read, row counts.
+#                     schema version (TypeORM migrations), schema, data, app read, row counts.
 #   restore-offsite   scripts/offsite_restore_drill.sh: newest S3 copy into a
 #                     throwaway container without network. Needs S3_* in .env.
 #   restore-offsite-negative  the same plus four failure cases.
@@ -18,11 +18,7 @@ name: Ops drill (manual)
 #                     meanwhile) and checks /health/worker and the Inbox alert.
 #   account-sync-report  scripts/account_sync_report.sh: read-only counts of
 #                     what the account sync wrote per hour (facts, health,
-#                     events), to compare the hours before and after it moves
-#                     between the Python and the TypeScript worker (#611).
-#   rules-shadow-report  scripts/rules_shadow_report.sh: read-only match
-#                     statistics of the rules engine's shadow run (#611):
-#                     counts and field names, no ids or amounts.
+#                     events).
 #
 # None of them writes to the production database or the uploads volume.
 
@@ -41,7 +37,6 @@ on:
           - uploads
           - worker-stall
           - account-sync-report
-          - rules-shadow-report
       confirm:
         description: Type the drill name again to confirm
         type: string
@@ -95,7 +90,6 @@ jobs:
               uploads) cmd="bash scripts/drill_uploads.sh" ;;
               worker-stall) cmd="bash scripts/drill_worker_stall.sh" ;;
               account-sync-report) cmd="bash scripts/account_sync_report.sh" ;;
-              rules-shadow-report) cmd="bash scripts/rules_shadow_report.sh" ;;
               *) echo "Unknown drill"; exit 1 ;;
             esac
             if [ "$(id -u)" -ne 0 ]; then cmd="sudo -n ${cmd}"; fi

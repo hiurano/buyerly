@@ -4,20 +4,19 @@ import type { FastifyBaseLogger } from 'fastify';
 import type { DataSource } from 'typeorm';
 import { withJobLock, type JobId } from './jobs.ts';
 
-// BullMQ in place of APScheduler (decision 54). Each owned job gets a queue
-// of its own, a job scheduler with the Python worker's interval, and a
+// BullMQ (decision 54). Each job gets a queue of its own, a job scheduler
+// with its interval, and a
 // worker with concurrency 1. The scheduler keeps at most one next run
 // waiting and a run that overruns its interval delays the next instead of
-// overlapping it, as APScheduler's max_instances=1 + coalesce did. Several
-// worker processes never run one job at once either: each run holds the
-// job's advisory lock, which the Python worker takes too (jobs.ts).
+// overlapping it. Several worker processes never run one job at once
+// either: each run holds the job's advisory lock (jobs.ts).
 
 export const QUEUE_PREFIX = 'buyerly';
 // Last run of every job, for health checks: HSET <key> <job> <json>.
 export const RUNS_KEY = `${QUEUE_PREFIX}:worker-ts:runs`;
 
 export interface JobDefinition {
-  // The Python worker's interval for it (services/worker.py).
+  // How often it runs.
   everyMs: number;
   run: () => Promise<void>;
 }
@@ -31,7 +30,7 @@ export interface RunRecord {
   error?: string;
 }
 
-export const queueName = (job: JobId): string => `job-${job}`;
+export const queueName = (job: string): string => `job-${job}`;
 
 // BullMQ's connection: a client of our own, since in an ES module BullMQ
 // cannot load ioredis from connection options. Workers block on Redis, so
@@ -49,29 +48,28 @@ export interface SchedulerOptions {
   redisUrl: string;
   dataSource: DataSource;
   log: FastifyBaseLogger;
-  owned: ReadonlyMap<JobId, JobDefinition>;
-  // Jobs this worker knows but does not own: their schedules are removed, so
-  // a job taken off TS_WORKER_JOBS stops here after the restart.
-  notOwned: readonly JobId[];
+  jobs: ReadonlyMap<JobId, JobDefinition>;
+  // Jobs no longer run (jobs.ts RETIRED_JOBS): their schedules are removed.
+  retired: readonly string[];
   recordRun: (job: JobId, record: RunRecord) => Promise<void>;
   // Redis key prefix; tests use one of their own.
   prefix?: string;
 }
 
 export async function startScheduler(options: SchedulerOptions): Promise<Scheduler> {
-  const { redisUrl, dataSource, log, owned, notOwned, recordRun } = options;
+  const { redisUrl, dataSource, log, jobs, retired, recordRun } = options;
   const connection = redisConnection(redisUrl);
   const prefix = options.prefix ?? QUEUE_PREFIX;
   const queues: Queue[] = [];
   const workers: Worker[] = [];
 
-  for (const job of notOwned) {
+  for (const job of retired) {
     const queue = new Queue(queueName(job), { connection, prefix });
     await queue.removeJobScheduler(job);
     await queue.close();
   }
 
-  for (const [job, definition] of owned) {
+  for (const [job, definition] of jobs) {
     const queue = new Queue(queueName(job), { connection, prefix });
     queues.push(queue);
     await queue.upsertJobScheduler(

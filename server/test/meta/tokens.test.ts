@@ -1,35 +1,16 @@
-import { spawnSync } from 'node:child_process';
-import { join } from 'node:path';
 import type { EntityManager } from 'typeorm';
 import { describe, expect, it } from 'vitest';
 import { MetaTokenError, MetaTokenKeyring, resolveAccountAccessToken, rotateStoredMetaTokens } from '../../src/meta/tokens.ts';
 
-// Stored Meta tokens are shared by both servers while they run side by side
-// (#611): a token either one encrypts must decrypt on the other, rotation
-// must give tokens Python reads, and the failures must say the same.
-// tokens_parity.py runs core/meta_tokens.py; Python runs in CI.
+// Stored Meta tokens: encryption, rotation and failures. The format was proved
+// equal to Python's core/meta_tokens.py in CI before Python was removed (#611).
 
-const REPO = join(import.meta.dirname, '../../..');
-const PYTHON = process.env.PYTHON ?? 'python3';
 const K1 = 'CKOJW1eA4PLOe59rNqizKftdfj0lN17_CIFSpe7ihLw=';
 const K2 = 'b2xkLWtleS1mb3ItdGVzdHMtMzItYnl0ZXMtbG9uZyE=';
 const K3 = 'MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=';
 
 interface Op { op: 'encrypt' | 'decrypt' | 'rotate'; key: string; token: string }
 type Answer = { ok: string } | { fail: string };
-
-function python(ops: Op[]): Answer[] | null {
-  const run = spawnSync(PYTHON, [join(import.meta.dirname, 'tokens_parity.py')], {
-    cwd: REPO,
-    input: JSON.stringify(ops),
-    env: { ...process.env, PYTHONPATH: REPO },
-  });
-  if (run.error || run.status !== 0) {
-    if (process.env.CI) throw new Error(`tokens_parity.py failed: ${run.stderr?.toString() ?? run.error?.message}`);
-    return null;
-  }
-  return JSON.parse(run.stdout.toString()) as Answer[];
-}
 
 function port({ op, key, token }: Op): Answer {
   try {
@@ -43,32 +24,24 @@ function port({ op, key, token }: Op): Answer {
 
 const timestampOf = (token: string): bigint => Buffer.from(token, 'base64url').readBigUInt64BE(1);
 
-describe('Meta tokens at rest, shared with Python', () => {
-  it('decrypt and rotate across the two servers', () => {
+describe('Meta tokens at rest', () => {
+  it('decrypt and rotate', () => {
     const secret = 'EAAB-ünïcode-token';
-    const tsToken = new MetaTokenKeyring(K1).encrypt(`  ${secret} `);
+    const token = new MetaTokenKeyring(K1).encrypt(`  ${secret} `);
     const old = new MetaTokenKeyring(K1).encrypt('old-token', new Date('2026-01-01T00:00:00Z'));
-    const fromPython = python([
-      { op: 'encrypt', key: K1, token: secret },
-      { op: 'decrypt', key: K1, token: tsToken },
-      { op: 'decrypt', key: `${K2}, ${K1}`, token: tsToken },
-      { op: 'rotate', key: `${K2},${K1}`, token: tsToken },
-    ]);
-    if (!fromPython) return;
-    const [encrypted, decrypted, decryptedOlder, rotated] = fromPython as Array<{ ok: string }>;
-    expect(decrypted).toEqual({ ok: secret });
-    expect(decryptedOlder).toEqual({ ok: secret });
-    expect(new MetaTokenKeyring(K1).decrypt(encrypted.ok)).toBe(secret);
-    expect(new MetaTokenKeyring(K2).decrypt(rotated.ok)).toBe(secret);
-    expect(timestampOf(rotated.ok)).toBe(timestampOf(tsToken));
+    expect(port({ op: 'decrypt', key: K1, token })).toEqual({ ok: secret });
+    expect(port({ op: 'decrypt', key: `${K2}, ${K1}`, token })).toEqual({ ok: secret });
+    const rotated = new MetaTokenKeyring(`${K2},${K1}`).rotate(token);
+    expect(new MetaTokenKeyring(K2).decrypt(rotated)).toBe(secret);
+    expect(timestampOf(rotated)).toBe(timestampOf(token));
 
-    // The port's rotation keeps the token's time and Python reads it with the new key alone.
+    // Rotation keeps the token's time and is read with the new key alone.
     const tsRotated = new MetaTokenKeyring(`${K2},${K1}`).rotate(old);
     expect(timestampOf(tsRotated)).toBe(timestampOf(old));
-    expect(python([{ op: 'decrypt', key: K2, token: tsRotated }])).toEqual([{ ok: 'old-token' }]);
+    expect(port({ op: 'decrypt', key: K2, token: tsRotated })).toEqual({ ok: 'old-token' });
   });
 
-  it('fail as Python does', () => {
+  it('fail with a message', () => {
     const k1Token = new MetaTokenKeyring(K1).encrypt('t');
     const ops: Op[] = [
       { op: 'encrypt', key: '', token: 't' },
@@ -86,9 +59,10 @@ describe('Meta tokens at rest, shared with Python', () => {
       { op: 'rotate', key: K3, token: k1Token },
       { op: 'decrypt', key: `${K3},${K1}`, token: k1Token },
     ];
-    const expected = python(ops);
-    if (!expected) return;
-    expect(ops.map(port)).toEqual(expected);
+    const answers = ops.map(port);
+    // Every op fails except the last: a key list opens a token by any of its keys.
+    expect(answers.slice(0, -1).every((answer) => 'fail' in answer && answer.fail !== '')).toBe(true);
+    expect(answers.at(-1)).toEqual({ ok: 't' });
   });
 });
 
