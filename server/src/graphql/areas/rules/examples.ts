@@ -14,7 +14,7 @@ import type { UserEntity } from '../../../entities/index.ts';
 export const RULE_EXAMPLES_VERSION = 2;
 const EXAMPLE_TIME_WINDOW = 'lifetime';
 
-interface ExamplePreset {
+export interface ExamplePreset {
   key: string;
   name: string;
   conditions: { metric: string; operator: string; value: number; time_window: string }[];
@@ -28,7 +28,7 @@ function turnOff(key: string, name: string, ...conditions: [string, string, numb
   };
 }
 
-const EXAMPLE_PRESETS: readonly ExamplePreset[] = [
+export const EXAMPLE_PRESETS: readonly ExamplePreset[] = [
   turnOff('nl_no_click', '$3 and no click', ['spend', 'gte', 3], ['link_clicks', 'eq', 0]),
   turnOff('nl_one_click', '$3.50 and one click', ['spend', 'gte', 3.5], ['link_clicks', 'lte', 1]),
   turnOff('nl_no_lead', '$4 and no lead', ['spend', 'gte', 4], ['leads', 'eq', 0]),

@@ -74,17 +74,6 @@ class TestExampleDefinitions(unittest.TestCase):
             [preset["key"] for preset in EXAMPLE_PRESETS],
         )
 
-    def test_the_simulator_replays_the_same_rules(self):
-        from scripts.rule_simulator import CHEAT_SHEET_RULES
-
-        self.assertEqual(
-            [
-                (name, [(metric, operator, float(value)) for metric, operator, value in conditions])
-                for name, conditions in NL_RULES
-            ],
-            CHEAT_SHEET_RULES,
-        )
-
 
 class TestRuleExamples(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

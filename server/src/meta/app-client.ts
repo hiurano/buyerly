@@ -8,6 +8,12 @@ import { PostgresInventoryCache } from './inventory-cache.ts';
 // through app.services.metaFetch at call time, so tests can answer for Meta.
 const clients = new WeakMap<FastifyInstance, MetaClient>();
 
+// The rule simulator (src/scripts/rule-simulator.ts) makes undo go through
+// the client it drives the worker with.
+export function useMetaClient(app: FastifyInstance, client: MetaClient): void {
+  clients.set(app, client);
+}
+
 export function metaClient(app: FastifyInstance): MetaClient {
   let client = clients.get(app);
   if (!client) {
