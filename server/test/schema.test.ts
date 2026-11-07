@@ -64,7 +64,7 @@ describe.skipIf(!url)('entities match the migrated schema', () => {
     columns = await dataSource.query(`
       SELECT table_name, column_name, data_type, udt_name, character_maximum_length, is_nullable, column_default
       FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name <> 'alembic_version'
+      WHERE table_schema = 'public' AND table_name NOT IN ('alembic_version', 'migrations')
       ORDER BY table_name, ordinal_position`);
     constraints = await dataSource.query(`
       SELECT c.conrelid::regclass::text AS table_name, c.conname, c.contype,
@@ -76,7 +76,7 @@ describe.skipIf(!url)('entities match the migrated schema', () => {
         c.confdeltype
       FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
       WHERE n.nspname = 'public' AND c.contype IN ('p', 'u', 'f', 'c')
-        AND c.conrelid::regclass::text <> 'alembic_version'`);
+        AND c.conrelid::regclass::text NOT IN ('alembic_version', 'migrations')`);
     indexes = await dataSource.query(`
       SELECT t.relname AS tablename, i.relname AS indexname, pg_get_indexdef(x.indexrelid) AS indexdef,
         x.indisunique AS is_unique,
@@ -87,7 +87,7 @@ describe.skipIf(!url)('entities match the migrated schema', () => {
       JOIN pg_class i ON i.oid = x.indexrelid
       JOIN pg_class t ON t.oid = x.indrelid
       JOIN pg_namespace n ON n.oid = t.relnamespace
-      WHERE n.nspname = 'public' AND t.relname <> 'alembic_version'
+      WHERE n.nspname = 'public' AND t.relname NOT IN ('alembic_version', 'migrations', 'migrations_id_seq')
         AND NOT EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conindid = x.indexrelid AND c.contype IN ('p', 'u'))`);
   });
 
