@@ -1,0 +1,61 @@
+/* Feature sections as linear.app's (Intake, measured 2026-10-19 at 1440px): 128px padding, title and text
+   in two halves, a 626px illustration, and a Features list whose "+" opens a Tech specs side panel. */
+.feature { margin-top: 202px; padding-block: 128px; }
+.featureHeader { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 64px; padding-bottom: 96px; }
+.featureTitle { margin: 0 0 0 -2px; color: var(--site-fg); font-size: 48px; font-weight: 510; line-height: 48px; letter-spacing: -0.022em; text-wrap: balance; }
+.featureDesc { max-width: 566px; margin: 0; color: var(--site-fg-secondary); font-size: 24px; line-height: 1.33; letter-spacing: -0.012em; text-wrap: pretty; }
+.featureStage { position: relative; height: 626px; }
+.featureArt { position: absolute; inset: 0 -46px 0 -152px; border: 1px solid var(--site-line); border-radius: 22px; mask-image: linear-gradient(#000 0%, #000 40%, transparent 90%), linear-gradient(to right, #000 0%, #000 68%, transparent 96%), linear-gradient(to left, #000 0%, #000 60%, transparent 66%); mask-composite: intersect; -webkit-mask-composite: source-in; }
+.featurePanel { position: absolute; inset: 8px 8px 0; overflow: hidden; border-radius: 12px 12px 0 0; background: var(--bg-canvas); box-shadow: inset 0 0 0 1px var(--color-border-secondary); opacity: 0.8; }
+.featureCard { position: absolute; top: -28px; left: -24px; width: 480px; padding: 24px; border: 1px solid var(--site-line); border-radius: 16px; background: radial-gradient(50% 50% at 100% 0, color-mix(in srgb, var(--site-fg) 3%, transparent), transparent), var(--site-bg); }
+
+/* Split illustration as Linear's "Planning and monitoring": a full-bleed list fading out, and a box on the right half. */
+.feature + .feature { margin-top: 10px; }
+.featureStage.isSplit { height: 633px; margin-top: -32px; }
+/* Carousel illustration as Linear's "AI and automations": four 400×560 cards centred, faded at both sides. */
+.featureStage.isCarousel { height: 632px; mask-image: linear-gradient(to right, transparent 0, #000 400px), linear-gradient(to left, transparent 0, #000 400px), linear-gradient(to top, transparent 0, #000 300px); mask-composite: intersect; -webkit-mask-composite: source-in; }
+/* Layered illustration as Linear's "Build, review, and ship": a framed list, and a wide panel laid over it from 448px. */
+.featureStage.isLayered { height: 592px; }
+/* Features list and Tech specs panel. */
+.featureFooter { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 64px; }
+.featureLabel { padding-top: 38px; color: var(--site-fg-quaternary); font-size: 15px; line-height: 24px; letter-spacing: -0.011em; }
+.featureList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 36px 0 0; padding: 0; list-style: none; }
+.featureItem { display: flex; height: 28px; }
+.featureItem.isUneven { position: relative; padding-left: 32px; }
+.featureItem.isUneven::before { content: ""; position: absolute; top: 2px; left: 0; width: 1px; height: 28px; background: var(--site-line); }
+.featureButton { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: var(--site-fg-tertiary); font: inherit; font-size: 15px; line-height: 24px; letter-spacing: -0.011em; cursor: pointer; transition: color 0.16s var(--site-ease); }
+.featureButton:hover { color: var(--site-fg); }
+.featurePlus { color: var(--site-fg-quaternary); font-size: 18px; }
+.spec { position: fixed; inset: 24px 24px 24px auto; width: min(640px, calc(100% - 48px)); height: auto; margin: 0; padding: 0; overflow: auto; border: 1px solid color-mix(in srgb, var(--site-fg) 5%, transparent); border-radius: 8px; background: var(--site-panel-bg); color: var(--site-fg); box-shadow: 0 0 32px rgb(0 0 0 / 0.4), 0 0 0 1px rgb(0 0 0 / 0.6); }
+.spec::backdrop { background: color-mix(in srgb, var(--site-bg) 70%, transparent); }
+.specHeader { display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 12px 0 32px; }
+.specLabel { color: var(--site-fg-quaternary); font-family: var(--font-monospace); font-size: 12px; line-height: 16.8px; text-transform: uppercase; }
+.specClose { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 8px; background: none; color: var(--site-fg-quaternary); cursor: pointer; }
+.specClose:hover { color: var(--site-fg); background: var(--site-hover-bg); }
+.specBody { padding: 48px 32px 32px; }
+.specBody h3 { margin: 0; color: var(--site-fg-secondary); font-size: 48px; font-weight: 510; line-height: 48px; letter-spacing: -0.022em; }
+.specBody p { margin: 24px 0 0; color: var(--site-fg-tertiary); font-size: 15px; line-height: 24px; letter-spacing: -0.011em; }
+
+@media (max-width: 1024px) {
+  .featureHeader { grid-template-columns: minmax(0, 1fr); row-gap: 32px; }
+  .featureTitle { font-size: 40px; line-height: 44px; }
+  .featureDesc { font-size: 20px; line-height: 1.33; }
+}
+@media (max-width: 767px) {
+  .featureFooter { grid-template-columns: minmax(0, 1fr); row-gap: 16px; }
+  .featureLabel { padding-top: 0; }
+  .featureList { margin-top: 0; }
+}
+@media (max-width: 640px) {
+  .feature { padding-block: 64px; }
+  .featureHeader { padding-bottom: 32px; row-gap: 16px; }
+  .featureTitle { font-size: 24px; line-height: 31.92px; }
+  .featureDesc { font-size: 15px; line-height: 24px; }
+  .featureStage { zoom: 0.5; --stage-vw: 1440px; --stage-gutter: 80px; }
+  .featureStage:not(.isSplit):not(.isCarousel):not(.isLayered) { width: 1280px; margin-left: calc(80px - var(--site-gutter) * 2); }
+  .featureStage.isSplit, .featureStage.isCarousel, .featureStage.isLayered { width: 1440px; }
+  .featureStage.isSplit { margin: 0 0 0 -600px; }
+  .featureStage.isCarousel { margin-left: -330px; }
+  .featureStage.isLayered { margin-left: -360px; }
+  .featureFooter { display: none; }
+}

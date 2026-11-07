@@ -137,7 +137,7 @@ export function installSite(app: FastifyInstance): void {
     });
   }
 
-  // One page per release, built by server/src/scripts/build-changelog.ts (#435).
+  // One page per release (#435), rendered with the others from frontend/site (#700).
   app.get<{ Params: { slug: string } }>('/changelog/:slug', async (request, reply) => {
     const { slug } = request.params;
     const file = path.join(root, 'changelog', `${slug}.html`);

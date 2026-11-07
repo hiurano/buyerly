@@ -32,15 +32,18 @@ RUN npm run build --workspace @buyerly/server
 
 # The React app. The release sha goes into it, so an open tab can tell when
 # the server runs a newer one; the service worker (#499) is compiled into
-# dist/sw.js.
+# dist/sw.js. The public site's pages are rendered from frontend/site and the
+# release notes in changelog/ (#700).
 COPY frontend/index.html frontend/tsconfig.json frontend/tsconfig.node.json frontend/vite.config.ts ./frontend/
 COPY frontend/public ./frontend/public
 COPY frontend/src ./frontend/src
 COPY frontend/sw ./frontend/sw
+COPY frontend/site ./frontend/site
+COPY changelog ./changelog
 ARG APP_VERSION=local
 ENV APP_VERSION=${APP_VERSION}
 RUN npm run build --workspace buyerly-frontend \
-    && rm -rf frontend/src frontend/sw frontend/public \
+    && rm -rf frontend/src frontend/sw frontend/public frontend/site changelog \
     && npm prune --omit=dev \
     && npm cache clean --force
 

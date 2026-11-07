@@ -1,0 +1,55 @@
+/* Manifesto as linear.app's "A new species…" block: 48px statement, three 468px columns with Fig labels. */
+.manifesto { margin-top: 208px; }
+.manifestoTitle { max-width: 1250px; margin: 0 0 0 -2px; color: var(--site-fg-tertiary); font-size: 48px; font-weight: 510; line-height: 48px; letter-spacing: -0.022em; }
+.manifestoTitle strong { color: var(--site-fg); font-weight: inherit; }
+.manifestoGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 136px; }
+.manifestoItem { position: relative; display: flex; flex-direction: column; justify-content: flex-end; height: 468px; padding-inline: 32px; border-right: 1px solid var(--site-line); }
+.manifestoItem:first-child { padding-left: 0; }
+.manifestoItem:last-child { padding-right: 0; border-right: 0; }
+.manifestoFig { position: absolute; top: 0; left: 32px; color: var(--site-fg-tertiary); font-family: var(--font-monospace); font-size: 12px; line-height: 16.8px; text-transform: uppercase; }
+.manifestoItem:first-child .manifestoFig { left: 0; }
+.manifestoArt { display: grid; place-items: center; height: 388px; }
+.manifestoText { display: flex; flex-direction: column; gap: 8px; }
+.manifestoText h3 { margin: 0; color: var(--site-fg-secondary); font-size: 15px; font-weight: 510; line-height: 24px; letter-spacing: -0.011em; }
+.manifestoText p { max-width: 368px; margin: 0; color: var(--site-fg-tertiary); font-size: 15px; line-height: 24px; letter-spacing: -0.011em; text-wrap: balance; }
+
+/* Illustration strokes as Linear's (#D0D6E0, #3E3E44, #2E2E32 on the page colour), mirrored in light. */
+.figArt { display: block; overflow: visible; }
+.figArt polygon, .figArt circle, .figArt path { stroke-width: 0.5; stroke-linejoin: round; }
+.figArt .fHi { fill: var(--site-bg); stroke: var(--site-fig-hi); }
+.figArt .fMid { fill: var(--site-bg); stroke: var(--site-fig-mid); }
+.figArt .fLow { fill: var(--site-bg); stroke: var(--site-fig-low); }
+.figArt .fSweep { fill: color-mix(in srgb, var(--site-fig-hi) 8%, transparent); stroke: none; }
+.figArt .fHiDot { fill: var(--site-fig-hi); stroke: none; }
+.figArt .sHi, .figArt .sHiThin { fill: none; stroke: var(--site-fig-hi); stroke-width: 0.5; }
+.figArt .sMid { stroke: var(--site-fig-mid); stroke-width: 0.5; }
+.figArt .sDot { fill: none; stroke: var(--site-fig-mid); stroke-width: 1; stroke-dasharray: 1 3; }
+.figArt .tKey { fill: var(--site-fig-hi); font-family: var(--font-regular); font-size: 22px; font-weight: 510; }
+.figArt .lift1, .figArt .lift2, .figArt .press { transition: transform 0.7s cubic-bezier(0.32, 0.72, 0, 1); }
+.manifestoItem:hover .lift1 { transform: translateY(-8px); }
+.manifestoItem:hover .lift2 { transform: translateY(-18px); }
+.figArt .sweep { transform-box: view-box; transform-origin: 0 0; animation: fig-sweep 12s linear infinite; }
+.figArt .press { animation: fig-press 2.4s cubic-bezier(0.32, 0.72, 0, 1) infinite; }
+@keyframes fig-sweep { to { transform: rotate(360deg); } }
+@keyframes fig-press { 0%, 70%, 100% { transform: translateY(0); } 80% { transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) {
+  .figArt .sweep, .figArt .press { animation: none; }
+  .figArt .lift1, .figArt .lift2 { transition: none; }
+}
+@media (max-width: 1024px) {
+  .manifestoTitle { font-size: 40px; line-height: 44px; }
+  .manifestoItem { height: 360px; padding-inline: 24px; }
+  .manifestoItem .manifestoFig { left: 24px; }
+  .manifestoArt { height: 280px; }
+}
+@media (max-width: 767px) {
+  .manifestoTitle { font-size: 32px; line-height: 36px; }
+  .manifestoGrid { grid-template-columns: minmax(0, 1fr); }
+  .manifestoItem, .manifestoItem:first-child, .manifestoItem:last-child { padding: 0 0 32px; border-right: 0; border-bottom: 1px solid var(--site-line); }
+  .manifestoItem .manifestoFig, .manifestoItem:first-child .manifestoFig { left: 0; }
+}
+@media (max-width: 640px) {
+  .manifesto { margin-top: 120px; }
+  .manifestoTitle { font-size: 24px; line-height: 31.92px; }
+  .manifestoGrid { margin-top: 64px; }
+}

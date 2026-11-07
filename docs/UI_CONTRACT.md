@@ -21,7 +21,7 @@ Buyerly follows the Linear design language. That decision is already encoded in 
 | Behavior, routing and API payloads | `frontend/src/components/`, `frontend/src/lib/routing.ts` and `frontend/src/lib/api.ts` | A visual refactor preserves behavior, workspace isolation and security boundaries unless the task explicitly changes them. |
 | Production web artifact | [`Dockerfile`](../Dockerfile) (stage `frontend`) | Vite builds hashed assets from `frontend/`; manual CSS cache-version bumps are not used. |
 
-The retired interface has been removed. `frontend/` is the only product UI. Public legal documents and their assets live in `frontend/public/` and are included in the Vite production build. Runtime user images live in `uploads/` and the durable `buyerly-uploads` volume.
+The retired interface has been removed. `frontend/` is the only product UI. The public site (landing, legal documents, changelog) is written as TSX components in `frontend/site/` and rendered to static HTML by the Vite production build; its fonts and images live in `frontend/public/`. Runtime user images live in `uploads/` and the durable `buyerly-uploads` volume.
 
 ## Mandatory component recipes
 
@@ -86,7 +86,7 @@ A shared primitive owns its own geometry. If a page needs a different height for
 
 ## Public website
 
-The static landing page and legal documents in `frontend/public/` follow
+The static landing page and legal documents in `frontend/site/` follow
 linear.app's homepage (#434): its header, 64px hero, 48px section headings,
 feature sections with app mockups in the product's own tokens, changelog,
 closing call to action and six-column footer, in light and dark, with semantic
@@ -114,8 +114,8 @@ Every UI pull request must:
 2. Reuse an existing primitive from `frontend/src/ui/`. If none fits and the pattern will repeat, add and document a shared React primitive first.
 3. Change semantic values in `frontend/src/styles/tokens.stylex.ts`; consume them from components or `frontend/src/styles/index.css`.
 4. Preserve ids, handlers, API payloads, workspace isolation and security boundaries unless explicitly in scope.
-5. Update the browser checks in `scripts/*-browser.mjs` when the production UI contract changes. Legal route and asset coverage lives in `server/test/site.test.ts`.
+5. Update the browser checks in `scripts/*-browser.mjs` when the production UI contract changes. Public route coverage lives in `server/test/site.test.ts`, and `frontend/site/site.test.ts` checks the rendered pages (`npm test` in `frontend/`).
 6. Pass GitHub Actions, and check keyboard focus, disabled/busy/error states and overflow.
-7. For a change users will notice, add or extend a release note in `changelog/` and rebuild it with `npm run changelog`.
+7. For a change users will notice, add or extend a release note in `changelog/` and run `npm run changelog`, which checks the entries and updates the app's What's new (`frontend/src/lib/changelogLatest.json`). The frontend build renders the pages; `npm run dev` in `frontend/` shows them at `/changelog`.
 
 Vite fingerprints production assets, so there is no manual stylesheet cache-version step. If a request conflicts with this contract, explain the conflict in the pull request instead of silently creating a one-off implementation.

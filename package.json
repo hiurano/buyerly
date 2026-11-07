@@ -10,8 +10,8 @@
     "node": ">=24"
   },
   "scripts": {
-    "changelog": "node server/src/scripts/build-changelog.ts",
-    "lint": "eslint server packages/shared frontend/src frontend/sw",
+    "changelog": "node frontend/site/changelog/latest.ts",
+    "lint": "eslint server packages/shared frontend/src frontend/sw frontend/site",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm test --workspace @buyerly/server --workspace buyerly-frontend"
   },

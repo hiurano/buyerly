@@ -1,0 +1,32 @@
+/* Changelog as linear.app's: four entries on a shared timeline, the newest with a red dot. "View all" waits for /changelog (#435). */
+.changelog { margin-top: 162px; }
+.changelogTitle { margin: 0 0 0 -2px; color: var(--site-fg); font-size: 48px; font-weight: 510; line-height: 48px; letter-spacing: -0.022em; }
+.changelogGrid { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 64px; margin-top: 72px; }
+.changelogGrid::before { content: ""; position: absolute; top: 15px; left: 0; right: 0; height: 1px; background: var(--site-line); }
+.changelogItem { display: flex; flex-direction: column; }
+.changelogDot { position: relative; width: 32px; height: 32px; margin: 0 0 48px -12px; background: var(--site-bg); }
+.changelogDot::before, .changelogDot::after { content: ""; position: absolute; top: 16px; left: 16px; border-radius: 50%; background: var(--site-fg-quaternary); transform: translate(-50%, -50%); }
+.changelogDot::before { width: 20px; height: 20px; opacity: 0.2; }
+.changelogDot::after { width: 6px; height: 6px; }
+.isLatest .changelogDot::before, .isLatest .changelogDot::after { background: #eb5757; }
+.isLatest .changelogDot::before { opacity: 0.1; }
+.changelogItem h3 { margin: 0; color: var(--site-fg-secondary); font-size: 15px; font-weight: 510; line-height: 24px; letter-spacing: -0.011em; }
+.changelogItem p { display: -webkit-box; margin: 8px 0 0; overflow: hidden; color: var(--site-fg-tertiary); font-size: 15px; line-height: 24px; letter-spacing: -0.011em; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.changelogItem time { margin-top: 20px; color: var(--site-fg-quaternary); font-family: var(--font-monospace); font-size: 12px; line-height: 16.8px; text-transform: uppercase; }
+
+/* "View all →" under the landing's Changelog cards, as Linear's homepage. */
+.changelogItem { color: inherit; text-decoration: none; }
+.changelogItem:hover h3 { color: var(--site-fg); }
+.changelogAll { display: inline-flex; margin-top: 80px; color: var(--site-fg-tertiary); font-size: 16px; line-height: 24px; text-decoration: none; transition: filter 0.2s var(--site-ease); }
+.changelogAll:hover { color: var(--site-fg-tertiary); filter: brightness(1.3); }
+.changelogAllArrow { margin-left: 6px; color: var(--site-fg-quaternary); }
+@media (max-width: 1024px) {
+  .changelogGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 48px; }
+  .changelogGrid::before { display: none; }
+}
+@media (max-width: 640px) {
+  .changelog { margin-top: 96px; }
+  .changelogTitle { font-size: 32px; line-height: 36px; }
+  .changelogGrid { grid-template-columns: minmax(0, 1fr); gap: 32px; margin-top: 40px; }
+  .changelogDot { margin-bottom: 8px; }
+}

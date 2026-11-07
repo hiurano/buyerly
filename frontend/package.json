@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run typecheck && vite build",
-    "typecheck": "tsc && tsc -p sw",
+    "typecheck": "tsc && tsc -p sw && tsc -p site",
     "test": "vitest run",
     "preview": "vite preview"
   },

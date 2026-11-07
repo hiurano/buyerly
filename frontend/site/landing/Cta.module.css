@@ -1,0 +1,11 @@
+/* Closing call to action as linear.app's prefooter: 72px heading, two 44px buttons, 224px above and below. */
+.cta { display: flex; flex-direction: column; align-items: center; gap: 40px; margin: 224px var(--site-gutter); text-align: center; }
+.ctaTitle { max-width: 760px; margin: 0; color: var(--site-fg); font-size: 72px; font-weight: 510; line-height: 72px; letter-spacing: -0.022em; text-wrap: balance; }
+.ctaActions { display: flex; gap: 12px; }
+@media (max-width: 1024px) {
+  .ctaTitle { font-size: 40px; line-height: 44px; }
+}
+@media (max-width: 640px) {
+  .cta { margin-block: 120px; }
+  .ctaTitle { font-size: 38px; line-height: 41.8px; }
+}

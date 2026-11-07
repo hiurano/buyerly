@@ -3,7 +3,7 @@
 Buyerly's components are styled with StyleX, as Linear's styles are written
 (#501). Tailwind is gone since #519; what is left outside StyleX is
 `src/styles/reset.css` (the element reset), the semantic classes in
-`src/styles/index.css` and the public website's stylesheet.
+`src/styles/index.css` and the public site's CSS Modules (`site/`).
 
 ## Tokens
 
