@@ -211,7 +211,7 @@ restore_empty_server() {
     # A new server runs no buyerly-api yet: off-site sync uses the image just built.
     local -x OFFSITE_SYNC_IMAGE="${OFFSITE_SYNC_IMAGE:-buyerly-app:${APP_VERSION}}"
     empty=$(docker exec buyerly-db psql --username=buyerly --dbname=buyerly -Atc \
-        "SELECT to_regclass('public.alembic_version') IS NULL")
+        "SELECT to_regclass('public.app_settings') IS NULL")
     [[ "${empty}" == "t" ]] || return 0
     offsite_has_backup buyerly_postgres_ || status=$?
     case "${status}" in

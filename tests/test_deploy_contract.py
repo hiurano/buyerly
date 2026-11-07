@@ -459,7 +459,7 @@ class TestDeployContract(unittest.TestCase):
         restore = self.script.index("if ! restore_empty_server; then")
         self.assertLess(self.script.index('docker compose up -d db'), restore)
         self.assertLess(restore, self.script.index("if ! docker compose run --rm migrate; then"))
-        self.assertIn("to_regclass('public.alembic_version') IS NULL", self.script)
+        self.assertIn("to_regclass('public.app_settings') IS NULL", self.script)
         self.assertIn('bash "${SCRIPT_DIR}/restore_db.sh" --download-latest-offsite --yes', self.script)
         self.assertIn('bash "${SCRIPT_DIR}/restore_uploads.sh" --download-latest-offsite --yes', self.script)
 
@@ -479,8 +479,8 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("DRILL_DB", self.drill_script)
         self.assertIn("strictly forbidden from using production database", self.drill_script)
         # Schema, data and application checks run in the release's own code
-        # (tests/test_restore_check.py), not as table-name probes in shell.
-        self.assertIn("python -m database.restore_check", self.drill_script)
+        # (server/test/scripts/restore-check.test.ts), not as table-name probes in shell.
+        self.assertIn("node server/dist/scripts/restore-check.js", self.drill_script)
 
     def test_ci_runs_every_browser_script_exactly_once(self):
         """Every scripts/*-browser.mjs must sit in exactly one browser group.

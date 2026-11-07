@@ -4,7 +4,7 @@
 #
 #   1. archive      restore_db.sh decrypts and unpacks it, finds pg_dump's end
 #                   marker and applies it in one transaction;
-#   2-5.            python -m database.restore_check in the API container:
+#   2-5.            node server/dist/scripts/restore-check.js in the API container:
 #                   schema version (policy in that module), schema contract,
 #                   data (foreign keys, users, workspaces), application read.
 #
@@ -101,7 +101,7 @@ if ! POSTGRES_CONTAINER="${POSTGRES_CONTAINER}" POSTGRES_DB="${DRILL_DB}" POSTGR
 fi
 echo "  [OK]   archive: decrypted, unpacked, complete dump applied in one transaction"
 
-if ! docker exec "${API_CONTAINER}" python -m database.restore_check --database "${DRILL_DB}"; then
+if ! docker exec "${API_CONTAINER}" node server/dist/scripts/restore-check.js --database "${DRILL_DB}"; then
     echo
     echo "[FAIL] Restore drill failed: the backup unpacks, but this release cannot run on the restored database."
     exit 1
