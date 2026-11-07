@@ -8,18 +8,17 @@
 
 | Контейнер | Что делает |
 |---|---|
-| `buyerly-api` | FastAPI: HTTP API, собранное React-приложение, публичные страницы и загруженные картинки |
-| `buyerly-worker` | синхронизация с Meta и выполнение правил (APScheduler) |
-| `buyerly-server` | новый сервер на TypeScript (#611); API пересылает ему пути, которые он уже взял на себя |
-| `buyerly-worker-ts` | воркер на TypeScript (#611, этап 4): фоновые задачи из `TS_WORKER_JOBS` на BullMQ |
-| `buyerly-redis` | Redis 7 для очередей BullMQ: `noeviction`, append-only файл в томе `buyerly-redis`, потолок 96 МБ данных (160 МБ контейнер) |
+| `buyerly-api` | сервер на TypeScript (`node server/dist/main.js`): GraphQL, синхронизация, OAuth и webhooks, собранное React-приложение, публичные страницы и загруженные картинки |
+| `buyerly-worker` | воркер на TypeScript (`node server/dist/worker/main.js`): синхронизация с Meta, выполнение правил, доставка Inbox и остальные фоновые задачи на BullMQ |
+| `buyerly-redis` | Redis 7 для очередей BullMQ и шины синхронизации: `noeviction`, append-only файл в томе `buyerly-redis`, потолок 96 МБ данных (160 МБ контейнер) |
 | `buyerly-db` | PostgreSQL 16, данные в томе `buyerly-postgres` |
 | `buyerly-tunnel` | Cloudflare Tunnel (`cloudflared`): единственный вход из интернета |
 | `buyerly-backup` | каждую ночь бэкап базы и uploads, зашифрованный, в S3 (см. «Резервные копии») |
 
 Одноразовый `migrate` (`docker compose run --rm migrate`) применяет миграции
-перед запуском релиза и не остаётся запущенным. Образ один — `buyerly-app`: в
-нём Python-код, сборка фронтенда, Node.js и собранный сервер на TypeScript.
+TypeORM (`node server/dist/migrate.js`) перед запуском релиза и не остаётся
+запущенным. Образ один — `buyerly-app` на `node:24-slim` (с зеркала `public.ecr.aws`: Docker Hub отвечал серверу 429): в нём собранный
+сервер на TypeScript и сборка фронтенда ([Dockerfile](../Dockerfile)).
 
 Наружу сервер не открывает ни одного веб-порта: `cloudflared` сам подключается к
 Cloudflare и передаёт запросы в `http://api:8080` по Docker-сети `buyerly`.
@@ -32,7 +31,7 @@ API; после перезапуска они начинаются заново.
   docker-compose.yml   из git
   .env                 секреты и настройки сервера, права 600
   backups/             бэкапы базы
-  logs/                журналы api, worker и миграций
+  logs/                результаты post-deploy smoke (logs/smoke)
 ```
 
 ## Настройки сервера (`/opt/buyerly/.env`)
@@ -91,28 +90,10 @@ Telegram API при старте сам регистрирует webhook
 Settings неактивна. Почта отправляется только через Resend REST API.
 
 Compose задаёт сам и в `.env` не нужны: `APP_VERSION`, `DATABASE_URL`,
-`SERVER_URL` (`http://server:8090`, сервер на TypeScript),
-`TRUSTED_PROXY_CIDRS` (пусто; у `api` — только адрес сервера `172.30.0.20/32`, см. ниже; сервису
-`server` — сеть Compose `172.30.0.0/24`, потому что к нему ходит только API и
-дописывает адрес туннеля в `X-Forwarded-For`),
+`REDIS_URL` (`redis://redis:6379/0`), `SERVER_PORT` (`8080` у `api`),
+`TRUSTED_PROXY_CIDRS` (пусто: прокси между туннелем и API нет),
 `CLOUDFLARE_TUNNEL_CIDRS` (фиксированный адрес `buyerly-tunnel`, `172.30.0.10/32`).
-Клиентский API (`/api/graphql`) API тоже пересылает серверу, а тот возвращает API
-документы с полями, которые ещё не перенесены: адрес API у сервера — `API_URL`
-(`http://api:8080`, задаёт Compose), такой запрос несёт `X-Buyerly-Server-Hop`,
-и API отвечает на него сам. Чтобы адрес посетителя и лимиты по нему не
-сменились на адрес сервера, у `server` фиксированный адрес `172.30.0.20`, и
-только ему API доверяет `X-Forwarded-For` (`TRUSTED_PROXY_CIDRS` сервиса `api`).
-Значения по умолчанию подходят для `API_HOST`, `API_PORT`, `SERVE_STATIC`,
-`SERVER_PATHS` (префиксы путей, которые API пересылает серверу на TypeScript,
-сейчас `/health/server/,/api/auth/,/api/me/,/api/onboarding/avatar/,/api/onboarding/workspace/logo/,/uploads/,/api/sync/,/api/invites/,/api/graphql/,/api/telegram/webhook/,/api/meta/oauth/,/api/meta/invites/public/`; убрать префикс — вернуть область
-Python, её код остаётся на месте до конца переезда; если `SERVER_PATHS` задан в
-`.env` сервера, он заменяет значение по умолчанию и должен перечислять новые
-префиксы сам; WebSocket на этих путях — поток синхронизации `/api/sync/ws` —
-API пересылает отдельным ASGI-слоем [api/server_proxy.py](../api/server_proxy.py):
-открывает сокет к серверу с теми же cookie, `Origin` и `X-Forwarded-*`,
-передаёт кадры в обе стороны и закрывает браузерный сокет с кодом сервера
-(4401, 4403, 4404, 4410, 4429); отказ сервера до рукопожатия браузер получает
-тем же HTTP-статусом, недоступный сервер — 502),
+Значения по умолчанию подходят для `SERVE_STATIC`, `SERVICE_WORKER` и
 `CLOUDFLARE_IP_CIDRS`; `CORS_ORIGINS` нужен только для явно разрешённых
 cross-origin клиентов.
 
@@ -174,9 +155,9 @@ systemd-таймеры и другие пакеты не нужны: распи�
    логи и бэкапы остаются) и собирает `buyerly-app:<sha>`;
 5. если база пустая, восстанавливает её и uploads из S3 (см. выше); применяет
    миграции (`migrate`);
-6. поднимает `db` и `redis`, запускает `api`, `worker`, `worker-ts`, `server` и
-   `backup`, ждёт healthcheck `api`, `server`, `worker`, `worker-ts` и полный
-   цикл планировщика, запускает туннель;
+6. поднимает `db` и `redis`, удаляет контейнеры `buyerly-server` и
+   `buyerly-worker-ts` прежних релизов, если они есть, запускает `api`,
+   `worker` и `backup`, ждёт healthcheck `api` и `worker`, запускает туннель;
 7. выполняет read-only smoke и проверяет https://buyerly.app/health/live через
    Cloudflare (`cf-ray`); при ошибке возвращает предыдущий образ;
 8. удаляет старые образы, сохраняя два последних релиза.
@@ -188,151 +169,31 @@ cd /opt/buyerly
 bash scripts/deploy.sh
 ```
 
-### Фоновые задачи: Python или TypeScript (#611, этап 4)
+### Фоновые задачи
 
-Задачи без вызовов Meta переезжают с `worker` (APScheduler) на `worker-ts`
-(BullMQ) по одной. Кто что выполняет, решает `TS_WORKER_JOBS` — список задач
-`worker-ts`; Python-воркер и watchdog в API пропускают ровно их
-([core/worker_jobs.py](../core/worker_jobs.py)). Значение по умолчанию задаёт
-`docker-compose.yml` в репозитории; известные задачи: `inbox_email`,
-`inbox_telegram`, `inbox_push`, `sync_log_compaction`, `worker_watchdog`, `account_day_boundary`,
-`account_sync`, `monitoring`,
-`rules_shadow` (только TypeScript, см. ниже). `account_sync` — половина цикла мониторинга с данными: аккаунт из Meta
+Все фоновые задачи выполняет `worker` (BullMQ на Redis, [server/src/worker](../server/src/worker/)):
+`inbox_email`, `inbox_telegram`, `inbox_push`, `sync_log_compaction`,
+`worker_watchdog`, `account_day_boundary`, `account_sync` и `monitoring`.
+`account_sync` — половина цикла мониторинга с данными: аккаунт из Meta
 (валюта, статус, часовой пояс), факты аналитики за сегодня и один закрытый день,
-здоровье аккаунта. Вторая половина — `monitoring` (в журнале Python
-`monitoring_job`): проверки правил, их чтения и записи в Meta, история,
-слоты исполнения и состояния правил на сущностях
-([worker/rule-cycle.ts](../server/src/worker/rule-cycle.ts)); по умолчанию
-пока у Python, переключение — ниже. Кэш инвентаря ad sets пишет клиент Meta
-при чтениях правил.
+кэш инвентаря, здоровье аккаунта. Вторая половина — `monitoring`: проверки
+правил, их чтения и записи в Meta, история, слоты исполнения и состояния правил
+на сущностях ([worker/rule-cycle.ts](../server/src/worker/rule-cycle.ts)).
+Слоты подтверждений и пауз лежат в `rule_execution_states`, поэтому перезапуск
+воркера не сбрасывает ни ожидания подтверждения, ни паузы правил.
 
 Одна задача никогда не выполняется дважды: каждый запуск держит свою
-advisory-блокировку Postgres, одну и ту же у обоих воркеров, и воркер, не
-получивший её, пропускает этот тик. Внутри `worker-ts` у каждой задачи своя
-очередь с concurrency 1: затянувшийся запуск откладывает следующий, а не
-накладывается на него.
+advisory-блокировку Postgres, и процесс, не получивший её (старый воркер, пока
+деплой его меняет), пропускает этот тик. У каждой задачи своя очередь с
+concurrency 1: затянувшийся запуск откладывает следующий, а не накладывается на
+него. На `SIGTERM` начатые задачи доделываются (`stop_grace_period` 60 с).
 
-Вернуть задачу на Python — убрать её из списка в `.env` и перезапустить
-воркеры (пустое значение возвращает все):
-
-```bash
-cd /opt/buyerly
-echo 'TS_WORKER_JOBS=' >> .env   # или список без возвращаемой задачи
-docker compose up -d --no-deps api worker worker-ts
-```
-
-Здоровье `worker-ts` — `GET http://127.0.0.1:8091/health/worker-ts` внутри
-контейнера (его читают healthcheck и smoke): 200, когда Redis и база отвечают;
-в ответе последний запуск каждой задачи (`outcome`: `ok`, `error` или
-`skipped`). То же лежит в Redis: `docker exec buyerly-redis redis-cli HGETALL
-buyerly:worker-ts:runs`. Откат деплоя на релиз без `worker-ts` останавливает
-его: Python-воркер того релиза выполняет все задачи сам.
-
-### Движок правил: теневой режим и переключение (#611, этап 4)
-
-Правила останавливают группы и меняют бюджеты — это реальные деньги, поэтому
-движок на TypeScript сначала только решает рядом с Python и ничего не делает.
-
-**Как устроено.** Python-воркер в каждом цикле мониторинга, для каждого
-аккаунта с правилами к проверке, пишет в `RULES_SHADOW_DIR`
-(`/app/logs/rules-shadow`, том `./logs` у обоих воркеров) один файл
-`*.json.gz`: что движок видел (сущности и окна метрик, правила, отмены и
-ручные включения за день, слоты `rule_execution_states` до проверки) и что
-решил (исход каждого правила на каждой сущности — строки
-`rule_entity_states` — и каждое действие, ушедшее в Meta)
-([rules/shadow.py](../rules/shadow.py)). Задача `rules_shadow` в `worker-ts`
-раз в 30 с прогоняет каждый файл через TS-движок
-([server/src/rules/decide.ts](../server/src/rules/decide.ts)), сравнивает
-сущность, правило, действие, сумму бюджета, исход, срок ожидания, считает
-итоги по дням в Redis (`buyerly:rules-shadow:day:<UTC-дата>`, 90 дней),
-хранит последние 500 расхождений с нужным срезом входа
-(`buyerly:rules-shadow:mismatches`) и удаляет файл. Meta и рабочие таблицы
-она не трогает. Без `worker-ts` файлов больше 500 не копится. Раз в сутки в
-журнале `worker-ts` строка `Rules shadow daily summary` с итогами вчерашнего
-дня, каждое расхождение — `Rules shadow: the TypeScript engine decided
-differently`.
-
-Отчёт (только чтение):
-
-```bash
-docker compose exec worker-ts node server/dist/rules/shadow-report.js --days 14 --mismatches 20 --replay
-```
-
-`match` — доля совпавших решений (исходы правил и действия), `clean` — файлы
-без единого необъяснённого расхождения, `explained` — расхождения не движка:
-запись в Meta у Python упала (`error` против `fired`) или отказ токена
-оборвал проверку аккаунта (`partial`). `--replay` прогоняет сохранённые
-расхождения через текущий релиз: видно, закрыл ли их фикс.
-
-Выключить теневой режим — убрать `rules_shadow` из `TS_WORKER_JOBS`
-(файлы перестанут читаться и упрутся в лимит 500) или задать пустой
-`RULES_SHADOW_DIR` в `.env` для обоих воркеров.
-
-**Критерии переключения** (решение координатора #611, 07.11.2026). На
-продакшене ни у одного аккаунта правила не включены, поэтому «N дней чистых
-решений» на живых данных не набрать. Доказательства до переключения:
-
-1. Паритет в CI: реальные циклы Python против TS-движка
-   (`tests/test_rules_shadow.py` + `tests/test_integration.py` →
-   `server/test/rules/decide.test.ts`, 643 захвата и 100 % на 06.11.2026),
-   многоцикловой тест действующего цикла Python против TS с поддельной Graph
-   API (#668) и паритет валидации правил (~14 тыс. случаев).
-2. Теневой режим на продакшене не меньше 48 ч без ошибок и расхождений:
-   `unexplained` = 0, `errors` = 0. Пустые решения с обеих сторон
-   считаются совпадением: цикл, в котором правила не подошли ни у одного
-   аккаунта, оставляет маркер (`markers` в отчёте), и сравнение считает и
-   его, так что drill `rules-shadow-report` (`ops-drill.yml`, только
-   чтение) показывает, что захват и сравнение идут каждый цикл.
-3. Переключаться, пока правила выключены везде: в момент переключения
-   движок ничего не тратит.
-
-**Страховка после переключения.** Первые настоящие действия правил после
-того, как кто-то их включит, сравниваются задним числом с тем, что решил бы
-Python: 14 дней Python-решатель остаётся запускаемым в теневом режиме
-наоборот (TS действует, Python только решает и сравнивается). Любое
-расхождение — предупреждение в журнале и откат через `TS_WORKER_JOBS`.
-Само переключение объявляет координатор, переключает сессия, которая ведёт
-действующий цикл (#668).
-
-**Переключение** (сделано 07.11.2026, #611). `monitoring` входит в
-`TS_WORKER_JOBS` по умолчанию (`docker-compose.yml`), деплой перезапускает оба
-воркера. Пользователь отказался от 48-часового окна из пункта 2
-07.11.2026: пользователей нет, правила нигде не включены, теневой режим до
-переключения был чистым. Python удаляется сразу после переключения (этап 6),
-поэтому 14 дней теневого режима наоборот не ждём: пока Python в образе, он идёт
-сам (ниже), откат — через `TS_WORKER_JOBS`. Если в `.env` задан свой `TS_WORKER_JOBS`, в
-него нужно дописать `monitoring` вручную:
-
-```bash
-cd /opt/buyerly
-# TS_WORKER_JOBS=<текущий список>,monitoring
-docker compose up -d --no-deps worker worker-ts
-```
-
-Дальше работает теневой режим наоборот. Цикл `worker-ts` перед проверкой
-каждого аккаунта кладёт в `RULES_SHADOW_REPLAY_DIR`
-(`/app/logs/rules-shadow-replay`) то, на чём решает: сущности и окна,
-правила, отмены, ручные включения, слоты до проверки. Python-воркер, раз
-`monitoring` теперь не его, раз в 30 с берёт эти файлы
-([rules/shadow_replay.py](../rules/shadow_replay.py)) и прогоняет на них
-своё решение (`MonitoringWorker._decide_and_act`, тот же код, что в его
-цикле) в транзакции, которая всегда откатывается, с клиентом Meta, который
-ничего не пишет. Решение он пишет обычным захватом в `RULES_SHADOW_DIR`, и
-задача `rules_shadow` сравнивает его так же, как до переключения: тот же
-отчёт, те же счётчики. Цикл без проверенных аккаунтов оставляет маркер.
-Второго чтения Meta нет: Python решает на том, что прочитал TS. Паритет
-этого пути проверяет `server/test/worker/rule-cycle.test.ts`. Через 14 дней
-без расхождений его выключают: пустой `RULES_SHADOW_REPLAY_DIR` в `.env`.
-Первые циклы смотреть по истории действий в приложении и журналу
-`worker-ts`. Слоты подтверждений и пауз лежат в общей
-`rule_execution_states`, так что переход в любую сторону не сбрасывает ни
-ожидания подтверждения, ни паузы правил.
-
-**Откат.** Задать в `.env` `TS_WORKER_JOBS` без `monitoring`
-(`sync_log_compaction,inbox_email,inbox_telegram,inbox_push,worker_watchdog,account_day_boundary,rules_shadow,account_sync`)
-и тот же перезапуск:
-Python снова решает и действует со следующего цикла, а теневой режим
-продолжает сравнение.
+Здоровье воркера — `GET http://127.0.0.1:8091/health/worker-ts` внутри
+контейнера (имя пути осталось с переезда; его читают healthcheck и smoke): 200,
+когда Redis и база отвечают; в ответе последний запуск каждой задачи
+(`outcome`: `ok`, `error` или `skipped`). То же лежит в Redis: `docker exec
+buyerly-redis redis-cli HGETALL buyerly:worker-ts:runs`. Свежесть самой работы
+правил снаружи — `/health/worker` (см. «Учения по восстановлению»).
 
 ## Service worker
 
@@ -379,7 +240,9 @@ docker compose logs --tail=100 worker
 docker compose logs --tail=100 tunnel
 ```
 
-Файлы журналов разделены по процессам: `api.log`, `worker.log`, `database-migration.log`.
+Сервер, воркер и `migrate` пишут журнал в stdout (JSON-строки Fastify/pino): его
+читает `docker compose logs`. В `logs/` на хосте остаются результаты smoke
+(`logs/smoke/`).
 
 Docker stdout/stderr каждого сервиса использует `json-file` с пятью сжатыми
 файлами не более 20 MB каждый (до 100 MB на контейнер). Проверка фактически
@@ -415,8 +278,8 @@ df` и `du` без удаления volumes вручную.
 
 После переключения трафика смоук проверяет точный SHA
 live/readiness, отказ защищённых endpoints без сессии, workspace-isolation,
-Meta-конфигурацию без раскрытия значений, summary scope, worker heartbeat и
-Alembic/schema contract. Все операции — GET/SELECT; Meta Marketing API и бюджеты
+Meta-конфигурацию без раскрытия значений, summary scope, здоровье воркера и
+отсутствие невыполненных миграций TypeORM. Все операции — GET/SELECT; Meta Marketing API и бюджеты
 не изменяются.
 
 Результат каждой попытки сохраняется атомарно с правами `600`:
@@ -538,13 +401,13 @@ gh workflow run ops-drill.yml -f drill=restore-local -f confirm=restore-local
 | `restore-offsite` | `offsite_restore_drill.sh` | временный контейнер без сети; нужны `S3_*` и `BACKUP_ENCRYPTION_KEY` в `.env` |
 | `restore-offsite-negative` | `offsite_restore_drill.sh --negative` | то же плюс четыре случая отказа |
 | `uploads` | `drill_uploads.sh` | `buyerly-uploads` монтируется read-only, архив восстанавливается во временный volume `buyerly-uploads-drill` и сверяется по SHA-256 |
-| `worker-stall` | `drill_worker_stall.sh` | **ставит боевой worker на паузу** (`docker pause`) на 8–10 минут: правила не проверяются, Inbox-доставка идёт из `worker-ts` (или из API, если `worker_watchdog` вне `TS_WORKER_JOBS`); проверяет 503 на `/health/worker`, `WORKER_STALLED` и `WORKER_RECOVERED`; worker снимается с паузы при любом исходе |
+| `worker-stall` | `drill_worker_stall.sh` | **ставит боевой worker на паузу** (`docker pause`) на 8–10 минут: правила не проверяются, Inbox не доставляется; проверяет 503 на `/health/worker`, `WORKER_STALLED` и `WORKER_RECOVERED`; worker снимается с паузы при любом исходе |
 
 Ни одно учение не пишет в боевую БД или в volume uploads. Учения по расписанию не запускаются.
 
 `/health/worker` (публичный: `https://buyerly.app/health/worker`) отдаёт 503, когда последний завершённый monitoring cycle старше 360 с. Его стоит добавить во внешний uptime-монитор рядом с `/health/ready`: тогда о зависшем worker узнают и в случае, когда не работает сама доставка Inbox.
 
-`migrate` (`node server/dist/migrate.js`) изменяет production-схему только миграциями TypeORM из [server/src/migrations](../server/src/migrations/) (#611, этап 5): невыполненные идут по порядку, каждая в своей транзакции, их имена записываются в таблицу `migrations`. Первая, `Baseline1762473600000`, — схема, которую оставил Alembic на последней ревизии `0054_drop_unused_tables`: пустая база получает её целиком, а уже мигрированная Alembic (production) только проверяется на эту ревизию и записывает базовую миграцию как выполненную, ничего не меняя. CI ([scripts/ci_migration_parity.sh](../scripts/ci_migration_parity.sh)) доказывает, что `pg_dump --schema-only` пустой базы после TypeORM совпадает с базой после Alembic, а на копии базы Alembic базовая миграция схему не трогает. `synchronize` и ручные `ALTER TABLE` в production не используются.
+`migrate` (`node server/dist/migrate.js`) изменяет production-схему только миграциями TypeORM из [server/src/migrations](../server/src/migrations/) (#611, этап 5): невыполненные идут по порядку, каждая в своей транзакции, их имена записываются в таблицу `migrations`. Первая, `Baseline1762473600000`, — схема, которую оставил Alembic на последней ревизии `0054_drop_unused_tables`: пустая база получает её целиком, а уже мигрированная Alembic (production) только проверяется на эту ревизию и записывает базовую миграцию как выполненную, ничего не меняя. CI мигрирует пустую базу этими же миграциями, и [server/test/schema.test.ts](../server/test/schema.test.ts) сверяет с ней сущности; [restore-check.test.ts](../server/test/scripts/restore-check.test.ts) проверяет, что копия на последней ревизии Alembic принимается, а более старая — нет. `synchronize` и ручные `ALTER TABLE` в production не используются.
 
 Пользовательские аватары и логотипы хранятся в именованном Docker volume
 `buyerly-uploads`: API записывает их в `/app/uploads` и сам отдаёт по `/uploads/…`.

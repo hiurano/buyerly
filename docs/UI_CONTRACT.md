@@ -114,7 +114,7 @@ Every UI pull request must:
 2. Reuse an existing primitive from `frontend/src/ui/`. If none fits and the pattern will repeat, add and document a shared React primitive first.
 3. Change semantic values in `frontend/src/styles/tokens.stylex.ts`; consume them from components or `frontend/src/styles/index.css`.
 4. Preserve ids, handlers, API payloads, workspace isolation and security boundaries unless explicitly in scope.
-5. Update `tests/test_react_frontend_contract.py` when the production UI contract changes. Legal route and asset coverage lives in `tests/test_legal_pages.py`.
+5. Update the browser checks in `scripts/*-browser.mjs` when the production UI contract changes. Legal route and asset coverage lives in `server/test/site.test.ts`.
 6. Pass GitHub Actions, and check keyboard focus, disabled/busy/error states and overflow.
 7. For a change users will notice, add or extend a release note in `changelog/` and rebuild it with `npm run changelog`.
 

@@ -25,9 +25,6 @@ x-app: &app
     WEBAPP_URL: ${WEBAPP_URL:-https://buyerly.app}
     # BullMQ queues of the worker and the sync bus (decision 54).
     REDIS_URL: redis://redis:6379/0
-    # Read only by releases from before Python was removed (#611 stage 6),
-    # so a rollback to one still runs every job; the worker ignores it now.
-    TS_WORKER_JOBS: sync_log_compaction,inbox_email,inbox_telegram,inbox_push,worker_watchdog,account_day_boundary,account_sync,monitoring
     TZ: UTC
   volumes:
     - ./logs:/app/logs:z
