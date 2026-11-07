@@ -1,16 +1,9 @@
-// Image uploads (#611): the avatar and the workspace logo, sent as a
-// multipart form with one "file" part (PNG, JPG or WEBP, up to 5 MB).
+// Image uploads (decision 55): GraphQL's fileUpload grants a signed link, the
+// browser PUTs the file's bytes there (PNG, JPG or WEBP, up to 5 MB), and the
+// avatar or workspace logo takes the stored file with its next update.
 
-/** `POST /api/onboarding/avatar` and `DELETE /api/onboarding/avatar`. */
-export interface ImageUploadResponse {
-  status: 'ok';
-  /** `/uploads/avatars/…`, or "" once removed. */
-  avatar_url: string;
-}
-
-/** `POST /api/onboarding/workspace/logo`; the workspace takes it with its next update. */
-export interface LogoUploadResponse {
-  status: 'ok';
-  /** `/uploads/workspaces/…`. */
-  logo_url: string;
+/** `PUT /uploads/signed?token=…`: where the file is now. */
+export interface SignedUploadResponse {
+  /** `/uploads/avatars/…` or `/uploads/workspaces/…`. */
+  asset_url: string;
 }

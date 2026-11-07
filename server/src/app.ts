@@ -10,9 +10,7 @@ import { ClientAddress } from './http/client-address.ts';
 import { installErrorHandler } from './http/errors.ts';
 import { RateLimiter } from './http/rate-limit.ts';
 import { telegramBot, type TelegramBot } from './notifications/telegram.ts';
-import { authRoutes } from './routes/auth.ts';
 import { graphqlRoutes } from './routes/graphql.ts';
-import { inviteRoutes } from './routes/invites.ts';
 import { syncSocketRoutes } from './routes/sync-socket.ts';
 import { syncRoutes } from './routes/sync.ts';
 import { metaOAuthRoutes } from './routes/meta-oauth.ts';
@@ -107,8 +105,6 @@ export function buildApp(config: Config, database: Database | null, options: Bui
   // /health/live|ready|worker, the React app, public pages and the 404s.
   installSite(app);
 
-  void app.register(authRoutes);
-  void app.register(inviteRoutes);
   void app.register(syncRoutes);
   void app.register(uploadRoutes);
   void app.register(telegramRoutes);

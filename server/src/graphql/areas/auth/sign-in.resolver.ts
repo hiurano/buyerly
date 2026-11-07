@@ -13,6 +13,7 @@ import {
   verifyLoginCode,
   verifyLoginLink,
 } from '../../../routes/auth.ts';
+import { publicMetaInviteInfo } from '../../../meta/connections.ts';
 import { publicInviteInfo } from '../../../routes/invites.ts';
 import type { GraphQLContext } from '../../context.ts';
 import { inputSchema } from '../../input.ts';
@@ -46,6 +47,12 @@ export class SignInResolver {
   async workspaceInviteDetails(@Arg('token', () => String) token: string, @Ctx() context: GraphQLContext): Promise<unknown> {
     limitField(context, 'invite_info', 30);
     return publicInviteInfo(context.app, token);
+  }
+
+  @Query(() => JSONScalar, { description: 'What a Meta connection invite link offers, for the page shown before connecting.' })
+  async metaInviteDetails(@Arg('token', () => String) token: string, @Ctx() context: GraphQLContext): Promise<unknown> {
+    limitField(context, 'meta_invite_public', 30);
+    return context.app.db.transaction((tx) => publicMetaInviteInfo(tx, token));
   }
 
   @Mutation(() => JSONScalar, { description: 'Mails a sign-in code and link; a new address without an invite passes Turnstile first.' })

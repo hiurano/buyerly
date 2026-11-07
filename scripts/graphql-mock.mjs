@@ -123,6 +123,7 @@ const FIELDS = String.raw`({
   fileUpload: (v) => ['POST', '/api/onboarding/file-upload', v.input],
   availableUsers: () => ['GET', '/api/auth/accounts'],
   workspaceInviteDetails: (v) => ['GET', '/api/invites/' + enc(v.token)],
+  metaInviteDetails: (v) => ['GET', '/api/meta/invites/public/' + enc(v.token)],
   emailUserAccountAuthChallenge: (v) => ['POST', '/api/auth/request-temporary-password', v.input],
   emailTokenUserAccountAuth: (v) => ['POST', '/api/auth/verify-temporary-password', v.input],
   emailLinkUserAccountAuth: (v) => ['POST', '/api/auth/verify-email-link', v.input],

@@ -1,4 +1,4 @@
-// Sign-in, sessions and the profile as /api/auth/* and /api/me send them
+// Sign-in, sessions and the profile as their GraphQL fields send them
 // (#611 stage 3). Field names are the wire's, snake_case, as the Python API
 // (api/schemas/auth.py, api/schemas/workspaces.py) answered before the
 // TypeScript server took these paths over.
@@ -17,7 +17,7 @@ export interface WorkspaceItem {
   members_count: number;
 }
 
-/** `POST /api/auth/verify-temporary-password` and `/api/auth/verify-email-link`. */
+/** `emailTokenUserAccountAuth` and `emailLinkUserAccountAuth`. */
 export interface LoginResponse {
   /** The signed-in account; the browser sends it back as X-Buyerly-Account. */
   account_id: number | null;
@@ -28,7 +28,7 @@ export interface LoginResponse {
   redirect_url: string | null;
 }
 
-/** One account logged in to this browser (`GET /api/auth/accounts`), Linear's "Add an account…". */
+/** One account logged in to this browser (`availableUsers`), Linear's "Add an account…". */
 export interface BrowserAccountItem {
   id: number;
   username: string;
@@ -41,7 +41,7 @@ export interface BrowserAccountItem {
   workspaces: WorkspaceItem[];
 }
 
-/** One signed-in browser (`GET /api/auth/sessions`); times are ISO 8601 in UTC. */
+/** One signed-in browser (`authenticationSessions`); times are ISO 8601 in UTC. */
 export interface WebSessionItem {
   id: string;
   user_agent: string;
@@ -53,7 +53,7 @@ export interface WebSessionItem {
   current: boolean;
 }
 
-/** `GET /api/me`. */
+/** `viewer`. */
 export interface UserProfileResponse {
   id: number | null;
   username: string;
@@ -73,7 +73,7 @@ export interface UserProfileResponse {
   workspaces: WorkspaceItem[];
 }
 
-/** `POST /api/auth/request-temporary-password`. */
+/** `emailUserAccountAuthChallenge`'s input. */
 export interface RequestTemporaryPasswordRequest {
   email: string;
   invite_token?: string | null;
@@ -81,23 +81,23 @@ export interface RequestTemporaryPasswordRequest {
   turnstile_token?: string | null;
 }
 
-/** `POST /api/auth/verify-temporary-password`. */
+/** `emailTokenUserAccountAuth`'s input. */
 export interface VerifyTemporaryPasswordRequest {
   email: string;
   code: string;
 }
 
-/** `POST /api/auth/verify-email-link`. */
+/** `emailLinkUserAccountAuth`'s input. */
 export interface VerifyEmailLinkRequest {
   token: string;
 }
 
-/** `POST /api/auth/request-email-change`. */
+/** `userEmailChangeRequest`'s input. */
 export interface RequestEmailChangeRequest {
   new_email: string;
 }
 
-/** `POST /api/auth/verify-email-change`. */
+/** `userEmailChangeVerify`'s input. */
 export interface VerifyEmailChangeRequest {
   code: string;
 }
