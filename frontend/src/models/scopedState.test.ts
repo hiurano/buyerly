@@ -20,7 +20,7 @@ interface Pending { url: string; method: string; workspace: string | null; reply
 interface RestRequest { url: string; method: string; alias: string; wrap: (body: unknown, status: number) => { value?: unknown; status?: number; error?: Json } }
 
 // No WebSocket, no sync engine: this checks scoped state over the REST API, which then serves every list.
-// The sync engine's client is checked in the browser (scripts/sync-browser.mjs).
+// The sync engine's client is checked in the browser (scripts/sync-browser.ts).
 const location = { pathname: '/a/rules', search: '' };
 beforeAll(() => {
   vi.stubGlobal('window', { location, localStorage: { getItem: () => null }, addEventListener: () => {} });
@@ -33,9 +33,9 @@ afterAll(() => {
 });
 
 // The client API (/api/graphql, #509) is held as the REST request of its field, as the browser
-// checks hold it (scripts/graphql-mock.mjs, whose table of fields this reads), and answered as GraphQL.
+// checks hold it (scripts/graphql-mock.ts, whose table of fields this reads), and answered as GraphQL.
 const graphqlFields = (() => {
-  const source = fs.readFileSync(new URL('../../../scripts/graphql-mock.mjs', import.meta.url), 'utf8');
+  const source = fs.readFileSync(new URL('../../../scripts/graphql-mock.ts', import.meta.url), 'utf8');
   const table = /const FIELDS = String\.raw`([\s\S]*?)`;/.exec(source)![1];
   const qs = (params: Json) => {
     const query = new URLSearchParams();

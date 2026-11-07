@@ -43,3 +43,6 @@ frontend/*.tsbuildinfo
 
 # Runtime logs (logs/smoke/*.json included); deploy.sh runs git clean
 /logs/
+
+# Python bytecode left by old helper scripts
+scripts/__pycache__/

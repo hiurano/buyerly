@@ -112,7 +112,7 @@ Vite собирает `frontend/dist`, и сервер сам отдаёт эт�
 
 В своём браузере человек включает инструменты переключателем «Let your browser's AI assistant use Buyerly» в Settings → Preferences ([PreferencesView.tsx](../frontend/src/components/preferences/PreferencesView.tsx)). Он пишет тот же ключ `buyerly-webmcp` в `localStorage`, и [register.ts](../frontend/src/webmcp/register.ts) (`useWebMcpEnabled`) сразу регистрирует или снимает инструменты открытого workspace, в том числе в других вкладках. В браузере без WebMCP переключатель неактивен.
 
-Chrome не сверяет аргументы агента со схемой и не передаёт агенту текст исключения. Поэтому инструменты проверяют вход сами ([input.ts](../frontend/src/webmcp/input.ts)) и возвращают ошибки значением `{"error", "status"}`. Названия из Meta попадают только в ответы инструментов, как данные с пометкой `untrustedContentHint`, и никогда — в их описания. Проверка — [scripts/webmcp-browser.mjs](../scripts/webmcp-browser.mjs): она работает с настоящим WebMCP, если он есть в браузере, а иначе с заменой, которая ведёт себя так же.
+Chrome не сверяет аргументы агента со схемой и не передаёт агенту текст исключения. Поэтому инструменты проверяют вход сами ([input.ts](../frontend/src/webmcp/input.ts)) и возвращают ошибки значением `{"error", "status"}`. Названия из Meta попадают только в ответы инструментов, как данные с пометкой `untrustedContentHint`, и никогда — в их описания. Проверка — [scripts/webmcp-browser.ts](../scripts/webmcp-browser.ts): она работает с настоящим WebMCP, если он есть в браузере, а иначе с заменой, которая ведёт себя так же.
 
 ## Эксплуатация
 

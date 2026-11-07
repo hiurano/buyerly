@@ -160,7 +160,7 @@ Buyerly is laid out for `1024px` and wider and reflows down to a `390px` phone. 
 - dialogs fit the viewport, keep close/primary actions reachable and expose internal scrolling for long content;
 - no hard-coded width that would block a later mobile pass.
 
-Inside the screens (Rules, Ads Manager, Inbox; `scripts/mobile-screens-browser.mjs` at 390/768/1024/1440px):
+Inside the screens (Rules, Ads Manager, Inbox; `scripts/mobile-screens-browser.ts` at 390/768/1024/1440px):
 
 - view tabs that no longer fit their strip all fold into one capsule with the active tab's label and a chevron, named "N more", that opens a menu of the views (`BuyerlyTabs collapseOverflow`, as Linear's view header); the header actions stay on the right and are never cut;
 - entity tables scroll sideways inside their own viewport (`BuyerlyDataTable`), never the document; figures do not wrap;
