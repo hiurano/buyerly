@@ -173,7 +173,8 @@ bash scripts/deploy.sh
 
 Все фоновые задачи выполняет `worker` (BullMQ на Redis, [server/src/worker](../server/src/worker/)):
 `inbox_email`, `inbox_telegram`, `inbox_push`, `sync_log_compaction`,
-`worker_watchdog`, `account_day_boundary`, `account_sync` и `monitoring`.
+`account_day_boundary`, `account_sync` и `monitoring`. Сторож воркера
+(`WORKER_STALLED`) работает в `api`, чтобы замечать и остановленный воркер.
 `account_sync` — половина цикла мониторинга с данными: аккаунт из Meta
 (валюта, статус, часовой пояс), факты аналитики за сегодня и один закрытый день,
 кэш инвентаря, здоровье аккаунта. Вторая половина — `monitoring`: проверки

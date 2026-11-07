@@ -5,10 +5,10 @@ import { rows } from '../database.ts';
 import { AuditEventEntity } from '../entities/index.ts';
 import { pythonIso } from '../notifications/telegram-link.ts';
 
-// The worker watchdog (services/worker_watchdog.py, #199), run by this
-// worker once it owns `worker_watchdog`. The Python worker's heartbeat only
-// proves its process is alive; the proof of work is `finished_at` of the
-// last completed monitoring cycle in automation_runtime_states['monitoring'].
+// The worker watchdog (#199). It runs in the API server, not the worker
+// (#685): a stalled or paused worker can't report its own stall. The proof of
+// work is `finished_at` of the last completed monitoring cycle in
+// automation_runtime_states['monitoring'].
 // Once that is CRITICAL_LAG_SECONDS old, every workspace with an active ad
 // account gets one urgent WORKER_STALLED Inbox notification, and
 // WORKER_RECOVERED once cycles finish again.
@@ -52,9 +52,33 @@ export function cycleStatus(payload: Record<string, unknown> | null, now: Date =
   return { status, lag_seconds: lag, finished_at: finished.iso, errors_count: payload?.errors_count ?? null };
 }
 
-// check_once: one pass; the cycle status and what it did.
-export async function checkOnce(db: Database, log: FastifyBaseLogger, now: Date = new Date()): Promise<CycleStatus & { action: string | null }> {
-  return db.transaction((tx) => checkIn(tx, log, now));
+// The advisory lock a pass holds for its transaction (jobs.ts LOCK_NAMESPACE,
+// the number the worker's `worker_watchdog` job had): during a deploy the old
+// and the new API process never alert twice.
+const LOCK = [611, 5] as const;
+
+// One locked pass; null when another API process holds the lock.
+export async function checkLocked(db: Database, log: FastifyBaseLogger, now: Date = new Date()): Promise<(CycleStatus & { action: string | null }) | null> {
+  return db.transaction(async (tx) => {
+    const [lock] = await rows<{ acquired: boolean }>(tx, 'SELECT pg_try_advisory_xact_lock($1, $2) AS acquired', [...LOCK]);
+    return lock?.acquired ? checkIn(tx, log, now) : null;
+  });
+}
+
+// The loop in the API process: a pass every CHECK_INTERVAL_MS; the returned
+// function stops it.
+export function startWatchdog(db: Database, log: FastifyBaseLogger, intervalMs: number = CHECK_INTERVAL_MS): () => void {
+  let running = false;
+  const tick = (): void => {
+    if (running) return;
+    running = true;
+    checkLocked(db, log)
+      .catch((error: unknown) => log.error({ err: error }, 'Worker watchdog pass failed'))
+      .finally(() => { running = false; });
+  };
+  const timer = setInterval(tick, intervalMs);
+  timer.unref();
+  return () => clearInterval(timer);
 }
 
 // The pass inside a transaction of the caller's.
