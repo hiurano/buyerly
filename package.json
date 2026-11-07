@@ -13,7 +13,7 @@
     "changelog": "node server/src/scripts/build-changelog.ts",
     "lint": "eslint server packages/shared frontend/src frontend/sw scripts",
     "typecheck": "npm run typecheck --workspaces --if-present && tsc -p scripts",
-    "test": "npm test --workspace @buyerly/server"
+    "test": "npm test --workspace @buyerly/server --workspace buyerly-frontend"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

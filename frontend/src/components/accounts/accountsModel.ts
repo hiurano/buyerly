@@ -6,7 +6,7 @@ import { listViewDefaults, type SortDirection } from '@/ui/listView';
 /**
  * The Ad accounts page (#388), modeled on Linear's Projects: a list of the
  * workspace's ad accounts and a page for each. Pure helpers only, so
- * scripts/check-accounts.cjs can run them without the app.
+ * accountsModel.test.ts can run them without the app.
  */
 
 /** A team as the page needs it: its name and the ad accounts (row ids) it holds. */
