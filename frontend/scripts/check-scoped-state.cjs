@@ -23,9 +23,9 @@ global.document = { cookie: '' };
 // The sync engine's client is checked in the browser (scripts/sync-browser.mjs).
 global.WebSocket = undefined;
 // The client API (/api/graphql, #509) is held as the REST request of its field, as the browser
-// checks hold it (scripts/graphql-mock.mjs, whose table of fields this reads), and answered as GraphQL.
+// checks hold it (scripts/graphql-mock.ts, whose table of fields this reads), and answered as GraphQL.
 const graphqlFields = (() => {
-  const source = fs.readFileSync(path.resolve(__dirname, '../../scripts/graphql-mock.mjs'), 'utf8');
+  const source = fs.readFileSync(path.resolve(__dirname, '../../scripts/graphql-mock.ts'), 'utf8');
   const table = /const FIELDS = String\.raw`([\s\S]*?)`;/.exec(source)[1];
   const qs = (params) => {
     const query = new URLSearchParams();
