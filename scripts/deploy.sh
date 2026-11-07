@@ -319,8 +319,26 @@ if ! CHECK_PATH="${APP_DIR}" bash "${SCRIPT_DIR}/check_disk_usage.sh"; then
     exit 1
 fi
 
+disk_check_output=$(CHECK_PATH="${APP_DIR}" bash "${SCRIPT_DIR}/check_disk_usage.sh" || true)
+if [[ "${disk_check_output}" == *"[WARNING]"* ]]; then
+    # Frequent deploys leave build cache younger than BUILD_CACHE_UNTIL; above the
+    # warning threshold, keep only a bounded cache so the build has room.
+    echo "[INFO] Disk above the warning threshold: trimming the Docker build cache to ${BUILD_CACHE_KEEP:-3GB}."
+    docker builder prune --force --keep-storage "${BUILD_CACHE_KEEP:-3GB}" >/dev/null || true
+    CHECK_PATH="${APP_DIR}" bash "${SCRIPT_DIR}/check_disk_usage.sh" || true
+fi
+
 echo "[4/7] Building buyerly-app:${TARGET_SHA}..."
-docker compose build --pull api
+build_log=$(mktemp)
+if ! docker compose build --pull --progress=plain api >"${build_log}" 2>&1; then
+    echo "[ERROR] Image build failed; last lines of the build output:"
+    tail -n 40 "${build_log}" | sed 's/^/[ERROR] build: /'
+    echo "[ERROR] Disk: $(df -hP "${APP_DIR}" | awk 'NR == 2 {print $3 " used of " $2 " (" $5 ")"}')"
+    docker system df 2>/dev/null | sed 's/^/[ERROR] docker: /' || true
+    rm -f "${build_log}"
+    exit 1
+fi
+rm -f "${build_log}"
 
 echo "[5/7] Migrating the database..."
 docker compose up -d db redis
