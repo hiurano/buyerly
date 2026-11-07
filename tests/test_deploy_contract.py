@@ -32,7 +32,7 @@ class TestDeployContract(unittest.TestCase):
             project_root / "scripts" / "drill_restore.sh"
         ).read_text()
         cls.offsite_sync_script = (
-            project_root / "scripts" / "offsite_sync.py"
+            project_root / "server" / "src" / "scripts" / "offsite-sync.ts"
         ).read_text()
         cls.log_verification_script = (
             project_root / "scripts" / "verify_docker_log_rotation.sh"
@@ -429,11 +429,11 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("BACKUP_ENCRYPTION_KEY", self.backup_script)
         self.assertIn("openssl enc -aes-256-cbc", self.backup_script)
         self.assertIn("flock -n", self.backup_script)
-        self.assertIn("offsite_sync.py", self.backup_script)
+        self.assertIn("offsite_sync.sh", self.backup_script)
         self.assertIn("S3Client", self.offsite_sync_script)
         self.assertIn("AWS4-HMAC-SHA256", self.offsite_sync_script)
-        self.assertIn("min_keep_count", self.offsite_sync_script)
-        self.assertIn("prune_old_backups", self.offsite_sync_script)
+        self.assertIn("minKeep", self.offsite_sync_script)
+        self.assertIn("pruneOldBackups", self.offsite_sync_script)
 
     def test_backups_are_scheduled_by_compose_not_the_host(self):
         # A new server gets nightly backups from deploy.sh alone: no cron.
@@ -448,7 +448,7 @@ class TestDeployContract(unittest.TestCase):
         self.assertNotIn("/var/run/docker.sock", backup)
         self.assertIn("postgresql-client", self.dockerfile)
         self.assertIn(
-            "COPY scripts/backup_service.sh scripts/backup_db.sh scripts/backup_env.sh scripts/offsite_sync.py ./scripts/",
+            "COPY scripts/backup_service.sh scripts/backup_db.sh scripts/backup_env.sh scripts/offsite_sync.sh ./scripts/",
             self.dockerfile,
         )
         # Started with every release and every rollback.

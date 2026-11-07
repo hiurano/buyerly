@@ -3,15 +3,12 @@
 deploy.sh runs backup_db.sh on the host with no exported settings; Compose
 only hands .env to the containers. The backup service runs the same script
 inside the image, connected to the database over the network. These tests
-run the real scripts in both settings with fake docker/python3/pg_dump, so
+run the real scripts in both settings with fake docker/node/pg_dump, so
 they need bash, gzip, tar, flock and openssl but no Docker or network. They also cover how a backup is published
 (never half-written under its final name) and how an off-site copy keeps its
 format on the way back.
 """
 
-import contextlib
-import importlib.util
-import io
 import os
 from pathlib import Path
 import shutil
@@ -19,11 +16,10 @@ import stat
 import subprocess
 import tempfile
 import unittest
-from unittest import mock
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ("backup_db.sh", "backup_env.sh", "restore_db.sh", "restore_uploads.sh")
+SCRIPTS = ("backup_db.sh", "backup_env.sh", "offsite_sync.sh", "restore_db.sh", "restore_uploads.sh")
 DUMP = "-- fake dump\nSELECT 1;\n-- PostgreSQL database dump complete\n"
 
 FAKE_DOCKER = """#!/usr/bin/env bash
@@ -45,20 +41,22 @@ case "$1" in
 esac
 """
 
-# Records what off-site sync would receive: its arguments and which S3
-# settings reached its environment (names only). A download "fetches"
-# FAKE_REMOTE_FILE under its own name, like offsite_sync.py --dest-dir.
-FAKE_PYTHON = """#!/usr/bin/env bash
+# Records what off-site sync (scripts/offsite_sync.sh running node on
+# offsite-sync.js) would receive: its arguments and which S3 settings reached
+# its environment (names only). A download "fetches" FAKE_REMOTE_FILE under its
+# own name, like offsite-sync --dest-dir.
+FAKE_NODE = """#!/usr/bin/env bash
+shift  # the script path
 if [[ " $* " == *" --download-latest --dest-dir "* ]]; then
     cp "${FAKE_REMOTE_FILE}" "${@: -1}/$(basename "${FAKE_REMOTE_FILE}")"
 fi
 {
-    echo "python3 $*"
+    echo "offsite-sync $*"
     for key in S3_ENDPOINT_URL S3_BUCKET S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY S3_REGION; do
         echo "${key}=${!key:-}"
     done
 } >> "${FAKE_LOG}"
-exit "${FAKE_PYTHON_EXIT:-0}"
+exit "${FAKE_OFFSITE_EXIT:-0}"
 """
 
 # The backup service's database tools: libpq clients on PATH, no docker.
@@ -92,7 +90,7 @@ class BackupScriptSandbox(unittest.TestCase):
         fake_bin.mkdir()
         fakes = (
             ("docker", FAKE_DOCKER),
-            ("python3", FAKE_PYTHON),
+            ("node", FAKE_NODE),
             ("pg_dump", FAKE_PG_DUMP),
             ("psql", FAKE_PSQL),
             ("pg_isready", FAKE_PG_ISREADY),
@@ -115,6 +113,7 @@ class BackupScriptSandbox(unittest.TestCase):
             "BACKUP_LOCK_FILE": str(self.tmp / "backup.lock"),
             "FAKE_LOG": str(self.log),
             "FAKE_DUMP": DUMP,
+            "OFFSITE_SYNC_JS": str(self.app / "scripts" / "offsite_sync.sh"),
         }
         env.update(extra_env or {})
         return subprocess.run(
@@ -226,7 +225,7 @@ class BackupSettingsTests(BackupScriptSandbox):
         self.assertIn("encryption off (BACKUP_ENCRYPTION_KEY is empty", result.stdout)
         self.assertIn("off-site off", result.stdout)
         self.assertTrue(self.backups_made()[0].endswith(".sql.gz"))
-        self.assertNotIn("python3", self.log.read_text())
+        self.assertNotIn("offsite-sync", self.log.read_text())
 
     def test_missing_explicit_env_file_is_an_error(self):
         result = self.run_script(
@@ -261,7 +260,7 @@ class BackupSettingsTests(BackupScriptSandbox):
 
         self.assertEqual(result.returncode, 1)
         self.assertIn("S3_ENDPOINT_URL S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY", result.stdout)
-        self.assertNotIn("python3", self.log.read_text())
+        self.assertNotIn("offsite-sync", self.log.read_text())
 
 
 @unittest.skipUnless(shutil.which("openssl"), "openssl is required")
@@ -275,7 +274,7 @@ class BackupPublishingTests(BackupScriptSandbox):
         self.assertEqual(self.leftovers(), [])
         calls = self.log.read_text()
         self.assertNotIn("last_backup_at", calls)
-        self.assertNotIn("python3", calls)
+        self.assertNotIn("offsite-sync", calls)
 
     def test_pg_dump_failing_midway_publishes_nothing(self):
         self.write_env(self.full_env())
@@ -439,7 +438,7 @@ class NightlyBackupServiceTests(BackupScriptSandbox):
     def test_failed_offsite_upload_keeps_the_archives_but_not_the_success_mark(self):
         self.write_env(self.full_env())
 
-        result = self.run_nightly(FAKE_PYTHON_EXIT="1")
+        result = self.run_nightly(FAKE_OFFSITE_EXIT="1")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("(off-site: FAILED)", result.stdout)
@@ -498,126 +497,6 @@ class NightlyBackupServiceTests(BackupScriptSandbox):
                 self.assertEqual(result.returncode, 1, result.stdout)
                 self.assertIn("Uploads were not changed", result.stdout)
                 self.assertNotIn("docker run", self.log.read_text())
-
-
-def load_offsite_sync():
-    spec = importlib.util.spec_from_file_location("offsite_sync", PROJECT_ROOT / "scripts" / "offsite_sync.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-class OffsiteDownloadTests(unittest.TestCase):
-    """offsite_sync.py --download-latest keeps the object's name and format."""
-
-    def setUp(self):
-        self.module = load_offsite_sync()
-        self.tmp = Path(tempfile.mkdtemp())
-        self.addCleanup(shutil.rmtree, self.tmp)
-        self.objects = {
-            "buyerly_postgres_20260930_030000.sql.gz": b"\x1f\x8bnewest",
-            "buyerly_postgres_20260929_030000.sql.gz.enc": b"Salted__older",
-            "buyerly_postgres_notes.txt": b"not a backup",
-            "buyerly_uploads_20260929_030000.tar.gz.enc": b"Salted__uploads",
-        }
-        listing = [
-            {"key": "buyerly_uploads_20260929_030000.tar.gz.enc", "last_modified": "2026-10-02T00:00:00Z", "size": "1"},
-            {"key": "buyerly_postgres_notes.txt", "last_modified": "2026-10-01T00:00:00Z", "size": "1"},
-            {"key": "buyerly_postgres_20260930_030000.sql.gz", "last_modified": "2026-09-30T00:00:00Z", "size": "1"},
-            {"key": "buyerly_postgres_20260929_030000.sql.gz.enc", "last_modified": "2026-09-29T00:00:00Z", "size": "1"},
-        ]
-
-        def request(client, method, key="", query=None, body=b"", headers=None):
-            return 200, self.objects[key], {}
-
-        def list_objects(client, prefix=""):
-            return [item for item in listing if item["key"].startswith(prefix)]
-
-        patches = [
-            mock.patch.object(self.module.S3Client, "list_objects", list_objects),
-            mock.patch.object(self.module.S3Client, "_request", request),
-            mock.patch.dict(os.environ, {
-                "S3_ENDPOINT_URL": "https://r2.example.test",
-                "S3_BUCKET": "b",
-                "S3_ACCESS_KEY_ID": "a",
-                "S3_SECRET_ACCESS_KEY": "s",
-            }),
-        ]
-        for patch in patches:
-            patch.start()
-            self.addCleanup(patch.stop)
-
-    def run_main(self, *args):
-        with mock.patch("sys.argv", ["offsite_sync.py", *args]), \
-                contextlib.redirect_stdout(io.StringIO()), \
-                contextlib.redirect_stderr(io.StringIO()) as err:
-            code = self.module.main()
-        return code, err.getvalue()
-
-    def test_dest_dir_keeps_the_newest_backups_own_name(self):
-        code, _ = self.run_main("--download-latest", "--dest-dir", str(self.tmp))
-
-        self.assertEqual(code, 0)
-        self.assertEqual(sorted(p.name for p in self.tmp.iterdir()), ["buyerly_postgres_20260930_030000.sql.gz"])
-        self.assertEqual((self.tmp / "buyerly_postgres_20260930_030000.sql.gz").read_bytes(), b"\x1f\x8bnewest")
-
-    def test_uploads_kind_downloads_the_newest_uploads_archive(self):
-        code, _ = self.run_main("--kind", "uploads", "--download-latest", "--dest-dir", str(self.tmp))
-
-        self.assertEqual(code, 0)
-        self.assertEqual(sorted(p.name for p in self.tmp.iterdir()), ["buyerly_uploads_20260929_030000.tar.gz.enc"])
-
-    def test_dest_with_another_format_suffix_is_refused(self):
-        dest = self.tmp / "latest_offsite_restore.sql.gz.enc"
-
-        code, err = self.run_main("--download-latest", "--dest", str(dest))
-
-        self.assertEqual(code, 1)
-        self.assertIn("is .sql.gz", err)
-        self.assertFalse(dest.exists())
-
-
-
-class OffsiteErrorTests(unittest.TestCase):
-    """A storage error is reported as such, not as "no backups"."""
-
-    def setUp(self):
-        self.module = load_offsite_sync()
-        denied = (403, b"<Error><Code>AccessDenied</Code></Error>", {})
-        patches = [
-            mock.patch.object(self.module.S3Client, "_request", lambda *args, **kwargs: denied),
-            mock.patch.dict(os.environ, {
-                "S3_ENDPOINT_URL": "https://r2.example.test",
-                "S3_BUCKET": "b",
-                "S3_ACCESS_KEY_ID": "a",
-                "S3_SECRET_ACCESS_KEY": "s",
-            }),
-        ]
-        for patch in patches:
-            patch.start()
-            self.addCleanup(patch.stop)
-
-    def run_main(self, *args):
-        with mock.patch("sys.argv", ["offsite_sync.py", *args]), \
-                contextlib.redirect_stdout(io.StringIO()), \
-                contextlib.redirect_stderr(io.StringIO()) as err:
-            code = self.module.main()
-        return code, err.getvalue()
-
-    def test_denied_listing_fails_with_the_http_status(self):
-        for args in (("--download-latest", "--dest-dir", "."), ("--list",)):
-            with self.subTest(args=args):
-                code, err = self.run_main(*args)
-
-                self.assertEqual(code, 1)
-                self.assertIn("HTTP 403", err)
-                self.assertNotIn("No remote backups found", err)
-
-    def test_denied_listing_only_skips_pruning(self):
-        client = self.module.S3Client("https://r2.example.test", "b", "a", "s")
-        with contextlib.redirect_stderr(io.StringIO()) as err:
-            self.assertEqual(client.prune_old_backups(), 0)
-        self.assertIn("Skipping prune", err.getvalue())
 
 
 if __name__ == "__main__":

@@ -66,7 +66,7 @@ COPY meta_api ./meta_api
 COPY rules ./rules
 COPY scheduler ./scheduler
 COPY services ./services
-COPY scripts/backup_service.sh scripts/backup_db.sh scripts/backup_env.sh scripts/offsite_sync.py ./scripts/
+COPY scripts/backup_service.sh scripts/backup_db.sh scripts/backup_env.sh scripts/offsite_sync.sh ./scripts/
 COPY --from=frontend /app/frontend/dist ./frontend/dist
 
 # Node and the server's production dependencies, for `node server/dist/main.js`.

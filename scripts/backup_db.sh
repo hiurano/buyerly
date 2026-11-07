@@ -229,7 +229,7 @@ offsite_result="off"
 uploads_offsite_result="off"
 if [[ "${offsite_enabled}" == "true" ]]; then
     echo "[INFO] Triggering off-site S3 backup sync..."
-    if python3 "${SCRIPT_DIR}/offsite_sync.py" --upload "${target_file}" --prune --retention-days "${OFFSITE_RETENTION_DAYS}"; then
+    if "${SCRIPT_DIR}/offsite_sync.sh" --upload "${target_file}" --prune --retention-days "${OFFSITE_RETENTION_DAYS}"; then
         echo "[SUCCESS] Off-site S3 backup sync completed."
         offsite_result="uploaded"
     else
@@ -237,7 +237,7 @@ if [[ "${offsite_enabled}" == "true" ]]; then
         offsite_result="FAILED"
     fi
     if [[ "${uploads_result}" == "archived" ]]; then
-        if python3 "${SCRIPT_DIR}/offsite_sync.py" --kind uploads --upload "${uploads_file}" --prune --retention-days "${OFFSITE_RETENTION_DAYS}"; then
+        if "${SCRIPT_DIR}/offsite_sync.sh" --kind uploads --upload "${uploads_file}" --prune --retention-days "${OFFSITE_RETENTION_DAYS}"; then
             uploads_offsite_result="uploaded"
         else
             echo "[WARNING] Off-site sync of the uploads archive failed; the local archive is intact."

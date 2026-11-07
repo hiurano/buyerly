@@ -198,7 +198,7 @@ offsite_has_backup() {
         source "${SCRIPT_DIR}/backup_env.sh"
         load_backup_env >/dev/null
         [[ -z "$(missing_offsite_keys)" ]] || exit 1
-        listing=$(python3 "${SCRIPT_DIR}/offsite_sync.py" --list) || exit 2
+        listing=$("${SCRIPT_DIR}/offsite_sync.sh" --list) || exit 2
         grep -q " $1[0-9]" <<<"${listing}"
     )
 }
@@ -208,6 +208,8 @@ offsite_has_backup() {
 # uploads come back from the newest off-site copies before migrations run.
 restore_empty_server() {
     local empty status=0
+    # A new server runs no buyerly-api yet: off-site sync uses the image just built.
+    local -x OFFSITE_SYNC_IMAGE="${OFFSITE_SYNC_IMAGE:-buyerly-app:${APP_VERSION}}"
     empty=$(docker exec buyerly-db psql --username=buyerly --dbname=buyerly -Atc \
         "SELECT to_regclass('public.alembic_version') IS NULL")
     [[ "${empty}" == "t" ]] || return 0

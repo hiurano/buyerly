@@ -60,7 +60,7 @@ if [[ "${DOWNLOAD_LATEST_OFFSITE}" == "true" ]]; then
     echo "[INFO] Downloading the latest uploads archive from off-site S3 storage..."
     download_dir=$(umask 077; mktemp -d "${BACKUP_DIR}/.offsite_download.XXXXXX")
     cleanup_paths+=("${download_dir}")
-    if ! python3 "${SCRIPT_DIR}/offsite_sync.py" --kind uploads --download-latest --dest-dir "${download_dir}"; then
+    if ! "${SCRIPT_DIR}/offsite_sync.sh" --kind uploads --download-latest --dest-dir "${download_dir}"; then
         echo "[ERROR] Off-site download failed."
         exit 1
     fi

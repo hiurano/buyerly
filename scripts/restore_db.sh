@@ -72,7 +72,7 @@ if [[ "${DOWNLOAD_LATEST_OFFSITE}" == "true" ]]; then
     # private directory that is removed on exit; the object stays in S3.
     download_dir=$(umask 077; mktemp -d "${BACKUP_DIR}/.offsite_download.XXXXXX")
     cleanup_paths+=("${download_dir}")
-    if ! python3 "${SCRIPT_DIR}/offsite_sync.py" --download-latest --dest-dir "${download_dir}"; then
+    if ! "${SCRIPT_DIR}/offsite_sync.sh" --download-latest --dest-dir "${download_dir}"; then
         echo "[ERROR] Off-site download failed."
         exit 1
     fi

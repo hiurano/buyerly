@@ -31,7 +31,7 @@ get the case-by-case pass before stage 6.
 | test_analytics_fact_store | 14 | covered + ported (by case) | `accounts/analytics.test.ts`, `accounts/clock.test.ts` (ported), `worker/account-sync.test.ts`, `meta/client.test.ts`. `cleanup_expired_facts` is called by nothing but its test: dies |
 | test_api | 73 | covered (by area) | sessions/sign-in `auth/*`, health, rules `rules/*`, audit/undo `audit/*` + `meta/delivery.test.ts`, accounts, uploads. Summary snapshot writing and `/api/settings` runtime: no TS code (monitoring loop) |
 | test_api_meta_lifecycle | 4 | dies | the Python Meta client's lifecycle inside the Python app |
-| test_backup_env | 27 | other check | `scripts/backup_*.sh`; needs a Vitest/shell check or a drop |
+| test_backup_env | 22 | ported + other check | the off-site sync unit tests moved to `scripts/offsite-sync.test.ts` with the script (`scripts/offsite_sync.py` is gone). The rest runs `scripts/backup_*.sh`/`restore_*.sh` in a shell sandbox; needs a Vitest/shell check or a drop |
 | test_batch_schedule_loading | 2 | dies | cache of the Python schedule loader |
 | test_changelog | 6 | other check | `scripts/build_changelog.py` and the site pages |
 | test_client_api | 13 | covered + ported (by case) | `graphql/client-api.test.ts` (writes sent together added), `graphql/schema.test.ts`, area tests. "Every field runs a route" and "production serves routes only as GraphQL" check the Python REST routes: die |
