@@ -71,7 +71,14 @@ export function jobDefinitions(context: WorkerContext): Partial<Record<JobId, Jo
   let sync: AccountSync | null = null;
   const accountSync = (): AccountSync => (sync ??= new AccountSync({ db, log, tokenEncryptionKey: config.metaTokenEncryptionKey, meta: meta() }));
   let rules: RuleCycle | null = null;
-  const ruleCycle = (): RuleCycle => (rules ??= new RuleCycle({ db, log, tokenEncryptionKey: config.metaTokenEncryptionKey, meta: meta() }));
+  const ruleCycle = (): RuleCycle =>
+    (rules ??= new RuleCycle({
+      db,
+      log,
+      tokenEncryptionKey: config.metaTokenEncryptionKey,
+      meta: meta(),
+      shadow: config.rulesShadowDir && config.rulesShadowReplayDir ? { captures: config.rulesShadowDir, requests: config.rulesShadowReplayDir } : undefined,
+    }));
   const delivery = { db, log, webappUrl: config.webappUrl };
   const deliveries = {
     inbox_email: {

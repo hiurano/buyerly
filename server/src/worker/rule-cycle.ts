@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { mkdir, readdir, rename, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { gzipSync } from 'node:zlib';
 import type { EntityManager } from 'typeorm';
 import { rows, type Database } from '../database.ts';
 import type { MetaClient, Priority } from '../meta/client.ts';
@@ -66,7 +69,15 @@ export interface RuleCycleOptions {
   // The pause between accounts, in seconds (asyncio.sleep).
   sleep?: (seconds: number) => Promise<void>;
   random?: () => number;
+  // The reverse shadow run (rules/shadow_replay.py): each checked account's
+  // decision inputs go to `requests` for the Python worker to decide on, and
+  // a cycle that checked none leaves a marker in `captures`, as Python's
+  // cycle did before the switch (rules/shadow.py finish_cycle).
+  shadow?: { captures: string; requests: string };
 }
+
+// rules/shadow.py MAX_PENDING_FILES: a directory nobody reads stops filling here.
+const SHADOW_MAX_PENDING = 500;
 
 interface Settings {
   defaultInterval: number;
@@ -245,10 +256,59 @@ export class RuleCycle {
   private readonly clock: () => number;
   private readonly keyring: MetaTokenKeyring;
   private cycleId = '';
+  private shadowWritten = false;
 
   constructor(private readonly options: RuleCycleOptions) {
     this.clock = options.clock ?? (() => Date.now() / 1000);
     this.keyring = new MetaTokenKeyring(options.tokenEncryptionKey);
+  }
+
+  // One gzipped JSON file, renamed into place; never throws, never fills a
+  // directory past SHADOW_MAX_PENDING.
+  private async writeShadowFile(directory: string, document: Record<string, unknown>, suffix: string): Promise<boolean> {
+    try {
+      await mkdir(directory, { recursive: true });
+      const pending = (await readdir(directory)).filter((name) => name.endsWith('.json.gz')).length;
+      if (pending >= SHADOW_MAX_PENDING) {
+        this.options.log.warn(`Rules shadow file skipped: ${pending} files wait unread in ${directory}`);
+        return false;
+      }
+      const name = `${String(Date.now()).padStart(13, '0')}-${this.cycleId}-${suffix}`;
+      const temporary = path.join(directory, `.${name}.tmp`);
+      await writeFile(temporary, gzipSync(JSON.stringify(document)));
+      await rename(temporary, path.join(directory, `${name}.json.gz`));
+      return true;
+    } catch (error) {
+      this.options.log.warn(`Rules shadow file not written: ${errorText(error)}`);
+      return false;
+    }
+  }
+
+  // The marker of a cycle that checked no account: empty on both sides, it
+  // shows the comparison follows every cycle.
+  private async finishShadowCycle(now: number): Promise<void> {
+    const shadow = this.options.shadow;
+    if (!shadow || this.shadowWritten) return;
+    await this.writeShadowFile(
+      shadow.captures,
+      {
+        version: 1,
+        marker: true,
+        cycle_id: this.cycleId,
+        account: { account_id: '', workspace_id: null, currency: 'UNKNOWN', rules_enabled: false, timezone_name: null },
+        now,
+        stop_confirmation_minutes: 0,
+        critical_interval: 0,
+        due_rules: [],
+        entities: [],
+        entity_windows: {},
+        undone_actions: {},
+        manual_enables: {},
+        execution_states: [],
+        python: { outcomes: [], actions: [], stopped_early: false },
+      },
+      'cycle',
+    );
   }
 
   private async loadSettings(tx: EntityManager): Promise<Settings> {
@@ -662,7 +722,7 @@ export class RuleCycle {
         [accountRef],
       ),
     }));
-    const decider = createDecider({
+    const input = {
       cycle_id: this.cycleId,
       account: { account_id: accountRef, owner_user_id: account.owner_user_id, workspace_id: account.workspace_id, currency: account.currency, rules_enabled: account.rules_enabled, timezone_name: account.timezone_name },
       now,
@@ -674,7 +734,10 @@ export class RuleCycle {
       undone_actions: loaded.undone,
       manual_enables: loaded.manual,
       execution_states: loaded.states.map((state) => ({ ...state, last_attempt_at: Number(state.last_attempt_at), last_success_at: state.last_success_at === null ? null : Number(state.last_success_at) })),
-    });
+    };
+    // Before anything acts: the Python worker decides on the same inputs (reverse shadow run).
+    if (this.options.shadow && (await this.writeShadowFile(this.options.shadow.requests, { version: 1, ...input }, accountRef))) this.shadowWritten = true;
+    const decider = createDecider(input);
 
     // A token Meta refused on a write stops this account's actions for the
     // cycle and is handled like one refused on a read.
@@ -812,6 +875,7 @@ export class RuleCycle {
     const cycleStarted = performance.now();
     const startedAt = pythonUtcIso(new Date());
     this.cycleId = randomUUID().replaceAll('-', '');
+    this.shadowWritten = false;
     const stats: RuleCycleStats = {
       cycle_id: this.cycleId,
       accounts_checked: 0,
@@ -951,6 +1015,7 @@ export class RuleCycle {
       }
     }
 
+    await this.finishShadowCycle(this.clock());
     await this.persistRuntimeState(stats, startedAt, performance.now() - cycleStarted);
     return stats;
   }
