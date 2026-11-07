@@ -83,7 +83,7 @@ class Settings(BaseSettings):
     # core/worker_jobs.py); the Python worker skips them.
     TS_WORKER_JOBS: str = Field(
         default="",
-        description="Comma-separated job ids the TypeScript worker owns (inbox_email, inbox_telegram, inbox_push, sync_log_compaction, worker_watchdog, account_day_boundary, account_sync)",
+        description="Comma-separated job ids the TypeScript worker owns (inbox_email, inbox_telegram, inbox_push, sync_log_compaction, worker_watchdog, account_day_boundary, account_sync, rules_shadow, monitoring)",
     )
     SERVICE_WORKER: bool = Field(
         default=True,
