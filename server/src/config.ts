@@ -57,6 +57,14 @@ export interface Config {
   // SERVER_UPLOADS_DIR replaces it; the tests use a directory of their own.
   uploadsRoot: string;
 
+  // The built React app and public pages (frontend/dist), served by this
+  // server with SERVE_STATIC (default on); SERVICE_WORKER off serves the
+  // service worker's kill switch instead (#499). FRONTEND_DIST replaces the
+  // directory.
+  frontendDir: string;
+  serveStatic: boolean;
+  serviceWorker: boolean;
+
   // Redis (decision 54): the worker's BullMQ queues (worker/), and the sync
   // bus between processes. Empty means none: the worker refuses to start.
   redisUrl: string;
@@ -84,6 +92,8 @@ export interface Config {
 
 // <repository>/uploads, from server/src/config.ts and server/dist/config.js alike.
 export const DEFAULT_UPLOADS_ROOT = fileURLToPath(new URL('../../uploads', import.meta.url));
+// <repository>/frontend/dist, the React build.
+export const DEFAULT_FRONTEND_DIR = fileURLToPath(new URL('../../frontend/dist', import.meta.url));
 
 // Compose gives the Python services SQLAlchemy URLs
 // ("postgresql+asyncpg://…"); node-postgres wants the plain scheme.
@@ -149,6 +159,9 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     vapidPrivateKey: (env.VAPID_PRIVATE_KEY ?? '').trim(),
     vapidSubject: env.VAPID_SUBJECT || 'mailto:team@buyerly.app',
     uploadsRoot: env.SERVER_UPLOADS_DIR || DEFAULT_UPLOADS_ROOT,
+    frontendDir: env.FRONTEND_DIST || DEFAULT_FRONTEND_DIR,
+    serveStatic: envBool(env.SERVE_STATIC, true),
+    serviceWorker: envBool(env.SERVICE_WORKER, true),
     redisUrl: (env.REDIS_URL ?? '').trim(),
     tsWorkerJobs: env.TS_WORKER_JOBS ?? '',
     rulesShadowDir: (env.RULES_SHADOW_DIR ?? '').trim(),

@@ -89,3 +89,41 @@ export function telegramBot(token: string, log: FastifyBaseLogger, fetcher: type
     },
   };
 }
+
+// The webhook Telegram calls the bot back on (routes/telegram.ts). Pointed at
+// this server on every start, as core/telegram.py did; harmless to repeat, and
+// a failure only delays linking.
+export const TELEGRAM_WEBHOOK_PATH = '/api/telegram/webhook';
+const ALLOWED_UPDATES = ['message', 'my_chat_member'];
+
+export async function registerTelegramWebhook(
+  token: string,
+  webappUrl: string,
+  log: FastifyBaseLogger,
+  fetcher: typeof fetch = fetch,
+): Promise<boolean> {
+  if (!token) return false;
+  const url = (webappUrl || 'https://buyerly.app').replace(/\/+$/, '') + TELEGRAM_WEBHOOK_PATH;
+  try {
+    const response = await fetcher(`${TELEGRAM_API_URL}/bot${token}/setWebhook`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        url,
+        secret_token: telegramBot(token, log, fetcher).webhookSecret(),
+        allowed_updates: ALLOWED_UPDATES,
+        max_connections: 5,
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) {
+      log.error('Telegram setWebhook failed: HTTP %d %s', response.status, (await response.text()).slice(0, 200));
+      return false;
+    }
+  } catch (error) {
+    log.error('Telegram setWebhook failed: %s', (error as Error).message);
+    return false;
+  }
+  log.info('Telegram webhook set to %s', url);
+  return true;
+}

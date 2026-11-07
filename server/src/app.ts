@@ -18,6 +18,7 @@ import { syncSocketRoutes } from './routes/sync-socket.ts';
 import { syncRoutes } from './routes/sync.ts';
 import { metaOAuthRoutes } from './routes/meta-oauth.ts';
 import { telegramRoutes } from './routes/telegram.ts';
+import { installSite } from './routes/site.ts';
 import { uploadRoutes } from './routes/uploads.ts';
 import type { SyncTuning } from './sync/hub.ts';
 
@@ -109,11 +110,8 @@ export function buildApp(config: Config, database: Database | null, options: Bui
     reply.header('X-XSS-Protection', '1; mode=block');
   });
 
-  // Fastify's own 404 logs and returns the whole URL, query string included.
-  app.setNotFoundHandler(async (_request, reply) => {
-    reply.code(404);
-    return { detail: 'Not Found' };
-  });
+  // /health/live|ready|worker, the React app, public pages and the 404s.
+  installSite(app);
 
   // Compose probes these every few seconds: log only failures.
   const quiet = { logLevel: 'warn' } as const;
