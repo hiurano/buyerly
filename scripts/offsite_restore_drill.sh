@@ -208,7 +208,7 @@ if [[ "${RUN_NEGATIVE}" == "true" ]]; then
     expect_failure "rejected credentials" "HTTP 40[13]" wrong_secret
     expect_failure "missing bucket" "HTTP 40[34]|NoSuchBucket" missing_bucket
     mkdir -p "${work_dir}/damaged"
-    python3 "${SCRIPT_DIR}/offsite_sync.py" --download-latest --dest-dir "${work_dir}/damaged" >/dev/null
+    "${SCRIPT_DIR}/offsite_sync.sh" --download-latest --dest-dir "${work_dir}/damaged" >/dev/null
     damaged=$(find "${work_dir}/damaged" -name 'buyerly_postgres_*' | head -n 1)
     truncate -s "$(( $(stat -c %s "${damaged}") / 2 ))" "${damaged}"
     expect_failure "damaged (truncated) archive" "Target database was not changed" \
