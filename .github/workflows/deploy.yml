@@ -412,6 +412,11 @@ jobs:
           echo
           test "$(curl -fsS http://127.0.0.1:8090/health/server/live)" = '{"status":"alive","version":"ci"}'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/health/server/ready)" = 503
+          # The site it serves itself (#611 stage 6): probes, landing page, the React app.
+          test "$(curl -fsS http://127.0.0.1:8090/health/live)" = '{"status":"alive","version":"ci"}'
+          curl -fsS http://127.0.0.1:8090/ | grep -qi '<html'
+          curl -fsS http://127.0.0.1:8090/login | grep -q 'id="root"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/sw.js)" = 200
           docker logs buyerly-server-ci
           docker rm -f buyerly-server-ci
 

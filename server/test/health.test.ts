@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildApp, type Database } from '../src/app.ts';
 import { logLevel, postgresUrl, readConfig } from '../src/config.ts';
 
-const config = readConfig({ APP_VERSION: 'abc123', LOG_LEVEL: 'silent' });
+const config = readConfig({ APP_VERSION: 'abc123', LOG_LEVEL: 'silent', FRONTEND_DIST: '/nonexistent-frontend-dist' });
 
 function database(ping: () => Promise<void>): Database {
   return { ping, close: async () => {}, transaction: async () => { throw new Error("no database"); }, listen: async () => { throw new Error("no database"); } };
