@@ -88,7 +88,7 @@ services:
   migrate:
     <<: *app
     container_name: buyerly-migrate
-    command: ["python", "-m", "services.database"]
+    command: ["node", "server/dist/migrate.js"]
     restart: "no"
     profiles: ["migrate"]
     depends_on:

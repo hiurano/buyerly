@@ -285,6 +285,23 @@ jobs:
           pip install -r requirements.txt
           python -m alembic upgrade head
 
+      # TypeORM takes the migrations over from Alembic (#611 stage 5): its
+      # baseline builds Alembic's schema on an empty database and is only
+      # recorded on a migrated one (scripts/ci_migration_parity.sh).
+      - name: TypeORM migrations equal Alembic's schema
+        run: |
+          npm ci
+          npm run build --workspace @buyerly/server
+          OUT=/tmp/migration-parity bash scripts/ci_migration_parity.sh
+
+      - name: Upload the schema dumps
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-parity
+          path: /tmp/migration-parity
+          if-no-files-found: ignore
+
       # The Python API on the same database, for the contract tests: the
       # moved areas' tests run against both servers, and sessions and codes
       # from one must work on the other (docs/DEVELOPMENT.md). Its log holds
