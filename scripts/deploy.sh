@@ -209,7 +209,7 @@ offsite_has_backup() {
 restore_empty_server() {
     local empty status=0
     empty=$(docker exec buyerly-db psql --username=buyerly --dbname=buyerly -Atc \
-        "SELECT to_regclass('public.alembic_version') IS NULL")
+        "SELECT to_regclass('public.app_settings') IS NULL")
     [[ "${empty}" == "t" ]] || return 0
     offsite_has_backup buyerly_postgres_ || status=$?
     case "${status}" in

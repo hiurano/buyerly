@@ -50,6 +50,16 @@ drill_sql() {
         --no-psqlrc --tuples-only --no-align --set=ON_ERROR_STOP=1 --command="$1"
 }
 
+# The newest migration TypeORM recorded (#611 stage 5); a backup from before
+# TypeORM took over names Alembic's revision instead.
+schema_rev() {
+    if [[ "$("$1" "SELECT to_regclass('public.migrations') IS NOT NULL")" == "t" ]]; then
+        "$1" "SELECT name FROM migrations ORDER BY id DESC LIMIT 1"
+    else
+        "$1" "SELECT 'alembic ' || version_num FROM alembic_version"
+    fi
+}
+
 failures=0
 check() {
     # check <description> <condition result: ok|anything else>
@@ -126,11 +136,11 @@ if [[ "${source_name}" =~ ^buyerly_postgres_([0-9]{4})([0-9]{2})([0-9]{2})_([0-9
 fi
 echo "Restore took:   ${restore_seconds} s (download, verification and apply)"
 
-live_rev=$(live_sql "SELECT version_num FROM alembic_version")
-drill_rev=$(drill_sql "SELECT version_num FROM alembic_version")
-echo "Alembic:        live ${live_rev}, restored ${drill_rev}"
+live_rev=$(schema_rev live_sql)
+drill_rev=$(schema_rev drill_sql)
+echo "Schema:         live ${live_rev}, restored ${drill_rev}"
 [[ -n "${drill_rev}" && "${drill_rev}" == "${live_rev}" ]] && r=ok || r=no
-check "restored schema is at the live Alembic revision" "${r}"
+check "restored schema is at the live migration" "${r}"
 
 tables_sql="SELECT string_agg(table_name, ',' ORDER BY table_name) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
 [[ "$(drill_sql "${tables_sql}")" == "$(live_sql "${tables_sql}")" ]] && r=ok || r=no
@@ -159,19 +169,16 @@ token_counts=$(drill_sql "
     SELECT access_token_encrypted FROM meta_connections WHERE coalesce(access_token_encrypted, '') <> ''
     UNION ALL
     SELECT access_token_encrypted FROM accounts WHERE coalesce(access_token_encrypted, '') <> ''" \
-    | docker exec -i "${API_CONTAINER}" python -c '
-import sys
-from core.meta_tokens import MetaTokenError, decrypt_meta_token
-ok = bad = 0
-for line in sys.stdin:
-    if not line.strip():
-        continue
-    try:
-        decrypt_meta_token(line.strip())
-        ok += 1
-    except MetaTokenError:
-        bad += 1
-print(ok, bad)
+    | docker exec -i "${API_CONTAINER}" node --input-type=module -e '
+import { MetaTokenKeyring } from "/app/server/dist/meta/tokens.js";
+let input = "";
+for await (const chunk of process.stdin) input += chunk;
+let ok = 0, bad = 0, keyring = null;
+try { keyring = new MetaTokenKeyring(process.env.META_TOKEN_ENCRYPTION_KEY ?? ""); } catch {}
+for (const line of input.split("\n").map((l) => l.trim()).filter(Boolean)) {
+  try { if (!keyring) throw new Error("no key"); keyring.decrypt(line); ok += 1; } catch { bad += 1; }
+}
+console.log(ok, bad);
 ')
 read -r tokens_ok tokens_bad <<< "${token_counts}"
 echo "Meta tokens:    ${tokens_ok} decrypt with the app's key, ${tokens_bad} do not"
@@ -181,7 +188,7 @@ check "every restored Meta token is readable by the app" "${r}"
 if [[ "${RUN_NEGATIVE}" == "true" ]]; then
     echo
     echo "=== Failure cases (each must fail and leave the restored database unchanged) ==="
-    fingerprint_sql="SELECT (SELECT count(*) FROM users) || '/' || (SELECT count(*) FROM audit_events) || '/' || (SELECT version_num FROM alembic_version)"
+    fingerprint_sql="SELECT (SELECT count(*) FROM users) || '/' || (SELECT count(*) FROM audit_events) || '/' || (SELECT count(*) FROM pg_tables WHERE schemaname = 'public')"
     before=$(drill_sql "${fingerprint_sql}")
     expect_failure() {
         # expect_failure <description> <expected output pattern> <command...>

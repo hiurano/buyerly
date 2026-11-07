@@ -62,7 +62,7 @@ get the case-by-case pass before stage 6.
 | test_public_repo_hygiene | 2 | other check | scans the repository |
 | test_rate_limit | 10 | covered (by area) | `client-address.test.ts`, `auth/sign-in.test.ts`, `workspaces/public-invite.test.ts`, `uploads/images.test.ts` |
 | test_react_frontend_contract | 33 | other check | greps the frontend source; partly replaced by `scripts/*-browser.mjs` |
-| test_restore_check | 16 | other check | `scripts/restore_db.sh`, `drill_restore.sh` |
+| test_restore_check | 16 | ported | `scripts/restore-check.test.ts` (the check moved to `server/src/scripts/restore-check.ts` with TypeORM migrations, #611 stage 5); the file is removed |
 | test_rule_examples | 9 | covered + ported (by case) | `rules/labels.test.ts` (concurrent opening, older examples, owner marker added). The simulator test moved with the simulator |
 | test_rule_simulator | 14 | ported | `server/test/scripts/rule-simulator.test.ts` (the same scenarios and pinned numbers; the port was proved against the Python simulator table by table) |
 | test_rule_validation | 9 | covered | `rules/validation.test.ts` (+ parity) |

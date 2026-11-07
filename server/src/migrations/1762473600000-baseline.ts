@@ -13,11 +13,11 @@ export class Baseline1762473600000 implements MigrationInterface {
   name = 'Baseline1762473600000';
 
   async up(queryRunner: QueryRunner): Promise<void> {
-    const [{ alembic }] = (await queryRunner.query(
+    const [{ alembic }] = await queryRunner.manager.query<{ alembic: boolean }[]>(
       "SELECT to_regclass('public.alembic_version') IS NOT NULL AS alembic",
-    )) as { alembic: boolean }[];
+    );
     if (alembic) {
-      const rows = (await queryRunner.query('SELECT version_num FROM alembic_version')) as { version_num: string }[];
+      const rows = await queryRunner.manager.query<{ version_num: string }[]>('SELECT version_num FROM alembic_version');
       const revisions = rows.map((row) => row.version_num);
       if (revisions.length !== 1 || revisions[0] !== LAST_ALEMBIC_REVISION) {
         throw new Error(`Alembic left this database at ${revisions.join(', ') || 'no revision'}, expected ${LAST_ALEMBIC_REVISION}`);
