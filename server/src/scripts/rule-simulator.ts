@@ -273,7 +273,7 @@ export class FakeMeta {
     let status: string | undefined;
     if (method === 'POST') {
       if (this.expireTokenOnFirstWrite && this.posts.length === 0) this.tokenExpired = true;
-      status = new URLSearchParams(String(init?.body ?? '')).get('status') ?? undefined;
+      status = new URLSearchParams(typeof init?.body === 'string' ? init.body : '').get('status') ?? undefined;
       this.posts.push({ minute: this.minute, adset: adsetId, status });
     }
     if (this.tokenExpired) {
@@ -315,7 +315,7 @@ class SimulatedMetaClient extends MetaClient {
       graphVersion: 'v26.0',
       baseUrl: 'http://fake-meta.invalid',
       appSecret: '',
-      fetch: fake.fetch as typeof fetch,
+      fetch: fake.fetch,
       sleep: async (seconds) => {
         backoff.seconds += seconds;
       },
@@ -577,7 +577,7 @@ export async function simulate(
     const app = {
       db: database,
       config: readConfig({ META_TOKEN_ENCRYPTION_KEY: TOKEN_KEY, LOG_LEVEL: 'silent' }),
-      services: { metaFetch: fake.fetch as typeof fetch },
+      services: { metaFetch: fake.fetch },
       log: silentLog,
     } as unknown as FastifyInstance;
     useMetaClient(app, meta);
