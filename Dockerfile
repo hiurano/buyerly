@@ -2,7 +2,9 @@
 # the API, the React build and the uploads; the same image runs the worker,
 # the migrations and the backup service (docker-compose.yml).
 
-FROM node:24-slim
+# Docker Hub's official node image through AWS's public mirror: the VPS's
+# anonymous Docker Hub pulls hit its rate limit (429) and failed deploys.
+FROM public.ecr.aws/docker/library/node:24-slim
 
 WORKDIR /app
 
