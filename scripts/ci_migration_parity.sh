@@ -19,7 +19,7 @@ psql_admin() { pg psql "${PGURL_BASE}/postgres" -v ON_ERROR_STOP=1 -qAtc "$1"; }
 # session SETs are not schema.
 dump() {
   pg pg_dump "${PGURL_BASE}/$1" --no-owner --no-privileges \
-    --exclude-table=alembic_version --exclude-table=migrations "${@:2}" \
+    --exclude-table=alembic_version --exclude-table=migrations --exclude-table=migrations_id_seq "${@:2}" \
     | grep -Ev '^\\(un)?restrict ' | grep -Ev '^-- Dumped (from|by) '
 }
 migrate() { DATABASE_URL="${PGURL_BASE}/$1" node server/dist/migrate.js; }
