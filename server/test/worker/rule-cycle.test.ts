@@ -397,4 +397,57 @@ describe.skipIf(!DATABASE_URL)('the rule cycle on the database', () => {
     expect(ourStats.some((stats) => (stats.errors as string[]).some((error) => error.includes('window')))).toBe(true);
 
   }, 180_000);
+
+  // #685: SIGTERM mid-cycle. The cycle stops at its next step: the claimed
+  // write it is making finishes and settles, nothing is left PENDING, and the
+  // accounts' rules not fully checked are due again for the next worker.
+  it('stops between steps on shutdown and leaves no PENDING slot', async () => {
+    const owner = await createUser(dataSource);
+    const workspace = await createWorkspace(dataSource, owner);
+    const prefix = `act_${String(Date.now()).slice(-9)}`;
+    const base = Number(String(Date.now()).slice(-6)) * 10 + 7;
+    const raise = { preset_id: base, workspace_id: workspace.id, name: 'Raise', logic: 'and', check_interval: 1, cooldown_minutes: 60, action: 'increase_budget', budget_change_percent: 20, budget_max_daily: 100, conditions: [{ metric: 'leads', operator: 'gte', value: 1, time_window: 'today' }] };
+    const accountIds = [`${prefix}1`, `${prefix}2`];
+    const adset = (account: string, n: number): FakeEntity => ({ id: `${account}_s${n}`, account, level: 'adset', name: `Ad set ${n}`, status: 'ACTIVE', daily_budget: '2000', campaign_id: `${account}_c1`, spend: { today: 5 }, leads: 2, writes: 'ok' });
+    graph.seed([adset(accountIds[0], 1), adset(accountIds[0], 2), adset(accountIds[0], 3), adset(accountIds[1], 1)]);
+    const repository = dataSource.getRepository(AccountEntity);
+    for (const accountId of accountIds) {
+      await repository.save(repository.create({
+        accountId, name: accountId, workspaceId: workspace.id, ownerUserId: owner.id, accessToken: 'ok', accessTokenEncrypted: null, metaConnectionId: null,
+        currency: 'USD', timezoneName: 'UTC', lastDayStartDate: '2026-11-06', statusLabel: 'Active', rulesEnabled: true, activeRules: JSON.stringify([raise]),
+        leadUserId: null, targetCostPerResult: null,
+      }));
+    }
+    const db = databaseOver(dataSource);
+    const shutdown = new AbortController();
+    const writes = () => graph.requests.filter((request) => request.method === 'POST').length;
+    const cycle = (signal?: AbortSignal) => new RuleCycle({
+      db, log, tokenEncryptionKey: KEY, clock: () => CLOCK, sleep: async () => undefined, ...(signal ? { signal } : {}),
+      meta: new MetaClient({
+        graphVersion: 'v26.0', baseUrl: graph.url(), appSecret: 'parity-secret', sleep: async () => undefined, cacheProvider: new PostgresInventoryCache(db, log),
+        // SIGTERM arrives while the first write is on its way to Meta.
+        fetch: async (input, init) => {
+          if (init?.method === 'POST') shutdown.abort();
+          return fetch(input, init);
+        },
+      }),
+    });
+    const slots = () => dataSource.query<{ account_id: string; entity_id: string; status: string }[]>(
+      'SELECT account_id, entity_id, status FROM rule_execution_states WHERE account_id = ANY($1) ORDER BY account_id, entity_id', [accountIds]);
+    const schedules = () => dataSource.query<{ account_id: string; last_checked_at: string }[]>(
+      'SELECT account_id, last_checked_at FROM automation_schedule_states WHERE account_id = ANY($1) ORDER BY account_id', [accountIds]);
+
+    await cycle(shutdown.signal).run({ accountIds });
+    expect(writes()).toBe(1);
+    expect(await slots()).toEqual([{ account_id: accountIds[0], entity_id: `${accountIds[0]}_s1`, status: 'SUCCESS' }]);
+    expect((await schedules()).map((row) => Number(row.last_checked_at))).toEqual([0, 0]);
+    expect(graph.entities.get(`${accountIds[0]}_s1`)?.daily_budget).toBe('2400');
+
+    // The next worker checks everything left; the first raise is in its cooldown.
+    await cycle().run({ accountIds });
+    expect(writes()).toBe(4);
+    expect((await slots()).map((row) => row.status)).toEqual(['SUCCESS', 'SUCCESS', 'SUCCESS', 'SUCCESS']);
+    expect(graph.entities.get(`${accountIds[0]}_s1`)?.daily_budget).toBe('2400');
+    expect((await schedules()).map((row) => Number(row.last_checked_at))).toEqual([CLOCK, CLOCK]);
+  }, 60_000);
 });

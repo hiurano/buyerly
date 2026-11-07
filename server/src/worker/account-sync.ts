@@ -83,6 +83,8 @@ export interface AccountSyncOptions {
   tokenEncryptionKey: string;
   // Seconds since the epoch, the cycle's clock (time.time in Python).
   clock?: () => number;
+  // Aborted on SIGTERM: the sync stops between accounts (#685).
+  signal?: AbortSignal;
 }
 
 // int(value) where Python's int() takes it; undefined where it raises
@@ -160,11 +162,27 @@ export function connectionProblem(account: AccountRow, connections: Map<number, 
 
 // Runs `work` for every item, at most `limit` at once, results in item order
 // (asyncio.gather under a semaphore, return_exceptions=True).
-export async function gatherLimited<T, R>(items: T[], limit: number, work: (item: T) => Promise<R>): Promise<Array<{ value?: R; error?: unknown }>> {
-  const results: Array<{ value?: R; error?: unknown }> = items.map(() => ({}));
+// The error of an item a stopping cycle never started.
+export const STOPPED = new Error('Worker is shutting down');
+
+// Schedule states a cycle moved forward, with the times they had before.
+export type ScheduleMarks = Array<[stateKey: string, previous: number]>;
+
+// Puts schedule states back to where they were, so accounts a stopping cycle
+// never reached are due again at once in the next worker.
+export async function restoreSchedule(tx: EntityManager, marks: ScheduleMarks): Promise<void> {
+  for (const [stateKey, previous] of marks) {
+    await tx.query('UPDATE automation_schedule_states SET last_checked_at = $2, updated_at = now() WHERE state_key = $1', [stateKey, previous]);
+  }
+}
+
+// `work` over every item, `limit` at a time; once `signal` is aborted no new
+// item starts and the rest fail with STOPPED.
+export async function gatherLimited<T, R>(items: T[], limit: number, work: (item: T) => Promise<R>, signal?: AbortSignal): Promise<Array<{ value?: R; error?: unknown }>> {
+  const results: Array<{ value?: R; error?: unknown }> = items.map(() => ({ error: STOPPED }));
   let next = 0;
   const lane = async () => {
-    while (next < items.length) {
+    while (next < items.length && !signal?.aborted) {
       const index = next;
       next += 1;
       try {
@@ -382,7 +400,7 @@ export class AccountSync {
       }
       const settings = await this.loadSettings(tx);
 
-      const due: Array<{ account: AccountRow; accessToken: string; accountInfoDue: boolean; now: number }> = [];
+      const due: Array<{ account: AccountRow; accessToken: string; accountInfoDue: boolean; now: number; marks: ScheduleMarks }> = [];
       for (const account of accounts) {
         const problem = connectionProblem(account, connections, log);
         if (problem) {
@@ -403,7 +421,11 @@ export class AccountSync {
           continue;
         }
         await this.markChecked(tx, account, accountKey, now);
-        if (healthDue || currencyRefreshDue) await this.markChecked(tx, account, healthKey, now);
+        const marks: ScheduleMarks = [[accountKey, lastSync]];
+        if (healthDue || currencyRefreshDue) {
+          await this.markChecked(tx, account, healthKey, now);
+          marks.push([healthKey, lastHealth]);
+        }
         stats.accounts_synced += 1;
         let accessToken: string;
         try {
@@ -428,15 +450,24 @@ export class AccountSync {
           await this.setHealth(tx, account, { success: false, error, signals: { token_healthy: false } });
           continue;
         }
-        due.push({ account, accessToken, accountInfoDue: healthDue || currencyRefreshDue, now });
+        due.push({ account, accessToken, accountInfoDue: healthDue || currencyRefreshDue, now, marks });
       }
       return { due, connections, settings };
     });
     if (!prepared) return stats;
 
-    const snapshots = await gatherLimited(prepared.due, prepared.settings.maxConcurrentAccounts, (item) => this.fetch(item.account, item.accessToken, item.accountInfoDue, item.now));
+    const { signal } = this.options;
+    const snapshots = await gatherLimited(prepared.due, prepared.settings.maxConcurrentAccounts, (item) => this.fetch(item.account, item.accessToken, item.accountInfoDue, item.now), signal);
 
     for (const [index, item] of prepared.due.entries()) {
+      if (signal?.aborted) {
+        // Shutting down: the accounts left are due again in the next worker.
+        const left = prepared.due.slice(index);
+        await db.transaction((tx) => restoreSchedule(tx, left.flatMap((rest) => rest.marks)));
+        stats.accounts_synced -= left.length;
+        log.info(`Account sync ${stats.cycle_id} stopped for shutdown; ${left.length} account(s) left for the next worker`);
+        break;
+      }
       const { account } = item;
       const { value: snapshot, error } = snapshots[index];
       try {
