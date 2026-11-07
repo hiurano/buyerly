@@ -16,7 +16,7 @@ flowchart LR
     K <--> M[Meta API]
 ```
 
-Состав production задаёт [docker-compose.yml](../docker-compose.yml): `api`, `worker`, `redis`, `db`, `backup`, `tunnel` (Cloudflare Tunnel) и одноразовый `migrate`. Один образ `buyerly-app` на `node:24-slim` ([Dockerfile](../Dockerfile)): собранный сервер на TypeScript и сборка frontend. `api` — `node server/dist/main.js`, `worker` — `node server/dist/worker/main.js`, `migrate` — `node server/dist/migrate.js`. PostgreSQL 16 хранит данные, Redis — очереди воркера и шину синхронизации; счётчики rate limit живут в памяти единственного процесса API.
+Состав production задаёт [docker-compose.yml](../docker-compose.yml): `api`, `worker`, `redis`, `db`, `backup`, `tunnel` (Cloudflare Tunnel) и одноразовый `migrate`. Один образ `buyerly-app` на `node:24-slim` с зеркала AWS ECR Public, без лимита Docker Hub ([Dockerfile](../Dockerfile)): собранный сервер на TypeScript и сборка frontend. `api` — `node server/dist/main.js`, `worker` — `node server/dist/worker/main.js`, `migrate` — `node server/dist/migrate.js`. PostgreSQL 16 хранит данные, Redis — очереди воркера и шину синхронизации; счётчики rate limit живут в памяти единственного процесса API.
 
 ### Сервер на TypeScript (#611)
 

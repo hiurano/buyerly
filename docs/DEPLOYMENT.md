@@ -17,7 +17,7 @@
 
 Одноразовый `migrate` (`docker compose run --rm migrate`) применяет миграции
 TypeORM (`node server/dist/migrate.js`) перед запуском релиза и не остаётся
-запущенным. Образ один — `buyerly-app` на `node:24-slim`: в нём собранный
+запущенным. Образ один — `buyerly-app` на `node:24-slim` (с зеркала `public.ecr.aws`: Docker Hub отвечал серверу 429): в нём собранный
 сервер на TypeScript и сборка фронтенда ([Dockerfile](../Dockerfile)).
 
 Наружу сервер не открывает ни одного веб-порта: `cloudflared` сам подключается к
