@@ -557,7 +557,7 @@ export async function simulate(
     await db.query('DROP SCHEMA public CASCADE');
     await db.query('CREATE SCHEMA public');
     await db.synchronize();
-    const { user, workspaceId } = await seed(db, { confirmationMinutes: scenarioDef.confirmationMinutes, repeatMinutes: 1440, timeWindow: scenarioDef.timeWindow });
+    const { user } = await seed(db, { confirmationMinutes: scenarioDef.confirmationMinutes, repeatMinutes: 1440, timeWindow: scenarioDef.timeWindow });
 
     const launch = launchTimestamp(scenarioDef.minutesBeforeMidnight);
     let now = launch;
