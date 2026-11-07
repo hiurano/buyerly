@@ -362,6 +362,9 @@ jobs:
       - name: Typecheck, lint and test
         env:
           SCHEMA_DATABASE_URL: postgresql://buyerly:buyerly_secret@localhost:5432/buyerly_schema
+          # The rule simulator's test drops and rebuilds this disposable database.
+          TEST_DATABASE_URL: postgresql+asyncpg://buyerly:buyerly_secret@localhost:5432/buyerly_test
+          TEST_DATABASE_DISPOSABLE: buyerly_test
           PYTHON_API_URL: http://127.0.0.1:18080
           PYTHON_META_API_URL: http://127.0.0.1:18081
           PYTHON_API_LOG: ${{ github.workspace }}/logs/api.log
