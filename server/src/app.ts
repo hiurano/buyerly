@@ -1,6 +1,5 @@
 import fastifyCookie from '@fastify/cookie';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
-import type { ServerHealth } from '@buyerly/shared';
 import type { Authenticated } from './auth/plugin.ts';
 import { Otp } from './auth/otp.ts';
 import { turnstileVerifier, type VerifyTurnstile } from './auth/turnstile.ts';
@@ -58,11 +57,6 @@ export interface BuildOptions {
   fastify?: FastifyServerOptions;
 }
 
-// The Python API still fronts the site and forwards the paths this server
-// owns (SERVER_PATHS in core/config.py, api/server_proxy.py). Its health
-// lives under /health/, a root that no workspace slug may take.
-export const HEALTH_PREFIX = '/health/server';
-
 const NO_DATABASE: Database = {
   ping: async () => { throw new Error('DATABASE_URL is not set'); },
   close: async () => {},
@@ -112,25 +106,6 @@ export function buildApp(config: Config, database: Database | null, options: Bui
 
   // /health/live|ready|worker, the React app, public pages and the 404s.
   installSite(app);
-
-  // Compose probes these every few seconds: log only failures.
-  const quiet = { logLevel: 'warn' } as const;
-
-  app.get(`${HEALTH_PREFIX}/live`, quiet, async (): Promise<ServerHealth> => ({
-    status: 'alive',
-    version: config.version,
-  }));
-
-  app.get(`${HEALTH_PREFIX}/ready`, quiet, async (request, reply): Promise<ServerHealth> => {
-    try {
-      await app.db.ping();
-    } catch (error) {
-      request.log.error({ err: error }, 'Readiness check failed');
-      reply.code(503);
-      return { status: 'not_ready', version: config.version };
-    }
-    return { status: 'ready', version: config.version };
-  });
 
   void app.register(authRoutes);
   void app.register(inviteRoutes);

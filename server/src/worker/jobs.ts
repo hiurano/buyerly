@@ -1,21 +1,18 @@
 import type { DataSource } from 'typeorm';
 
-// Background jobs the TypeScript worker can own (#611 stage 4, decision 54).
-// They move from the Python worker (services/worker.py) one at a time:
-// TS_WORKER_JOBS lists the ones this worker runs, and the Python worker
-// skips exactly those (core/worker_jobs.py). Moving one back is removing it
-// from the list and restarting both workers.
+// Every background job the worker runs (decision 54; they moved from the
+// Python worker in #611 stage 4).
 //
 // `account_sync` is the data half of the monitoring cycle (account details,
 // analytics facts, the inventory cache, account health), `monitoring` the
-// rules half (scheduler id `monitoring_job` in Python): due rule checks and the Meta
-// writes they call for.
+// rules half: due rule checks and the Meta writes they call for.
 
-// The advisory lock each run holds, pg_try_advisory_lock(namespace, number).
-// The same numbers as core/worker_jobs.py SHARED_JOBS: a job is never run by
-// both workers at once, even while a deploy swaps containers.
+// The advisory lock each run holds, pg_try_advisory_lock(namespace, number):
+// two worker processes (an old and a new one while a deploy swaps them) never
+// run one job at once. The numbers are the ones the Python worker used; 8 was
+// the rules engine's shadow run.
 export const LOCK_NAMESPACE = 611;
-export const SHARED_JOBS = {
+export const JOB_LOCKS = {
   inbox_email: 1,
   inbox_telegram: 2,
   inbox_push: 3,
@@ -23,29 +20,14 @@ export const SHARED_JOBS = {
   worker_watchdog: 5,
   account_day_boundary: 6,
   account_sync: 7,
-  // TypeScript only: the rules engine's shadow run (rules/shadow.ts). It
-  // compares what Python's monitoring cycle decided; nothing to move back.
-  rules_shadow: 8,
-  // The rules half of the monitoring cycle (scheduler id `monitoring_job` in Python).
   monitoring: 9,
 } as const;
 
-export type JobId = keyof typeof SHARED_JOBS;
+export type JobId = keyof typeof JOB_LOCKS;
 
-export const isJobId = (value: string): value is JobId => Object.hasOwn(SHARED_JOBS, value);
-
-// TS_WORKER_JOBS as a set of known ids, and the names it holds that are not jobs.
-export function parseJobList(raw: string): { jobs: Set<JobId>; unknown: string[] } {
-  const jobs = new Set<JobId>();
-  const unknown: string[] = [];
-  for (const item of raw.split(',')) {
-    const name = item.trim();
-    if (!name) continue;
-    if (isJobId(name)) jobs.add(name);
-    else unknown.push(name);
-  }
-  return { jobs, unknown };
-}
+// Jobs earlier releases scheduled and this one no longer runs: their BullMQ
+// schedules are removed at start.
+export const RETIRED_JOBS: readonly string[] = ['rules_shadow'];
 
 // Runs `work` while holding the job's advisory lock on a connection of its
 // own; resolves to false without running it when another worker holds it.
@@ -53,14 +35,14 @@ export async function withJobLock(dataSource: DataSource, job: JobId, work: () =
   const runner = dataSource.createQueryRunner();
   await runner.connect();
   try {
-    const [row] = (await runner.query('SELECT pg_try_advisory_lock($1, $2) AS acquired', [LOCK_NAMESPACE, SHARED_JOBS[job]])) as {
+    const [row] = (await runner.query('SELECT pg_try_advisory_lock($1, $2) AS acquired', [LOCK_NAMESPACE, JOB_LOCKS[job]])) as {
       acquired: boolean;
     }[];
     if (!row?.acquired) return false;
     try {
       await work();
     } finally {
-      await runner.query('SELECT pg_advisory_unlock($1, $2)', [LOCK_NAMESPACE, SHARED_JOBS[job]]);
+      await runner.query('SELECT pg_advisory_unlock($1, $2)', [LOCK_NAMESPACE, JOB_LOCKS[job]]);
     }
     return true;
   } finally {

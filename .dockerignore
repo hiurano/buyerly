@@ -4,14 +4,9 @@
 .env
 .env.*
 !.env.example
-.venv
-venv
-__pycache__
-*.py[cod]
 logs
 backups
 *.log
-tests
 docs
 node_modules
 **/node_modules

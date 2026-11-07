@@ -153,7 +153,7 @@ async function authBoundary(): Promise<Json> {
 async function runtimeVersions(): Promise<Json> {
   const expectedImage = `buyerly-app:${EXPECTED_SHA}`;
   const observed: Json = {};
-  for (const container of ['buyerly-api', 'buyerly-worker', 'buyerly-worker-ts']) {
+  for (const container of ['buyerly-api', 'buyerly-worker']) {
     const image = await dockerInspectImage(container);
     observed[container] = image;
     if (image !== expectedImage) throw new Error(`${container} does not use the expected release`);
@@ -161,23 +161,9 @@ async function runtimeVersions(): Promise<Json> {
   return observed;
 }
 
-async function workerHeartbeat(): Promise<Json> {
-  const output = await dockerExec('worker heartbeat', 'buyerly-worker', [
-    'python',
-    '-c',
-    "import json,time; from pathlib import Path; " +
-      "p=Path('/tmp/buyerly-worker-heartbeat'); " +
-      "cycle=Path('/tmp/buyerly-worker-day-boundary-cycle-complete'); " +
-      'age=time.time()-p.stat().st_mtime; ' +
-      'assert age < 45 and cycle.is_file(); ' +
-      "print(json.dumps({'heartbeat_age_seconds':round(age,3),'day_boundary_cycle':True}))",
-  ]);
-  return JSON.parse(lastLine(output)) as Json;
-}
-
-async function workerTsHealth(): Promise<Json> {
-  // The TypeScript worker (#611 stage 4): healthy, and no owned job's last run failed.
-  const output = await dockerExec('TypeScript worker health', 'buyerly-worker-ts', [
+async function workerHealth(): Promise<Json> {
+  // The worker: healthy, and no job's last run failed.
+  const output = await dockerExec('worker health', 'buyerly-worker', [
     'node',
     '-e',
     "fetch('http://127.0.0.1:8091/health/worker-ts').then(async (r) => { console.log(await r.text()); process.exit(r.ok ? 0 : 1); }, () => process.exit(1))",
@@ -187,19 +173,19 @@ async function workerTsHealth(): Promise<Json> {
     .filter(([, run]) => run && run.outcome === 'error')
     .map(([job]) => job);
   if (payload.status !== 'ok' || failed.length > 0) {
-    throw new Error('TypeScript worker is not healthy: ' + (failed.length > 0 ? failed : [String(payload.status)]).join(', '));
+    throw new Error('worker is not healthy: ' + (failed.length > 0 ? failed : [String(payload.status)]).join(', '));
   }
   return payload;
 }
 
-function workerTsOutcomes(checks: Check[]): Json {
-  const item = checks.find((check) => check.name === 'worker_ts_health' && check.details);
+function workerOutcomes(checks: Check[]): Json {
+  const item = checks.find((check) => check.name === 'worker_health' && check.details);
   const jobs = (item?.details?.jobs ?? {}) as Record<string, Json | null>;
   return Object.fromEntries(Object.entries(jobs).map(([job, run]) => [job, run?.outcome ?? null]));
 }
 
 async function internalContracts(): Promise<Json> {
-  const output = await dockerExec('in-container production contracts', 'buyerly-api', ['python', '-m', 'services.smoke_checks']);
+  const output = await dockerExec('in-container production contracts', 'buyerly-api', ['node', 'server/dist/scripts/smoke-checks.js']);
   const payload = JSON.parse(lastLine(output)) as Json;
   if (!payload.ok) {
     const failed = ((payload.checks ?? []) as Json[]).filter((item) => !item.ok).map((item) => String(item.name));
@@ -219,10 +205,10 @@ async function publishReliabilityMetrics(checks: Check[]): Promise<Json> {
     checks_total: endpointChecks.length,
     checks_passed: passed,
   };
-  // The service reads the payload from stdin; the exec API has no stdin here, so it goes in as base64.
+  // The exec API has no stdin here, so the payload goes in as base64.
   const encoded = Buffer.from(JSON.stringify(payload)).toString('base64');
   try {
-    await dockerExec('reliability metrics', 'buyerly-api', ['sh', '-c', `echo ${encoded} | base64 -d | python -m services.reliability_metrics`]);
+    await dockerExec('reliability metrics', 'buyerly-api', ['node', 'server/dist/scripts/smoke-checks.js', '--metrics', encoded]);
   } catch {
     throw new Error('failed to persist secret-free synthetic metrics');
   }
@@ -271,12 +257,9 @@ async function main(): Promise<number> {
   const startedAt = utcNow();
   await record(checks, 'health_live', () => health('/health/live', 'alive'));
   await record(checks, 'health_ready', () => health('/health/ready', 'ready'));
-  // Through the API's forwarding, so this also proves the route there (#611).
-  await record(checks, 'server_health_ready', () => health('/health/server/ready', 'ready'));
   await record(checks, 'authentication_boundary', authBoundary);
   await record(checks, 'runtime_versions', runtimeVersions);
-  await record(checks, 'worker_heartbeat', workerHeartbeat);
-  await record(checks, 'worker_ts_health', workerTsHealth);
+  await record(checks, 'worker_health', workerHealth);
   await record(checks, 'database_meta_isolation_summary', internalContracts);
   await record(checks, 'reliability_metrics', () => publishReliabilityMetrics(checks));
 
@@ -301,8 +284,8 @@ async function main(): Promise<number> {
         release_sha: EXPECTED_SHA,
         result_path: resultPath,
         failed_checks: checks.filter((item) => !item.ok).map((item) => item.name),
-        // What the TypeScript worker ran last (#611 stage 4), for the deploy log.
-        worker_ts_jobs: workerTsOutcomes(checks),
+        // What the worker ran last, for the deploy log.
+        worker_jobs: workerOutcomes(checks),
       }),
     ),
   );

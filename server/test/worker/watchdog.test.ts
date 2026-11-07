@@ -1,5 +1,3 @@
-import { spawnSync } from 'node:child_process';
-import { join } from 'node:path';
 import Fastify from 'fastify';
 import type { DataSource } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -10,7 +8,6 @@ import { DATABASE_URL } from '../support/target.ts';
 
 // The worker watchdog (services/worker_watchdog.py; tests/test_worker_watchdog.py).
 
-const REPO = join(import.meta.dirname, '../../..');
 const log = Fastify({ logger: false }).log;
 const NOW = new Date('2026-10-07T12:00:00Z');
 
@@ -28,19 +25,6 @@ const PAYLOADS: (Record<string, unknown> | null)[] = [
 ];
 
 describe('the last monitoring cycle', () => {
-  it('reads as Python reads it', () => {
-    const run = spawnSync(process.env.PYTHON ?? 'python3', [join(import.meta.dirname, 'delivery_parity.py')], {
-      cwd: REPO,
-      input: JSON.stringify(PAYLOADS.map((payload) => ({ fn: 'cycle', args: { payload, now: NOW.toISOString() } }))),
-      env: { ...process.env, PYTHONPATH: REPO, DATABASE_URL: 'postgresql+asyncpg://localhost/none' },
-    });
-    if (run.error || run.status !== 0) {
-      if (process.env.CI) throw new Error(`delivery_parity.py failed: ${run.stderr?.toString() ?? run.error?.message}`);
-      return;
-    }
-    expect(PAYLOADS.map((payload) => cycleStatus(payload, NOW))).toEqual(JSON.parse(run.stdout.toString()));
-  });
-
   it('is ok, warning, critical or unknown', () => {
     expect(PAYLOADS.map((payload) => cycleStatus(payload, NOW).status)).toEqual([
       'unknown', 'unknown', 'unknown', 'ok', 'ok', 'warning', 'critical', 'critical', 'ok', 'critical',

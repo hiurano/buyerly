@@ -1,12 +1,9 @@
-import { spawnSync } from 'node:child_process';
 import { createDecipheriv, createECDH, createHmac, createPublicKey, randomBytes, randomUUID, verify } from 'node:crypto';
-import { join } from 'node:path';
 import Fastify from 'fastify';
 import type { DataSource } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { databaseOver, type Database } from '../../src/database.ts';
 import type { EmailMessage } from '../../src/email/send.ts';
-import { inboxNotificationEmail } from '../../src/email/workspace-emails.ts';
 import {
   AuditEventEntity,
   DesktopPushSubscriptionEntity,
@@ -20,11 +17,6 @@ import {
   deliverInboxEmails,
   deliverInboxPush,
   deliverInboxTelegram,
-  eventTarget,
-  eventTitle,
-  pushMessage,
-  telegramText,
-  type InboxEvent,
 } from '../../src/notifications/delivery.ts';
 import type { TelegramBot, TelegramSendResult } from '../../src/notifications/telegram.ts';
 import { encryptPush, vapidAuthorization, vapidKey, type PushSendResult } from '../../src/notifications/web-push.ts';
@@ -32,42 +24,11 @@ import { createUser, createWorkspace, testDatabase, unique } from '../support/db
 import { DATABASE_URL, TEST_VAPID_PRIVATE_KEY } from '../support/target.ts';
 
 // The worker's Inbox deliveries (services/inbox_email.py, inbox_telegram.py,
-// inbox_push.py). What goes out is compared with Python's own code through
-// delivery_parity.py; who gets what, and what is recorded, runs on the
-// shared database.
+// inbox_push.py). What goes out was proved byte for byte equal to Python's in
+// CI before Python was removed (#611); who gets what, and what is recorded,
+// runs on the shared database.
 
-const REPO = join(import.meta.dirname, '../../..');
-const PYTHON = process.env.PYTHON ?? 'python3';
 const log = Fastify({ logger: false }).log;
-
-const EVENTS: InboxEvent[] = [
-  { id: 1, event_type: 'STOP', action: 'STOP', category: 'RULE_ACTION', entity_name: 'Ad set <b>', adset_name: null, account_name: 'Acme & Co', entity_id: '1', adset_id: null, account_id: 'act_1', message: 'Spend $12 > $10 "today"' },
-  { id: 2, event_type: 'SOMETHING_NEW', action: 'some_action', category: 'SYSTEM', entity_name: null, adset_name: null, account_name: null, entity_id: null, adset_id: null, account_id: null, message: null },
-  { id: 3, event_type: null, action: null, category: 'MANUAL_ACTION', entity_name: '', adset_name: 'Adset', account_name: '', entity_id: '', adset_id: '9', account_id: '', message: '' },
-  { id: 4, event_type: 'WORKER_STALLED', action: 'INVESTIGATE', category: 'SYSTEM', entity_name: null, adset_name: null, account_name: null, entity_id: null, adset_id: null, account_id: null, message: `Long ${'é'.repeat(600)} 🙂` },
-];
-const WORKSPACE = { name: "Bob's <team>", slug: 'bobs-team' } as WorkspaceEntity;
-
-function python(cases: { fn: string; args: unknown }[]): unknown[] | null {
-  const schema = process.env.SCHEMA_DATABASE_URL ?? '';
-  const run = spawnSync(PYTHON, [join(import.meta.dirname, 'delivery_parity.py')], {
-    cwd: REPO,
-    input: JSON.stringify(cases),
-    env: {
-      ...process.env,
-      PYTHONPATH: REPO,
-      // The modules connect nowhere, but database.db wants a URL at import.
-      DATABASE_URL: schema ? schema.replace(/^postgresql:/, 'postgresql+asyncpg:') : 'postgresql+asyncpg://localhost/none',
-      WEBAPP_URL: 'https://buyerly.test',
-    },
-    maxBuffer: 64 * 1024 * 1024,
-  });
-  if (run.error || run.status !== 0) {
-    if (process.env.CI) throw new Error(`delivery_parity.py failed: ${run.stderr?.toString() ?? run.error?.message}`);
-    return null;
-  }
-  return JSON.parse(run.stdout.toString()) as unknown[];
-}
 
 // A browser's subscription keys, as PushManager makes them.
 function browserKeys() {
@@ -98,50 +59,6 @@ function decryptPush(body: Buffer, receiver: ReturnType<typeof browserKeys>): st
 
 describe('what the deliveries send', () => {
   const receiver = browserKeys();
-  const salt = randomBytes(16);
-  const sender = randomBytes(32);
-  const emailArgs = EVENTS.map((event) => ({
-    to_email: 'member@example.test',
-    workspace_name: WORKSPACE.name,
-    title: eventTitle(event),
-    target: eventTarget(event),
-    account_name: event.account_name || '',
-    message: event.message || '',
-    url: `https://buyerly.test/${WORKSPACE.slug}/inbox/${event.id}`,
-    settings_url: `https://buyerly.test/${WORKSPACE.slug}/settings/account/notifications/email`,
-  }));
-  const cases = [
-    ...EVENTS.map((event) => ({ fn: 'title', args: event })),
-    ...EVENTS.map((event) => ({ fn: 'telegram', args: { workspace: WORKSPACE, event } })),
-    ...EVENTS.map((event) => ({ fn: 'push', args: { workspace: WORKSPACE, event } })),
-    ...emailArgs.map((args) => ({ fn: 'email', args })),
-    { fn: 'encrypt', args: { plaintext: '{"title":"Turned off · Ad set","id":1}', p256dh: receiver.p256dh, auth: receiver.auth, salt: salt.toString('base64'), sender: sender.toString('base64') } },
-  ];
-  const answers = python(cases);
-
-  it.skipIf(answers === null)('matches the Python worker byte for byte', () => {
-    const ours: unknown[] = [
-      ...EVENTS.map((event) => ({ title: eventTitle(event), target: eventTarget(event) })),
-      ...EVENTS.map((event) => telegramText(WORKSPACE, event)),
-      ...EVENTS.map((event) => pushMessage(WORKSPACE, event)),
-      ...emailArgs.map((args) => {
-        const message: EmailMessage = inboxNotificationEmail({
-          to: args.to_email,
-          workspaceName: args.workspace_name,
-          title: args.title,
-          target: args.target,
-          accountName: args.account_name,
-          message: args.message,
-          url: args.url,
-          settingsUrl: args.settings_url,
-        });
-        return { to: message.to, subject: message.subject, html: message.html, text: message.text };
-      }),
-      encryptPush(Buffer.from('{"title":"Turned off · Ad set","id":1}'), receiver.p256dh, receiver.auth, { salt, senderPrivateKey: sender }).toString('base64'),
-    ];
-    expect(ours).toEqual(answers);
-  });
-
   it('encrypts for the browser and signs for its push service', () => {
     const body = encryptPush(Buffer.from('{"hello":"world"}'), receiver.p256dh, receiver.auth);
     expect(decryptPush(body, receiver)).toBe('{"hello":"world"}');

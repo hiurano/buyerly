@@ -14,17 +14,14 @@ import type { SyncTuning } from '../../src/sync/hub.ts';
 import { Browser } from '../support/browser.ts';
 import { HandshakeRefused, SocketClosed, openSocket, type TestSocket } from '../support/socket.ts';
 import { save, syncWorld, type SyncWorld, type Who } from '../support/sync-world.ts';
-import { CONTRACT_TARGET, typescriptTarget, type Target } from '../support/target.ts';
+import { typescriptTarget, type Target } from '../support/target.ts';
 import { logMax } from './bootstrap.cases.ts';
 import { rename, withCompactedLog } from './delta.cases.ts';
 import type { SyncContext } from './sync.test.ts';
 
 // WS /api/sync/ws (tests/test_sync_stream.py): catch-up, live delivery, sync
 // groups, sign-in and reconnects. Cases that shorten the batch, poll or
-// heartbeat run on this server in-process only, as the Python tests patch
-// api/sync_stream.py; the rest run against both servers.
-
-const inProcessOnly = CONTRACT_TARGET === 'python';
+// heartbeat are shortened in-process.
 
 export function streamCases(context: SyncContext): void {
   // Sockets wait on the database and on each other: more than Vitest's default 5 s per case.
@@ -90,7 +87,7 @@ export function streamCases(context: SyncContext): void {
       expect(await socket.receiveType('caught_up')).toEqual({ type: 'caught_up', last_sync_id: ids[1] });
     });
 
-    it.skipIf(inProcessOnly)('pages its catch-up through more than one batch', async () => {
+    it('pages its catch-up through more than one batch', async () => {
       const target = await tuned({ batch: 3 });
       const world = await syncWorld(context.db, target);
       const since = await logMax(world);
@@ -162,7 +159,7 @@ export function streamCases(context: SyncContext): void {
       expect(await socket.receive()).toEqual({ type: 'pong' });
     });
 
-    it.skipIf(inProcessOnly)('sends heartbeats to a quiet socket', async () => {
+    it('sends heartbeats to a quiet socket', async () => {
       const target = await tuned({ heartbeatMs: 200 });
       const world = await syncWorld(context.db, target);
       const socket = await open(world, 'buyer', { target });
@@ -170,7 +167,7 @@ export function streamCases(context: SyncContext): void {
       expect(await socket.receive(2000)).toEqual({ type: 'ping' });
     });
 
-    it.skipIf(inProcessOnly)('polls the log when no notification comes', async () => {
+    it('polls the log when no notification comes', async () => {
       // Without LISTEN only the poll reads the log.
       const target = await tuned({ listen: false, pollMs: 300 });
       const world = await syncWorld(context.db, target);
@@ -180,7 +177,7 @@ export function streamCases(context: SyncContext): void {
       expect((await socket.receiveType('delta', 3000)).actions[0].data.name).toBe('Polled');
     });
 
-    it.skipIf(inProcessOnly || !process.env.REDIS_URL)('reads the log when the Redis sync bus says so', async () => {
+    it.skipIf(!process.env.REDIS_URL)('reads the log when the Redis sync bus says so', async () => {
       // Neither LISTEN nor a poll within the test: only the bus wakes the hub (decision 54).
       const target = await tuned({ listen: false, pollMs: 60_000 }, { REDIS_URL: process.env.REDIS_URL! });
       const world = await syncWorld(context.db, target);
@@ -415,7 +412,7 @@ export function streamCases(context: SyncContext): void {
       expect(session.lastSeenAt.getTime()).toBeGreaterThan(old.getTime());
     });
 
-    it.skipIf(inProcessOnly)('closes a signed-out session at the next heartbeat', async () => {
+    it('closes a signed-out session at the next heartbeat', async () => {
       const target = await tuned({ heartbeatMs: 200 });
       const world = await syncWorld(context.db, target);
       const socket = await open(world, 'buyer', { target });
@@ -453,7 +450,7 @@ export function streamCases(context: SyncContext): void {
       expect(actions).toEqual(http.actions);
     });
 
-    it.skipIf(inProcessOnly)('sends writes made during catch-up exactly once, in order', async () => {
+    it('sends writes made during catch-up exactly once, in order', async () => {
       const target = await tuned({ batch: 7 });
       const world = await syncWorld(context.db, target);
       const since = await logMax(world);
@@ -471,7 +468,7 @@ export function streamCases(context: SyncContext): void {
       expect(names(actions)).toEqual([...Array.from({ length: 20 }, (_, n) => `Before ${n}`), ...Array.from({ length: 40 }, (_, n) => `During ${n}`)]);
     });
 
-    it.skipIf(inProcessOnly)('closes a socket that falls too far behind, to reconnect', async () => {
+    it('closes a socket that falls too far behind, to reconnect', async () => {
       const target = await tuned({ maxPendingBatches: 0 });
       const world = await syncWorld(context.db, target);
       const socket = await open(world, 'buyer', { target });

@@ -31,7 +31,7 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
 try {
   await worker.app.listen({ port, host: config.host });
   await worker.start();
-  worker.app.log.info({ version: config.version, jobs: worker.owned }, 'Buyerly worker started');
+  worker.app.log.info({ version: config.version, jobs: worker.jobs }, 'Buyerly worker started');
 } catch (error) {
   worker.app.log.fatal({ err: error }, 'Buyerly worker failed to start');
   process.exit(1);

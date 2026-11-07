@@ -1,5 +1,3 @@
-import { spawnSync } from 'node:child_process';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   RuleValueError,
@@ -12,16 +10,10 @@ import {
   validateRuntimeRule,
 } from '../../src/rules/validation.ts';
 
-// The rule checks ported from core/metrics.py must decide exactly as Python
-// does: every case below goes to both, through validation_parity.py, and the
-// answers must be equal (a result, the same ValueError message, or — where
-// Python fails with another exception on malformed stored data — a failure).
-// Cases: the example rules, hand-written edges, and a seeded generator that
-// mixes valid and broken values. Python runs in CI (the server job installs
-// requirements.txt); set PYTHON to the interpreter elsewhere.
-
-const REPO = join(import.meta.dirname, '../../..');
-const PYTHON = process.env.PYTHON ?? 'python3';
+// The rule checks ported from core/metrics.py (proved equal to Python's on
+// these cases in CI before Python was removed, #611). Cases: the example
+// rules, hand-written edges, and a seeded generator that mixes valid and
+// broken values.
 
 type Answer = { ok: unknown } | { error: string } | { crash: string };
 interface Case { fn: string; args: unknown[] }
@@ -49,20 +41,6 @@ function portAnswer({ fn, args }: Case): Answer {
     if (error instanceof RuleValueError) return { error: error.message };
     return { crash: (error as Error).name };
   }
-}
-
-function pythonAnswers(cases: Case[]): Answer[] | null {
-  const run = spawnSync(PYTHON, [join(import.meta.dirname, 'validation_parity.py')], {
-    cwd: REPO,
-    input: JSON.stringify(cases),
-    env: { ...process.env, PYTHONPATH: REPO },
-    maxBuffer: 256 * 1024 * 1024,
-  });
-  if (run.error || run.status !== 0) {
-    if (process.env.CI) throw new Error(`Python failed: ${run.error?.message ?? run.stderr.toString()}`);
-    return null;
-  }
-  return JSON.parse(run.stdout.toString()) as Answer[];
 }
 
 // A small seeded generator (mulberry32), so a failure reproduces.
@@ -230,22 +208,11 @@ function generated(count: number, seed: number): Case[] {
   return cases;
 }
 
-describe('rule checks match core/metrics.py', () => {
+describe('rule checks', () => {
   const cases = [...HAND_WRITTEN, ...generated(14_000, 611)];
-  const python = pythonAnswers(cases);
-
-  it.skipIf(!python)('answers every case as Python does', () => {
-    const mismatches: { case: Case; python: Answer; port: Answer }[] = [];
+  it('reaches both outcomes in earnest', () => {
     let errors = 0;
-    cases.forEach((item, index) => {
-      const expected = python![index];
-      const actual = portAnswer(item);
-      if ('error' in expected) errors += 1;
-      const same = 'crash' in expected ? !('ok' in actual) : JSON.stringify(actual) === JSON.stringify(expected);
-      if (!same) mismatches.push({ case: item, python: expected, port: actual });
-    });
-    expect(mismatches.slice(0, 5)).toEqual([]);
-    // The generator reaches both outcomes in earnest.
+    for (const item of cases) if ('error' in portAnswer(item)) errors += 1;
     expect(errors).toBeGreaterThan(cases.length / 5);
     expect(errors).toBeLessThan(cases.length * 0.9);
   });

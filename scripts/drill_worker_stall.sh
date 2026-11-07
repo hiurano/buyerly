@@ -33,15 +33,13 @@ done
 
 worker_health() {
     # Prints "<http code> <status> <lag seconds>" from inside the API container.
-    docker exec "${API_CONTAINER}" python -c '
-import json, urllib.request, urllib.error
-try:
-    response = urllib.request.urlopen("http://127.0.0.1:8080/health/worker", timeout=5)
-    code, body = response.status, response.read()
-except urllib.error.HTTPError as error:
-    code, body = error.code, error.read()
-data = json.loads(body or b"{}")
-print(code, data.get("status"), data.get("lag_seconds"))
+    docker exec "${API_CONTAINER}" node -e '
+fetch("http://127.0.0.1:8080/health/worker", { signal: AbortSignal.timeout(5000) })
+  .then(async (response) => {
+    const data = await response.json().catch(() => ({}));
+    console.log(response.status, data.status, data.lag_seconds);
+  })
+  .catch(() => console.log("000 unreachable -"));
 ' 2>/dev/null || echo "000 unreachable -"
 }
 

@@ -2,9 +2,9 @@ import pg from 'pg';
 import { DataSource, type DataSourceOptions, type EntityManager } from 'typeorm';
 import { BUYERLY_ENTITIES } from './entities/index.ts';
 
-// TypeORM over the tables Alembic owns (#611 stage 2, decision 54). The
-// schema stays as the Python side migrates it while both servers run, so
-// TypeORM never creates or changes anything: no synchronize, no migrations.
+// TypeORM over the schema the migrations build (server/src/migrations, run
+// by migrate.ts before the server starts), so the server's own connection
+// never creates or changes anything: no synchronize, no migrations.
 // server/test/schema.test.ts checks the entities against the migrated schema.
 export function createBuyerlyDataSource(url: string, options: Partial<DataSourceOptions> = {}): DataSource {
   return new DataSource({
@@ -14,8 +14,6 @@ export function createBuyerlyDataSource(url: string, options: Partial<DataSource
     synchronize: false,
     migrationsRun: false,
     migrations: [],
-    // The Python API keeps a pool of 5 (+10 overflow); the server takes over
-    // its areas one at a time, so a smaller pool is enough for now.
     poolSize: 10,
     extra: { connectionTimeoutMillis: 3000 },
     ...options,
@@ -24,8 +22,7 @@ export function createBuyerlyDataSource(url: string, options: Partial<DataSource
 
 // The database as routes see it (app.db). Every unit of work is an explicit
 // transaction: `db.transaction(async (tx) => …)` commits when the callback
-// returns and rolls back when it throws, like the Python handlers'
-// `async with async_session_maker() as session: … await session.commit()`.
+// returns and rolls back when it throws.
 export interface Database {
   ping(): Promise<void>;
   close(): Promise<void>;
@@ -43,8 +40,7 @@ export interface TransactionOptions {
 }
 
 // Thrown inside a transaction to keep its writes and still fail the request:
-// a wrong OTP must count the attempt (commit) and answer 401. The Python
-// handlers do `await session.commit(); raise HTTPException(...)`.
+// a wrong OTP must count the attempt (commit) and answer 401.
 export class AfterCommit extends Error {
   constructor(readonly error: Error) {
     super(error.message);

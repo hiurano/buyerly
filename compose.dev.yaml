@@ -1,30 +1,32 @@
 # Local development: the whole app on this computer, with changes visible at
 # once. `docker compose -f compose.dev.yaml up`, then open http://localhost:5173
 # and sign in with "Continue with email": dev@buyerly.localhost. No email is
-# sent: the code and link are in the TypeScript server's log, which serves
-# sign-in (`docker compose -f compose.dev.yaml logs server`, the line with
-# "[DEV EMAIL]").
+# sent: the code and link are in the server's log
+# (`docker compose -f compose.dev.yaml logs api`, the line with "[DEV EMAIL]").
 # Everything here is local test data; nothing reaches production or Meta:
 # Meta is the fake from server/src/scripts/fake-meta.ts, with invented ad accounts.
 name: buyerly-dev
 
 x-app-environment: &app-environment
-  DATABASE_URL: postgresql+asyncpg://buyerly:buyerly-dev@db:5432/buyerly
+  DATABASE_URL: postgresql://buyerly:buyerly-dev@db:5432/buyerly
   WEBAPP_URL: http://${BUYERLY_WEB_HOST:-localhost}:${BUYERLY_WEB_PORT:-5173}
+  SERVER_PORT: "8080"
   SERVE_STATIC: "false"
   SESSION_COOKIE_SECURE: "false"
   DEV_EMAIL_LOG: "true"
   OTP_PEPPER: local-development-only
   META_TOKEN_ENCRYPTION_KEY: CKOJW1eA4PLOe59rNqizKftdfj0lN17_CIFSpe7ihLw=
   META_GRAPH_BASE_URL: http://fake-meta:8090
-  SERVER_URL: http://server:8090
-  # BullMQ queues of the TypeScript worker (#611 stage 4); TS_WORKER_JOBS as in production.
   REDIS_URL: redis://redis:6379/0
-  TS_WORKER_JOBS: ${TS_WORKER_JOBS-sync_log_compaction,inbox_email,inbox_telegram,inbox_push,worker_watchdog,account_day_boundary,rules_shadow,account_sync,monitoring}
-  # File events do not cross the Windows bind mount; watch by polling.
-  WATCHFILES_FORCE_POLLING: "true"
   TZ: UTC
   BUYERLY_DEV_SEED: "1"
+
+x-node: &node
+  image: node:24-slim
+  working_dir: /repo/server
+  volumes:
+    - .:/repo
+    - buyerly-dev-node-modules:/repo/node_modules
 
 services:
   db:
@@ -41,127 +43,7 @@ services:
       timeout: 3s
       retries: 20
 
-  # Invented ad accounts whose numbers grow through the day; rules can pause
-  # and rebudget them. Its state (who paused what, when) is in buyerly-dev-meta.
-  fake-meta:
-    image: node:24-slim
-    working_dir: /repo/server
-    command: ["node", "--watch", "dist/scripts/fake-meta.js"]
-    # dist/ appears once the server's first compile is done: retry until then.
-    restart: unless-stopped
-    environment:
-      FAKE_META_STATE: /data/fake-meta.json
-      FAKE_META_PORT: "8090"
-    volumes:
-      - .:/repo
-      - buyerly-dev-node-modules:/repo/node_modules
-      - buyerly-dev-meta:/data
-    depends_on:
-      server:
-        condition: service_started
-
-  # The API restarts by itself when Python code changes.
-  api:
-    build: .
-    image: buyerly-app:dev
-    command: ["sh", "-c", "python -m services.database && exec uvicorn services.api:app --host 0.0.0.0 --port 8080 --reload --reload-dir api --reload-dir core --reload-dir database --reload-dir meta_api --reload-dir rules --reload-dir scheduler --reload-dir services"]
-    environment: *app-environment
-    volumes:
-      - .:/app
-      - buyerly-dev-uploads:/app/uploads
-    ports:
-      - "127.0.0.1:${BUYERLY_API_PORT:-8080}:8080"
-    depends_on:
-      db:
-        condition: service_healthy
-
-  # Syncs the fake Meta's numbers and runs the rules, like production's worker.
-  # It does not reload: after changing worker code, restart this service.
-  worker:
-    image: buyerly-app:dev
-    command: ["python", "-m", "services.worker"]
-    # Starts beside the API, which may still be migrating: retry until ready.
-    restart: unless-stopped
-    environment: *app-environment
-    volumes:
-      - .:/app
-    depends_on:
-      - api
-      - fake-meta
-
-  # npm workspaces (#611): one install at the repository root for Vite and
-  # the TypeScript server, before either starts.
-  deps:
-    image: node:24-slim
-    working_dir: /repo
-    command: ["npm", "ci"]
-    volumes:
-      - .:/repo
-      - buyerly-dev-node-modules:/repo/node_modules
-
-  # Vite: the page updates in the browser as soon as a frontend file is saved.
-  web:
-    image: node:24-slim
-    working_dir: /repo/frontend
-    command: ["npm", "run", "dev"]
-    environment:
-      VITE_API_ORIGIN: http://api:8080
-      VITE_POLL: "1"
-    volumes:
-      - .:/repo
-      - buyerly-dev-node-modules:/repo/node_modules
-    ports:
-      - "127.0.0.1:${BUYERLY_WEB_PORT:-5173}:5173"
-    depends_on:
-      deps:
-        condition: service_completed_successfully
-      api:
-        condition: service_started
-
-  # The TypeScript server (#611); restarts by itself when its code changes.
-  # The API forwards it the paths it owns, as in production. tsc compiles it
-  # first: Node's own TypeScript support cannot run TypeORM's decorators.
-  server:
-    image: node:24-slim
-    working_dir: /repo/server
-    command: ["npm", "run", "dev"]
-    environment:
-      # The API's settings: sign-in (#611) needs the same OTP pepper, cookie
-      # and email settings. The server reads DATABASE_URL's asyncpg form too.
-      <<: *app-environment
-      # File events do not cross the Windows bind mount; tsc polls instead.
-      TSC_WATCHFILE: DynamicPriorityPolling
-      # Client API documents not moved yet go back to the API (#611).
-      API_URL: http://api:8080
-    volumes:
-      - .:/repo
-      - buyerly-dev-node-modules:/repo/node_modules
-      # The API's /app/uploads: the same files at <repository>/uploads here.
-      - buyerly-dev-uploads:/repo/uploads
-    depends_on:
-      deps:
-        condition: service_completed_successfully
-      db:
-        condition: service_healthy
-
-  # The dev user, the Dev workspace and the fake Meta's ad accounts (#611):
-  # added once the API has migrated the database (it retries until then).
-  seed:
-    image: node:24-slim
-    working_dir: /repo/server
-    command: ["node", "dist/scripts/dev-seed.js"]
-    restart: on-failure
-    environment: *app-environment
-    volumes:
-      - .:/repo
-      - buyerly-dev-node-modules:/repo/node_modules
-    depends_on:
-      server:
-        condition: service_started
-      db:
-        condition: service_healthy
-
-  # The TypeScript worker's queues, as in production (docker-compose.yml).
+  # The worker's queues, as in production (docker-compose.yml).
   redis:
     image: redis:7.4.11-alpine
     command: ["redis-server", "--appendonly", "yes", "--save", "", "--maxmemory", "96mb", "--maxmemory-policy", "noeviction"]
@@ -174,23 +56,94 @@ services:
       timeout: 3s
       retries: 20
 
-  # The TypeScript worker (#611 stage 4): the jobs in TS_WORKER_JOBS. It runs
-  # what the `server` service compiles and restarts when that changes.
-  worker-ts:
-    image: node:24-slim
-    working_dir: /repo/server
+  # npm workspaces: one install at the repository root for Vite and the
+  # server, before either starts.
+  deps:
+    <<: *node
+    working_dir: /repo
+    command: ["npm", "ci"]
+
+  # The server; restarts by itself when its code changes. tsc compiles it
+  # first: Node's own TypeScript support cannot run TypeORM's decorators.
+  # The migrations run before it starts.
+  api:
+    <<: *node
+    command: ["sh", "-c", "npm run build && node dist/migrate.js && npm run dev"]
+    environment:
+      <<: *app-environment
+      # File events do not cross the Windows bind mount; tsc polls instead.
+      TSC_WATCHFILE: DynamicPriorityPolling
+    volumes:
+      - .:/repo
+      - buyerly-dev-node-modules:/repo/node_modules
+      - buyerly-dev-uploads:/repo/uploads
+    ports:
+      - "127.0.0.1:${BUYERLY_API_PORT:-8080}:8080"
+    depends_on:
+      deps:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Syncs the fake Meta's numbers and runs the rules, like production's
+  # worker. It runs what `api` compiles and restarts when that changes.
+  worker:
+    <<: *node
     command: ["node", "--watch", "dist/worker/main.js"]
     # dist/ appears once the server's first compile is done: retry until then.
     restart: unless-stopped
     environment: *app-environment
-    volumes:
-      - .:/repo
-      - buyerly-dev-node-modules:/repo/node_modules
     depends_on:
-      server:
+      api:
         condition: service_started
       redis:
         condition: service_healthy
+
+  # Invented ad accounts whose numbers grow through the day; rules can pause
+  # and rebudget them. Its state (who paused what, when) is in buyerly-dev-meta.
+  fake-meta:
+    <<: *node
+    command: ["node", "--watch", "dist/scripts/fake-meta.js"]
+    restart: unless-stopped
+    environment:
+      FAKE_META_STATE: /data/fake-meta.json
+      FAKE_META_PORT: "8090"
+    volumes:
+      - .:/repo
+      - buyerly-dev-node-modules:/repo/node_modules
+      - buyerly-dev-meta:/data
+    depends_on:
+      api:
+        condition: service_started
+
+  # The dev user, the Dev workspace and the fake Meta's ad accounts: added
+  # once the server has migrated the database (it retries until then).
+  seed:
+    <<: *node
+    command: ["node", "dist/scripts/dev-seed.js"]
+    restart: on-failure
+    environment: *app-environment
+    depends_on:
+      api:
+        condition: service_started
+
+  # Vite: the page updates in the browser as soon as a frontend file is saved.
+  web:
+    <<: *node
+    working_dir: /repo/frontend
+    command: ["npm", "run", "dev"]
+    environment:
+      VITE_API_ORIGIN: http://api:8080
+      VITE_POLL: "1"
+    ports:
+      - "127.0.0.1:${BUYERLY_WEB_PORT:-5173}:5173"
+    depends_on:
+      deps:
+        condition: service_completed_successfully
+      api:
+        condition: service_started
 
 volumes:
   buyerly-dev-redis:

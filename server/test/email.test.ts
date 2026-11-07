@@ -117,8 +117,8 @@ describe('email', () => {
     }
   });
 
-  it('renders the login email exactly as the Python API does', () => {
-    // Fixtures rendered by core/email.py's _login_code_email_html.
+  it('renders the login email as its fixtures', () => {
+    // Fixtures rendered by Python's core/email.py before it was removed (#611).
     const fixture = (name: string) => readFileSync(new URL(`fixtures/${name}`, import.meta.url), 'utf8');
     expect(loginCodeEmailHtml('KQZMRTWPDA', "https://buyerly.app/auth/email/verify?token=a&b=<'\">")).toBe(fixture('login-email.html'));
     expect(loginCodeEmailHtml('KQZMRTWPDA', null)).toBe(fixture('verification-email.html'));

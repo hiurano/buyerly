@@ -13,7 +13,6 @@ import {
 import { Browser } from '../support/browser.ts';
 import { createUser, createWorkspace, testDatabase, unique } from '../support/db.ts';
 import {
-  CONTRACT_TARGET,
   DATABASE_URL,
   TEST_VAPID_PUBLIC_KEY,
   contractTarget,
@@ -25,8 +24,7 @@ import {
 // Notification settings over GraphQL: channels, the ad account bell,
 // desktop notifications and the Telegram connection
 // (tests/test_account_notifications.py, tests/test_inbox_push.py,
-// tests/test_inbox_telegram.py), against either server. The Python API in
-// CI has the same VAPID key and no Telegram bot; a set-up bot runs in-process.
+// tests/test_inbox_telegram.py). A set-up Telegram bot runs in-process.
 
 interface GraphQLAnswer {
   data: Record<string, unknown> | null;
@@ -314,8 +312,7 @@ describe.skipIf(!DATABASE_URL)('notification settings', () => {
 });
 
 // With a bot: the link is made over GraphQL and completed by the webhook.
-// Python needs the real Telegram for this, so it runs in-process only.
-describe.skipIf(!DATABASE_URL || CONTRACT_TARGET === 'python')('Telegram connection', () => {
+describe.skipIf(!DATABASE_URL)('Telegram connection', () => {
   let target: InProcessTarget;
   let db: DataSource;
   const { owner, joined, graphql } = members(() => target, () => db);

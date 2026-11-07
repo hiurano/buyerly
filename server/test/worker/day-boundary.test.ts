@@ -1,5 +1,3 @@
-import { spawnSync } from 'node:child_process';
-import { join } from 'node:path';
 import Fastify from 'fastify';
 import type { DataSource } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -10,9 +8,9 @@ import { createUser, createWorkspace, testDatabase } from '../support/db.ts';
 import { DATABASE_URL } from '../support/target.ts';
 
 // The account day boundary (scheduler/worker.py run_day_boundary_cycle,
-// core/timezones.py; #611 stage 4).
+// core/timezones.py; #611 stage 4), proved equal to Python's decisions at every
+// zone and moment in CI before Python was removed.
 
-const REPO = join(import.meta.dirname, '../../..');
 const log = Fastify({ logger: false }).log;
 
 // Moments around midnight in zones east and west of Greenwich, across a DST change, and UTC itself.
@@ -20,25 +18,8 @@ const ZONES = ['Europe/Amsterdam', 'America/New_York', 'Asia/Kolkata', 'Asia/Kat
 const MOMENTS = ['2026-11-06T22:59:30Z', '2026-11-06T23:03:00Z', '2026-11-06T23:05:00Z', '2026-11-07T04:59:59Z', '2026-11-07T05:00:00Z', '2026-03-29T00:30:00Z', '2026-11-01T04:02:00Z', '2026-11-06T18:16:00Z'];
 const PREVIOUS = ['', '2026-11-06', '2026-11-07', '2026-03-28', '2026-10-31'];
 
-const PYTHON = `
-import json, sys
-from datetime import datetime, timezone
-from core.timezones import evaluate_day_boundary, resolve_account_clock, utc_offset_label
-out = []
-for case in json.load(sys.stdin):
-    clock = resolve_account_clock(case["zone"])
-    if clock is None:
-        out.append(None)
-        continue
-    local = datetime.fromtimestamp(datetime.fromisoformat(case["at"].replace("Z", "+00:00")).timestamp(), timezone.utc).astimezone(clock.zone)
-    d = evaluate_day_boundary(case["previous"], local, notification_window_minutes=5)
-    out.append({"canonical": clock.canonical_name, "date": d.current_date, "update": d.should_update, "notify": d.should_notify,
-                "reason": d.reason, "offset": utc_offset_label(local), "time": local.strftime("%H:%M")})
-print(json.dumps(out))
-`;
-
 describe('the day boundary decision', () => {
-  it('is what Python decides, at every zone and moment', () => {
+  it('reaches every outcome, at every zone and moment', () => {
     const cases = ZONES.flatMap((zone) => MOMENTS.flatMap((at) => PREVIOUS.map((previous) => ({ zone, at, previous }))));
     const ours = cases.map(({ zone, at, previous }) => {
       const clock = accountClock(zone);
@@ -50,13 +31,6 @@ describe('the day boundary decision', () => {
         reason: decision.reason, offset: utcOffsetLabel(local), time: `${String(local.hour).padStart(2, '0')}:${String(local.minute).padStart(2, '0')}`,
       };
     });
-    const run = spawnSync(process.env.PYTHON ?? 'python3', ['-c', PYTHON], { cwd: REPO, input: JSON.stringify(cases), env: { ...process.env, PYTHONPATH: REPO } });
-    if (run.error || run.status !== 0) {
-      if (process.env.CI) throw new Error(`Python failed: ${run.stderr?.toString() ?? run.error?.message}`);
-      return;
-    }
-    expect(ours).toEqual(JSON.parse(run.stdout.toString()));
-    // The cases reach every outcome.
     expect(new Set(ours.map((item) => item?.reason ?? 'no clock'))).toEqual(new Set(['same_date', 'initialized', 'new_day', 'missed_window', 'no clock']));
   });
 });
@@ -99,7 +73,7 @@ describe.skipIf(!DATABASE_URL)('the day boundary cycle on the database', () => {
     expect(await row(kiev)).toMatchObject({ timezoneName: 'Europe/Kyiv', lastDayStartDate: '2026-11-07' });
     expect((await row(fresh)).lastDayStartDate).toBe('2026-11-06');
     expect((await row(late)).lastDayStartDate).toBe('2026-11-07');
-    // The orphan's date stays, so the next tick tries again; as Python rolls back.
+    // The orphan's date stays, so the next tick tries again; as a rollback leaves it.
     expect((await row(orphan)).lastDayStartDate).toBe('2026-11-06');
 
     const events = await dataSource.query<Record<string, unknown>[]>(

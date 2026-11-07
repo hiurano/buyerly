@@ -11,7 +11,7 @@ function database(ping: () => Promise<void>): Database {
 describe('health', () => {
   it('is alive with the release version', async () => {
     const app = buildApp(config, null);
-    const response = await app.inject({ method: 'GET', url: '/health/server/live' });
+    const response = await app.inject({ method: 'GET', url: '/health/live' });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ status: 'alive', version: 'abc123' });
     expect(response.headers['x-content-type-options']).toBe('nosniff');
@@ -22,7 +22,7 @@ describe('health', () => {
 
   it('is ready when the database answers', async () => {
     const app = buildApp(config, database(async () => {}));
-    const response = await app.inject({ method: 'GET', url: '/health/server/ready' });
+    const response = await app.inject({ method: 'GET', url: '/health/ready' });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ status: 'ready', version: 'abc123' });
     await app.close();
@@ -30,7 +30,7 @@ describe('health', () => {
 
   it('is not ready when the database fails', async () => {
     const app = buildApp(config, database(async () => { throw new Error('down'); }));
-    const response = await app.inject({ method: 'GET', url: '/health/server/ready' });
+    const response = await app.inject({ method: 'GET', url: '/health/ready' });
     expect(response.statusCode).toBe(503);
     expect(response.json()).toEqual({ status: 'not_ready', version: 'abc123' });
     await app.close();
@@ -38,7 +38,7 @@ describe('health', () => {
 
   it('is not ready without a database', async () => {
     const app = buildApp(config, null);
-    const response = await app.inject({ method: 'GET', url: '/health/server/ready' });
+    const response = await app.inject({ method: 'GET', url: '/health/ready' });
     expect(response.statusCode).toBe(503);
     await app.close();
   });

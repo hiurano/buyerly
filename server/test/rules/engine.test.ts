@@ -1,23 +1,15 @@
-import { spawnSync } from 'node:child_process';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { check, compareMetric, evaluate, evaluateAll, formatMoney, pyFixed, ruleMetricReading } from '../../src/rules/engine.ts';
 import { previewFromFacts, type PreviewFact } from '../../src/rules/preview.ts';
 
-// The rule engine's evaluation ported from rules/engine.py, core/metrics.py
-// and services/rule_preview.py must answer exactly as Python does, as the
-// stage-4 engine will run on it: every case below goes to both, through
-// engine_parity.py, and the answers must be equal — every verdict, reason,
-// figure and order, or a failure on both sides. Cases: every metric,
-// operator and window; display rounding on exact halves; time zones around
-// midnight and DST; missing and malformed data; rules that conflict, yield or
-// cannot run; recorded cases (the example rules on anonymized ad sets); and
-// a seeded generator mixing valid and broken values. Python runs in CI (the
-// server job installs requirements.txt); set PYTHON to a 3.12 interpreter
-// elsewhere.
-
-const REPO = join(import.meta.dirname, '../../..');
-const PYTHON = process.env.PYTHON ?? 'python3';
+// The rule engine's evaluation (rules/engine.py, core/metrics.py and
+// services/rule_preview.py ported) was proved to answer exactly as Python did
+// on these cases in CI before Python was removed (#611): every verdict,
+// reason, figure and order. Cases: every metric, operator and window; display
+// rounding on exact halves; time zones around midnight and DST; missing and
+// malformed data; rules that conflict, yield or cannot run; recorded cases
+// (the example rules on anonymized ad sets); and a seeded generator mixing
+// valid and broken values.
 
 type Answer = { ok: unknown } | { fail: string };
 interface Case { fn: string; args: unknown[] }
@@ -42,24 +34,6 @@ function portAnswer({ fn, args }: Case): Answer {
     return { fail: (error as Error).name };
   }
 }
-
-function pythonAnswers(cases: Case[]): Answer[] | null {
-  const run = spawnSync(PYTHON, [join(import.meta.dirname, 'engine_parity.py')], {
-    cwd: REPO,
-    input: JSON.stringify(cases),
-    env: { ...process.env, PYTHONPATH: REPO },
-    maxBuffer: 512 * 1024 * 1024,
-  });
-  if (run.error || run.status !== 0) {
-    if (process.env.CI) throw new Error(`engine_parity.py failed: ${run.stderr?.toString() ?? run.error?.message}`);
-    return null;
-  }
-  return JSON.parse(run.stdout.toString()) as Answer[];
-}
-
-// Failures compare by happening, not by type: an exception is a failed
-// request on either server.
-const comparable = (answer: Answer): unknown => ('fail' in answer ? 'fail' : answer.ok);
 
 // ---------------------------------------------------------------------------
 // Building blocks.
@@ -369,31 +343,16 @@ function fuzzCases(count: number): Case[] {
   return cases;
 }
 
-describe('rule engine parity with Python', () => {
+describe('rule engine', () => {
   const cases = [...metricCases(), ...formattingCases(), ...conditionCases(), ...ruleSetCases(), ...previewCases(), ...recordedCases(), ...fuzzCases(4000)];
-  const python = pythonAnswers(cases);
 
-  it.skipIf(python === null)(`answers ${cases.length} cases exactly as rules/engine.py does`, () => {
-    const mismatches: unknown[] = [];
-    cases.forEach((item, index) => {
-      const port = comparable(portAnswer(item));
-      const expected = comparable(python![index]);
-      try {
-        expect(port).toStrictEqual(expected);
-      } catch {
-        if (mismatches.length < 5) mismatches.push({ case: item, python: expected, port });
-      }
-    });
-    expect(mismatches).toEqual([]);
-  });
-
-  it.skipIf(python === null)('covers matches, misses, waits and failures', () => {
+  it('covers matches, misses, waits and failures', () => {
     const outcomes = new Set<string>();
-    cases.forEach((item, index) => {
-      const answer = python![index];
+    for (const item of cases) {
+      const answer = portAnswer(item);
       if ('fail' in answer) outcomes.add('fail');
       else if (item.fn === 'check') for (const found of answer.ok as { outcome: string; detail: string }[]) outcomes.add(found.detail.includes('no data') ? 'no data' : found.outcome);
-    });
+    }
     expect([...outcomes].sort()).toEqual(['fail', 'inactive', 'matched', 'no data', 'not_met']);
   });
 });

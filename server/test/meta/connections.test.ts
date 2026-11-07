@@ -9,9 +9,8 @@ import { DATABASE_URL, contractTarget, typescriptTarget, type InProcessTarget, t
 
 // Connecting a Facebook profile (api/meta_oauth.py, #611 stage 4): invite
 // links and the OAuth start over GraphQL, the invite landing page and
-// Facebook's callback over REST. The contract part runs against both servers
-// (CONTRACT_TARGET); neither has Meta settings there, so the OAuth start
-// answers 503 on both. The full callback, with Meta answered by the test,
+// Facebook's callback over REST. The contract part has no Meta settings, so the OAuth start
+// answers 503. The full callback, with Meta answered by the test,
 // runs on this server.
 
 type Row = Record<string, unknown>;
@@ -197,7 +196,7 @@ describe.skipIf(!DATABASE_URL)('the Meta OAuth callback on this server', () => {
 
   const stateOf = (authorizationUrl: string) => new URL(authorizationUrl).searchParams.get('state')!;
 
-  it('connects a profile, stores the token as Python does, and refuses the state a second time', async () => {
+  it('connects a profile, stores the token encrypted, and refuses the state a second time', async () => {
     const { ws, owner } = await world(target, db);
     const started = await owner(START, { returnPath: '/team/campaigns' });
     const authorization = started.data!.metaOauthStart!.authorization as { authorization_url: string; expires_in_seconds: number };
