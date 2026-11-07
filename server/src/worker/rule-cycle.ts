@@ -14,7 +14,7 @@ import { accountDayEnd, accountDayStart, createDecider, stateMatches, type Entit
 import { pyInt, type RuleEvaluationResult } from '../rules/engine.ts';
 import { isMapping, normalizeRuleLevel, pyFloat, pyStr, type Rule } from '../rules/validation.ts';
 import { pythonUtcIso, errorText } from './account-health.ts';
-import { connectionProblem, gatherLimited, intervalMinutes, loadRules, type AccountRow, type ConnectionRow } from './account-sync.ts';
+import { connectionProblem, gatherLimited, intervalMinutes, loadRules, restoreSchedule, type AccountRow, type ConnectionRow, type ScheduleMarks } from './account-sync.ts';
 import { handleTokenError, persistMonitoringEvent, setMonitoredHealth, type MonitoringEvent, type MonitoringLog } from './monitoring-events.ts';
 
 // The rules half of the monitoring cycle (scheduler/worker.py
@@ -66,6 +66,9 @@ export interface RuleCycleOptions {
   // The pause between accounts, in seconds (asyncio.sleep).
   sleep?: (seconds: number) => Promise<void>;
   random?: () => number;
+  // Aborted on SIGTERM: the cycle stops between steps (#685), never between
+  // a claimed slot and its Meta write.
+  signal?: AbortSignal;
 }
 
 interface Settings {
@@ -92,6 +95,8 @@ interface Prepared {
   now: number;
   dueRules: Rule[];
   accessToken: string;
+  // The due rules' schedule states, with their times before this cycle.
+  marks: ScheduleMarks;
 }
 
 const isCriticalStopRule = (rule: Json): boolean => CRITICAL_ACTIONS.has((rule.action ? pyStr(rule.action) : '').toLowerCase());
@@ -623,14 +628,15 @@ export class RuleCycle {
   }
 
   // One account's turn after its reads: the decision, step by step, with the writes it calls for.
-  private async checkAccount(item: Prepared, snapshot: Snapshot, settings: Settings, connections: Map<number, ConnectionRow>, stats: RuleCycleStats): Promise<void> {
+  // Resolves to false when it stopped for shutdown before the account's last step.
+  private async checkAccount(item: Prepared, snapshot: Snapshot, settings: Settings, connections: Map<number, ConnectionRow>, stats: RuleCycleStats): Promise<boolean> {
     const { db, log } = this.options;
     const { account, now, dueRules, accessToken } = item;
     const accountRef = String(account.account_id);
     if (snapshot.window_errors.length) {
       // The rules sit this cycle out rather than run on half the numbers.
       stats.errors.push(...snapshot.window_errors.map((error) => `Account ${accountRef} window: ${error}`));
-      return;
+      return true;
     }
     const { adsets, campaigns, ads } = snapshot;
     stats.adsets_checked += adsets.length;
@@ -680,14 +686,18 @@ export class RuleCycle {
     // A token Meta refused on a write stops this account's actions for the
     // cycle and is handled like one refused on a read.
     let tokenError: MetaTokenAuthError | null = null;
+    const { signal } = this.options;
+    let stopped = false;
     try {
     for (const entity of entities) {
       if (tokenError) break;
+      if (signal?.aborted) { stopped = true; break; }
       const plan = decider.plan(entity);
       const resets = decider.takeDirty();
       if (resets.length) await db.transaction((tx) => this.saveSlots(tx, account, resets));
       for (const evaluation of plan.evaluations) {
         if (tokenError) break;
+        if (signal?.aborted) { stopped = true; break; }
         const step = decider.step(plan, evaluation);
         if (step.kind === 'act') {
           // The claim is committed before Meta is written.
@@ -711,6 +721,13 @@ export class RuleCycle {
       stats.actions_reconciled += decider.stats.actions_reconciled;
       stats.stop_confirmations_waiting += decider.stats.stop_confirmations_waiting;
     }
+    // Half-checked: the rules' states stay as the last full check left them
+    // (saving now would drop the entities not reached) and the account's
+    // rules are due again in the next worker.
+    if (stopped) {
+      await db.transaction((tx) => restoreSchedule(tx, item.marks));
+      return false;
+    }
 
     const ids = (rules: unknown[]) => [...new Set(rules.filter(isMapping).map((rule) => rule.preset_id).filter((id): id is number => typeof id === 'number' && Number.isInteger(id)))].sort((a, b) => a - b);
     await db.transaction(async (tx) => {
@@ -722,6 +739,7 @@ export class RuleCycle {
         await setMonitoredHealth(tx, log, this.cycleId, account, { success: false, error: tokenError, cause: 'user', signals: { token_healthy: false } }, false);
       }
     });
+    return true;
   }
 
   // The history entry of a step that did not act.
@@ -890,6 +908,7 @@ export class RuleCycle {
           stats.accounts_skipped += 1;
           continue;
         }
+        const marks: ScheduleMarks = dueEntries.map(({ key }) => [key, states.get(key) ?? 0]);
         for (const { key } of dueEntries) {
           await tx.query('UPDATE automation_schedule_states SET last_checked_at = $2, updated_at = now() WHERE state_key = $1', [key, now]);
           states.set(key, now);
@@ -920,14 +939,22 @@ export class RuleCycle {
           stats.errors.push(`Account ${accountRef}: ${errorText(error)}`);
           continue;
         }
-        due.push({ account, now, dueRules, accessToken });
+        due.push({ account, now, dueRules, accessToken, marks });
       }
       return { due, connections, settings };
     });
 
+    const { signal } = this.options;
+    let stopped = false;
     if (prepared) {
-      const snapshots = await gatherLimited(prepared.due, prepared.settings.maxConcurrentAccounts, (item) => this.fetch(item.account, item.accessToken, item.dueRules));
+      const snapshots = await gatherLimited(prepared.due, prepared.settings.maxConcurrentAccounts, (item) => this.fetch(item.account, item.accessToken, item.dueRules), signal);
       for (const [index, item] of prepared.due.entries()) {
+        if (signal?.aborted) {
+          // Shutting down: the accounts left are due again in the next worker.
+          await db.transaction((tx) => restoreSchedule(tx, prepared.due.slice(index).flatMap((rest) => rest.marks)));
+          stopped = true;
+          break;
+        }
         const { account } = item;
         const { value: snapshot, error } = snapshots[index];
         try {
@@ -940,7 +967,11 @@ export class RuleCycle {
             // A failed Meta read; the account sync records it in the account's health.
             stats.errors.push(`Account ${account.account_id}: ${errorText(error)}`);
           } else {
-            await this.checkAccount(item, snapshot, prepared.settings, prepared.connections, stats);
+            if (!(await this.checkAccount(item, snapshot, prepared.settings, prepared.connections, stats))) {
+              await db.transaction((tx) => restoreSchedule(tx, prepared.due.slice(index + 1).flatMap((rest) => rest.marks)));
+              stopped = true;
+              break;
+            }
           }
         } catch (failure) {
           log.error(`Error processing account ${account.account_id}: ${errorText(failure)}`);
@@ -948,10 +979,15 @@ export class RuleCycle {
           await db.transaction((tx) => setMonitoredHealth(tx, log, this.cycleId, account, { success: false, error: failure }));
         }
         // Random cross-account jitter (0.5-1.5 s) to smooth the load on the Meta API.
-        await sleep(0.5 + random());
+        if (!signal?.aborted) await sleep(0.5 + random());
       }
     }
 
+    if (stopped) {
+      // Not a finished cycle: the watchdog keeps the last finished one.
+      log.info(`Rule cycle ${this.cycleId} stopped for shutdown; the accounts left are due in the next worker`);
+      return stats;
+    }
     await this.persistRuntimeState(stats, startedAt, performance.now() - cycleStarted);
     return stats;
   }

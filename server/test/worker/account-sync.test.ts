@@ -7,7 +7,7 @@ import { databaseOver } from '../../src/database.ts';
 import { AccountEntity } from '../../src/entities/index.ts';
 import { MetaClient } from '../../src/meta/client.ts';
 import { MetaTokenKeyring } from '../../src/meta/tokens.ts';
-import { AccountSync } from '../../src/worker/account-sync.ts';
+import { AccountSync, gatherLimited, STOPPED } from '../../src/worker/account-sync.ts';
 import { createUser, createWorkspace, testDatabase } from '../support/db.ts';
 import { DATABASE_URL } from '../support/target.ts';
 
@@ -253,4 +253,20 @@ describe.skipIf(!DATABASE_URL)('the account sync on the database', () => {
     const again = await sync.run({ accountIds });
     expect(again.accounts_synced).toBe(0);
   }, 60_000);
+});
+
+// #685: on shutdown no new account's Meta reads start; the rest are STOPPED.
+describe('reads for a stopping cycle', () => {
+  it('starts no item after the signal is aborted', async () => {
+    const shutdown = new AbortController();
+    const started: number[] = [];
+    const results = await gatherLimited([1, 2, 3, 4], 2, async (item) => {
+      started.push(item);
+      if (item === 2) shutdown.abort();
+      await Promise.resolve();
+      return item * 10;
+    }, shutdown.signal);
+    expect(started).toEqual([1, 2]);
+    expect(results).toEqual([{ value: 10 }, { value: 20 }, { error: STOPPED }, { error: STOPPED }]);
+  });
 });

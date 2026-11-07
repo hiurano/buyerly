@@ -39,6 +39,8 @@ export interface WorkerContext {
   // Runs a job under its advisory lock (jobs.ts withJobLock); false when held elsewhere.
   exclusive: (job: JobId, run: () => Promise<void>) => Promise<boolean>;
   metaFetch?: typeof fetch;
+  // Aborted by stop(): long jobs end between steps (#685).
+  shutdown?: AbortSignal;
 }
 
 // What the jobs talk to outside the database; tests replace them.
@@ -64,7 +66,7 @@ export function jobDefinitions(context: WorkerContext): Record<JobId, JobDefinit
     }));
   // One sync for the worker's life: it remembers which closed days it re-read.
   let sync: AccountSync | null = null;
-  const accountSync = (): AccountSync => (sync ??= new AccountSync({ db, log, tokenEncryptionKey: config.metaTokenEncryptionKey, meta: meta() }));
+  const accountSync = (): AccountSync => (sync ??= new AccountSync({ db, log, tokenEncryptionKey: config.metaTokenEncryptionKey, meta: meta(), signal: context.shutdown }));
   let rules: RuleCycle | null = null;
   const ruleCycle = (): RuleCycle =>
     (rules ??= new RuleCycle({
@@ -72,6 +74,7 @@ export function jobDefinitions(context: WorkerContext): Record<JobId, JobDefinit
       log,
       tokenEncryptionKey: config.metaTokenEncryptionKey,
       meta: meta(),
+      signal: context.shutdown,
     }));
   const delivery = { db, log, webappUrl: config.webappUrl };
   const deliveries = {
@@ -159,7 +162,9 @@ export function buildWorker(config: Config, dataSource: DataSource, services: Pa
   if (!config.redisUrl) throw new Error('REDIS_URL is not set');
   const redis = new Redis(config.redisUrl, { maxRetriesPerRequest: 1, lazyConnect: true });
   redis.on('error', (error) => app.log.warn({ err: error }, 'Redis connection error'));
+  const shutdown = new AbortController();
   const context: WorkerContext = {
+    shutdown: shutdown.signal,
     config,
     db,
     log: app.log,
@@ -209,8 +214,11 @@ export function buildWorker(config: Config, dataSource: DataSource, services: Pa
         },
       });
     },
-    // Compose stops the container with SIGTERM: running jobs finish first.
+    // Compose stops the container with SIGTERM (`docker stop --timeout 30`):
+    // the monitoring cycle and account sync stop at their next step, the
+    // other jobs finish first.
     async stop() {
+      shutdown.abort();
       const running = scheduler;
       scheduler = null;
       await running?.close();

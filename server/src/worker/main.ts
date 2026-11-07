@@ -20,7 +20,7 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
   process.once(signal, () => {
     if (stopping) return;
     stopping = true;
-    worker.app.log.info({ signal }, 'Worker shutting down; running jobs finish first');
+    worker.app.log.info({ signal }, 'Worker shutting down; long jobs stop at their next step');
     worker.stop().then(() => process.exit(0), (error: unknown) => {
       worker.app.log.error({ err: error }, 'Worker did not stop cleanly');
       process.exit(1);
