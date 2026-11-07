@@ -292,7 +292,19 @@ fi
 
 echo "[4/7] Building buyerly-app:${TARGET_SHA}..."
 build_log=$(mktemp)
-if ! BUILDKIT_PROGRESS=plain docker compose build --pull api >"${build_log}" 2>&1; then
+# --pull picks up base-image security updates. When Docker Hub refuses the
+# check (429: its anonymous pull limit), build on the base images already on
+# the server instead of failing the release.
+built=0
+if BUILDKIT_PROGRESS=plain docker compose build --pull api >"${build_log}" 2>&1; then
+    built=1
+elif grep -qiE '429 Too Many Requests|toomanyrequests' "${build_log}"; then
+    echo "[WARNING] Docker Hub rate limit; building on the cached base images."
+    if BUILDKIT_PROGRESS=plain docker compose build api >"${build_log}" 2>&1; then
+        built=1
+    fi
+fi
+if [[ "${built}" != 1 ]]; then
     echo "[ERROR] Image build failed; last lines of the build output:"
     tail -n 40 "${build_log}" | sed 's/^/[ERROR] build: /'
     echo "[ERROR] Disk: $(df -hP "${APP_DIR}" | awk 'NR == 2 {print $3 " used of " $2 " (" $5 ")"}')"
