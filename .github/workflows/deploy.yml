@@ -248,20 +248,26 @@ jobs:
       - name: Run the worker from the image
         run: |
           trap 'docker logs buyerly-worker-ci 2>&1 | tail -50 || true' ERR
+          # The worker runs every job, monitoring included: a database of its
+          # own, migrated by the image, rather than the tests' leftover data.
+          PGPASSWORD=buyerly_secret psql -h 127.0.0.1 -U buyerly -d buyerly_schema -c 'CREATE DATABASE buyerly_worker_ci'
+          docker run --rm --network host \
+            -e DATABASE_URL=postgresql://buyerly:buyerly_secret@127.0.0.1:5432/buyerly_worker_ci \
+            buyerly-app:ci node server/dist/migrate.js
           docker run -d --name buyerly-worker-ci --network host -e APP_VERSION=ci \
-            -e DATABASE_URL=postgresql+asyncpg://buyerly:buyerly_secret@127.0.0.1:5432/buyerly_schema \
+            -e DATABASE_URL=postgresql://buyerly:buyerly_secret@127.0.0.1:5432/buyerly_worker_ci \
             -e REDIS_URL=redis://127.0.0.1:6379/2 \
             buyerly-app:ci node server/dist/worker/main.js
           health=""
           for attempt in $(seq 30); do
             health=$(curl -fsS http://127.0.0.1:8091/health/worker-ts || true)
-            if echo "${health}" | grep -q '"outcome":"ok"'; then break; fi
+            if echo "${health}" | grep -q '"sync_log_compaction":{[^}]*"outcome":"ok"'; then break; fi
             sleep 1
           done
           echo "${health}"
           echo "${health}" | grep -q '"status":"ok"'
           echo "${health}" | grep -q '"sync_log_compaction":{[^}]*"outcome":"ok"'
-          docker stop --time 30 buyerly-worker-ci
+          docker stop --timeout 30 buyerly-worker-ci
           docker logs buyerly-worker-ci
           test "$(docker inspect --format '{{.State.ExitCode}}' buyerly-worker-ci)" = 0
           docker rm buyerly-worker-ci
