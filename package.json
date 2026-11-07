@@ -11,13 +11,15 @@
   },
   "scripts": {
     "changelog": "node server/src/scripts/build-changelog.ts",
-    "lint": "eslint server packages/shared frontend/src frontend/sw",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint server packages/shared frontend/src frontend/sw scripts",
+    "typecheck": "npm run typecheck --workspaces --if-present && tsc -p scripts",
     "test": "npm test --workspace @buyerly/server"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.14.0",
+    "jiti": "^2.7.0",
+    "typescript": "^5.9.3",
     "typescript-eslint": "^8.72.1"
   }
 }
