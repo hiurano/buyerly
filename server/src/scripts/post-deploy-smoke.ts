@@ -130,18 +130,18 @@ async function health(urlPath: string, expectedStatus: string): Promise<Json> {
 }
 
 async function authBoundary(): Promise<Json> {
-  const protectedPaths = [
-    // API -> TypeScript server -> back to the API for a GET (#611): the forwarding both ways.
-    '/api/graphql',
-    '/api/summary',
-    '/api/meta/oauth/config',
-    // Served by the TypeScript server through the API's forwarding (#611).
-    '/api/me',
-    '/api/auth/sessions',
-    '/api/sync/bootstrap',
-    '/api/sync/delta?since=0',
-  ];
   const statuses: Json = {};
+  // GraphQL takes only POST (a GET is 405): a signed-in-only query without a session.
+  const graphql = await fetch(`${BASE_URL}/api/graphql`, {
+    method: 'POST',
+    headers: { 'User-Agent': 'buyerly-read-only-smoke/1', 'content-type': 'application/json' },
+    body: JSON.stringify({ query: '{ viewer { id } }' }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  await graphql.text();
+  statuses['/api/graphql'] = graphql.status;
+  if (graphql.status !== 401) throw new Error('/api/graphql did not reject an unauthenticated request');
+  const protectedPaths = ['/api/meta/oauth/config', '/api/me', '/api/auth/sessions', '/api/sync/bootstrap', '/api/sync/delta?since=0'];
   for (const urlPath of protectedPaths) {
     const [status] = await httpGet(urlPath);
     statuses[urlPath] = status;
