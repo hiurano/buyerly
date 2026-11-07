@@ -1,9 +1,12 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { createDecipheriv, createECDH, createHmac, createPublicKey, randomBytes, randomUUID, verify } from 'node:crypto';
 import Fastify from 'fastify';
 import type { DataSource } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { databaseOver, type Database } from '../../src/database.ts';
 import type { EmailMessage } from '../../src/email/send.ts';
+import { inboxNotificationEmail } from '../../src/email/workspace-emails.ts';
 import {
   AuditEventEntity,
   DesktopPushSubscriptionEntity,
@@ -17,6 +20,11 @@ import {
   deliverInboxEmails,
   deliverInboxPush,
   deliverInboxTelegram,
+  eventTarget,
+  eventTitle,
+  pushMessage,
+  telegramText,
+  type InboxEvent,
 } from '../../src/notifications/delivery.ts';
 import type { TelegramBot, TelegramSendResult } from '../../src/notifications/telegram.ts';
 import { encryptPush, vapidAuthorization, vapidKey, type PushSendResult } from '../../src/notifications/web-push.ts';
@@ -24,11 +32,26 @@ import { createUser, createWorkspace, testDatabase, unique } from '../support/db
 import { DATABASE_URL, TEST_VAPID_PRIVATE_KEY } from '../support/target.ts';
 
 // The worker's Inbox deliveries (services/inbox_email.py, inbox_telegram.py,
-// inbox_push.py). What goes out was proved byte for byte equal to Python's in
-// CI before Python was removed (#611); who gets what, and what is recorded,
-// runs on the shared database.
+// inbox_push.py). What goes out — titles and targets, the Telegram text, the
+// desktop notification, the email (subject, HTML, text) and the Web Push body
+// for fixed keys — must stay as recorded in
+// test/fixtures/delivery-answers.json. The answers were recorded at d86703f8,
+// the last commit where CI proved them byte for byte equal to Python's on
+// these very cases (#611; the sources are unchanged since), so they are
+// Python's answers too (#685). After a deliberate change in what goes out,
+// record them again: RECORD_FIXTURES=1 npx vitest run test/worker/delivery.test.ts.
+// Who gets what, and what is recorded, runs on the shared database.
 
 const log = Fastify({ logger: false }).log;
+const FIXTURE = join(import.meta.dirname, '../fixtures/delivery-answers.json');
+
+const EVENTS: InboxEvent[] = [
+  { id: 1, event_type: 'STOP', action: 'STOP', category: 'RULE_ACTION', entity_name: 'Ad set <b>', adset_name: null, account_name: 'Acme & Co', entity_id: '1', adset_id: null, account_id: 'act_1', message: 'Spend $12 > $10 "today"' },
+  { id: 2, event_type: 'SOMETHING_NEW', action: 'some_action', category: 'SYSTEM', entity_name: null, adset_name: null, account_name: null, entity_id: null, adset_id: null, account_id: null, message: null },
+  { id: 3, event_type: null, action: null, category: 'MANUAL_ACTION', entity_name: '', adset_name: 'Adset', account_name: '', entity_id: '', adset_id: '9', account_id: '', message: '' },
+  { id: 4, event_type: 'WORKER_STALLED', action: 'INVESTIGATE', category: 'SYSTEM', entity_name: null, adset_name: null, account_name: null, entity_id: null, adset_id: null, account_id: null, message: `Long ${'é'.repeat(600)} 🙂` },
+];
+const WORKSPACE = { name: "Bob's <team>", slug: 'bobs-team' } as WorkspaceEntity;
 
 // A browser's subscription keys, as PushManager makes them.
 function browserKeys() {
@@ -59,6 +82,40 @@ function decryptPush(body: Buffer, receiver: ReturnType<typeof browserKeys>): st
 
 describe('what the deliveries send', () => {
   const receiver = browserKeys();
+
+  it('is what was recorded, byte for byte', () => {
+    // Fixed keys and salt, so the encrypted body is the same every run.
+    const fixed = createECDH('prime256v1');
+    fixed.setPrivateKey(Buffer.alloc(32, 7));
+    const answers = {
+      titles: EVENTS.map((event) => ({ title: eventTitle(event), target: eventTarget(event) })),
+      telegram: EVENTS.map((event) => telegramText(WORKSPACE, event)),
+      push: EVENTS.map((event) => pushMessage(WORKSPACE, event)),
+      email: EVENTS.map((event) => {
+        const message: EmailMessage = inboxNotificationEmail({
+          to: 'member@example.test',
+          workspaceName: WORKSPACE.name,
+          title: eventTitle(event),
+          target: eventTarget(event),
+          accountName: event.account_name || '',
+          message: event.message || '',
+          url: `https://buyerly.test/${WORKSPACE.slug}/inbox/${event.id}`,
+          settingsUrl: `https://buyerly.test/${WORKSPACE.slug}/settings/account/notifications/email`,
+        });
+        return { to: message.to, subject: message.subject, html: message.html, text: message.text };
+      }),
+      encrypted: encryptPush(Buffer.from('{"title":"Turned off · Ad set","id":1}'), fixed.getPublicKey().toString('base64url'), Buffer.alloc(16, 3).toString('base64url'), {
+        salt: Buffer.alloc(16, 5),
+        senderPrivateKey: Buffer.alloc(32, 9),
+      }).toString('base64'),
+    };
+    if (process.env.RECORD_FIXTURES) {
+      writeFileSync(FIXTURE, `${JSON.stringify(answers, null, 1)}\n`);
+      return;
+    }
+    expect(answers).toEqual(JSON.parse(readFileSync(FIXTURE, 'utf8')));
+  });
+
   it('encrypts for the browser and signs for its push service', () => {
     const body = encryptPush(Buffer.from('{"hello":"world"}'), receiver.p256dh, receiver.auth);
     expect(decryptPush(body, receiver)).toBe('{"hello":"world"}');
