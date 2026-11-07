@@ -45,9 +45,9 @@ result reports a revision/schema mismatch.
 2. Preserve the deploy log and verify the mandatory pre-deploy backup exists.
 3. Inspect only the migration and PostgreSQL tail logs; redact parameters and
    data values.
-4. Roll back application images. Schema recovery must use an audited Alembic
-   revision or the documented database restore procedure.
-5. Verify Alembic head, schema contract, `/health/ready`, and a successful smoke.
+4. Roll back application images. Schema recovery must use an audited TypeORM
+   migration or the documented database restore procedure.
+5. Verify no pending TypeORM migrations (the smoke check `database_migrations`), `/health/ready`, and a successful smoke.
 
 ## Meta API outage or quota
 

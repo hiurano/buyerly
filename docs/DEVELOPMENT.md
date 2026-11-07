@@ -4,9 +4,9 @@
 
 ## Архитектура
 
-Cloudflare Tunnel → `api` (FastAPI, отдаёт и React-приложение) → PostgreSQL 16.
-Отдельно работает `worker` (APScheduler). Всё собрано в один образ и один проект Docker Compose.
-Одноразовый сервис `migrate` выполняет миграции Alembic перед запуском приложения.
+Cloudflare Tunnel → `api` (сервер на TypeScript: Fastify и GraphQL, отдаёт и React-приложение) → PostgreSQL 16.
+Отдельно работает `worker` (фоновые задачи на BullMQ, очереди в Redis). Всё собрано в один образ и один проект Docker Compose.
+Одноразовый сервис `migrate` выполняет миграции TypeORM перед запуском приложения. Подробнее — [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Запуск
 
@@ -29,9 +29,9 @@ curl -fsS http://127.0.0.1:8080/health/ready
 docker compose -f compose.dev.yaml up -d --build
 ```
 
-Сайт — http://localhost:5173, вход через «Continue with email»: `dev@buyerly.localhost`. Письмо никуда не уходит: ссылка и код входа — в логе сервера на TypeScript, который ведёт вход (`docker compose -f compose.dev.yaml logs server`, строка с `[DEV EMAIL]`). Изменения во frontend появляются в браузере без перезагрузки, API перезапускается сам при правке Python-кода. База отдельная и локальная (том `buyerly-dev-postgres`), production и Meta не затрагиваются. Остановить — `docker compose -f compose.dev.yaml down`; с `-v` удаляются и локальные данные. Новая база сразу открывается в workspace `Dev` (`server/src/scripts/dev-seed.ts`), без онбординга.
+Сайт — http://localhost:5173, вход через «Continue with email»: `dev@buyerly.localhost`. Письмо никуда не уходит: ссылка и код входа — в логе сервера (`docker compose -f compose.dev.yaml logs api`, строка с `[DEV EMAIL]`). Изменения во frontend появляются в браузере без перезагрузки, сервер пересобирается и перезапускается сам при правке `server/` или `packages/shared/`. База отдельная и локальная (том `buyerly-dev-postgres`), production и Meta не затрагиваются. Остановить — `docker compose -f compose.dev.yaml down`; с `-v` удаляются и локальные данные. Новая база сразу открывается в workspace `Dev` (`server/src/scripts/dev-seed.ts`), без онбординга.
 
-Meta здесь фейковый (`server/src/scripts/fake-meta.ts`, сервис `fake-meta`): три выдуманных кабинета (NL · Lead gen, US · Sweepstakes, DE · E-commerce) с кампаниями, ad sets и объявлениями уже подключены к `Dev`. Расход за сегодня растёт по ходу дня в часовом поясе кабинета, прошлые дни не меняются. Локальный worker синхронизирует цифры и запускает правила: привяжите правило в Ads Manager, и оно остановит ad set или поменяет бюджет в фейковом Meta, с записью в Inbox и Undo. Кто и когда что остановил, фейк хранит в томе `buyerly-dev-meta`. Worker не перезапускается сам при правке кода — `docker compose -f compose.dev.yaml restart worker`.
+Meta здесь фейковый (`server/src/scripts/fake-meta.ts`, сервис `fake-meta`): три выдуманных кабинета (NL · Lead gen, US · Sweepstakes, DE · E-commerce) с кампаниями, ad sets и объявлениями уже подключены к `Dev`. Расход за сегодня растёт по ходу дня в часовом поясе кабинета, прошлые дни не меняются. Локальный worker синхронизирует цифры и запускает правила: привяжите правило в Ads Manager, и оно остановит ad set или поменяет бюджет в фейковом Meta, с записью в Inbox и Undo. Кто и когда что остановил, фейк хранит в томе `buyerly-dev-meta`. Worker перезапускается сам, когда `api` пересобрал сервер.
 
 ### Превью ветки
 
@@ -45,14 +45,17 @@ scripts/preview.sh list   # все превью на этом компьютер
 
 Адрес вида `http://<ветка>.localhost:5180/dev`, вход тот же: `dev@buyerly.localhost`, код — в `scripts/preview.sh logs`. Отдельный хост нужен, чтобы вход в превью не выкидывал из `localhost:5173` и других превью. Правки в этой рабочей копии видны в её превью сразу, как и в основном стеке.
 
-Без Docker API запускается на порту 8080 — его ожидает Vite proxy:
+Без Docker сервер запускается с `SERVER_PORT=8080` (как в `.env.example`) — этот порт ожидает Vite proxy. Нужны Node.js 24, PostgreSQL и Redis; зависимости ставятся один раз из корня репозитория (npm workspaces):
 
 ```bash
-uvicorn services.api:app --host 127.0.0.1 --port 8080 --reload
+npm ci
+npm run build --workspace @buyerly/server
+node server/dist/migrate.js                  # миграции TypeORM, нужен DATABASE_URL
+npm run dev --workspace @buyerly/server     # сервер, пересобирается при правке
+node --watch server/dist/worker/main.js      # воркер, нужен REDIS_URL
 ```
 
-Frontend запускается командой `npm run dev` из `frontend/` после установки зависимостей.
-Для API нужны PostgreSQL, Python-зависимости из `requirements.txt` и применённые миграции. На локальном HTTP используется `SESSION_COOKIE_SECURE=false`; production-настройки описаны в [DEPLOYMENT.md](DEPLOYMENT.md).
+Frontend запускается командой `npm run dev` из `frontend/`. На локальном HTTP используется `SESSION_COOKIE_SECURE=false`; production-настройки описаны в [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Проверки и изменения
 
@@ -63,21 +66,17 @@ gh run watch <run-id> --exit-status
 gh run view <run-id> --log-failed
 ```
 
-### Контрактные тесты сервера
+### Тесты сервера
 
-Тесты [server/test](../server/test/) идут по HTTP против Postgres после `alembic upgrade head`; без `SCHEMA_DATABASE_URL` они пропускаются (в CI — никогда). Те же тесты областей запускаются и против работающего Python API на той же базе — так CI доказывает, что оба сервера отвечают одинаково, пока область переезжает (#611). Python API для этого запускается с тем же `OTP_PEPPER`, что у тестов, `TRUSTED_PROXY_CIDRS=127.0.0.1/32` и `DEV_EMAIL_LOG=true`: коды тесты читают из его лога. Загруженные Python API файлы тесты ищут в `uploads/` репозитория (или в `PYTHON_UPLOADS_DIR`), а `/uploads/` он отдаёт только с `SERVE_STATIC=true` (по умолчанию).
+Тесты [server/test](../server/test/) (Vitest) идут по HTTP против Postgres, который мигрировал `node server/dist/migrate.js`; без `SCHEMA_DATABASE_URL` они пропускаются (в CI — никогда). Тесту тренажёра правил нужна ещё одноразовая база `buyerly_test` (`TEST_DATABASE_URL`, `TEST_DATABASE_DISPOSABLE=buyerly_test`), тестам воркера — Redis. Проверки frontend — `frontend/scripts/check-*.cjs` и сборка `npm run build --workspace buyerly-frontend`, браузерные сценарии — `scripts/*-browser.mjs`; полный список — в job-ах `frontend`, `browser` и `server` workflow.
 
 ```bash
 export SCHEMA_DATABASE_URL=postgresql://buyerly:<пароль>@localhost:5432/buyerly_schema
+npm run build --workspace @buyerly/server
+DATABASE_URL=$SCHEMA_DATABASE_URL node server/dist/migrate.js
 npm test --workspace @buyerly/server
-# Против Python API, запущенного на той же базе:
-DATABASE_URL=postgresql+asyncpg://buyerly:<пароль>@localhost:5432/buyerly_schema API_PORT=18080 \
-  OTP_PEPPER=contract-test-otp-pepper TRUSTED_PROXY_CIDRS=127.0.0.1/32 DEV_EMAIL_LOG=true python -m services.api &
-cd server
-CONTRACT_TARGET=python PYTHON_API_URL=http://127.0.0.1:18080 PYTHON_API_LOG=../logs/api.log npx vitest run test/auth test/uploads
+npm run typecheck && npm run lint
 ```
-
-С `PYTHON_API_URL` обычный прогон включает и [overlap.test.ts](../server/test/auth/overlap.test.ts): сессии и коды одного сервера на другом.
 
 Каждая задача выполняется в отдельной ветке от обновлённого `main`. Слияние PR допускается после успешного CI; `main` автоматически деплоится на VPS.
 
@@ -87,13 +86,13 @@ CONTRACT_TARGET=python PYTHON_API_URL=http://127.0.0.1:18080 PYTHON_API_LOG=../l
 |---|---|
 | `frontend/` | React, TypeScript, Vite, UI primitives и tokens |
 | `frontend/public/` | Публичные юридические HTML и ресурсы |
-| `api/` | HTTP-маршруты, схемы, авторизация и зависимости |
-| `core/` | Метрики, правила валидации, аудит, почта и общие механизмы |
-| `database/`, `alembic/` | Модели, подключение и миграции PostgreSQL |
-| `meta_api/` | Meta HTTP-клиент и OAuth |
-| `rules/`, `scheduler/` | Оценка правил и фоновое выполнение |
-| `services/` | Точки запуска и прикладные сервисы |
+| `server/src/` | Сервер на TypeScript: маршруты (`routes/`), GraphQL (`graphql/`), авторизация, синхронизация, уведомления |
+| `server/src/entities/`, `server/src/migrations/` | Сущности TypeORM и миграции PostgreSQL |
+| `server/src/meta/` | Meta HTTP-клиент и OAuth |
+| `server/src/rules/`, `server/src/worker/` | Оценка правил и фоновые задачи (BullMQ) |
+| `server/src/scripts/` | Smoke, проверка восстановления, fake Meta, dev-seed, тренажёр правил |
+| `server/test/` | Тесты сервера (Vitest) |
+| `packages/shared/` | Общие типы клиента и сервера, контракт GraphQL |
 | `scripts/` | Деплой, backup/restore и обслуживание |
-| `tests/` | Облачные проверки |
 | `uploads/` | Runtime-файлы; не хранятся в Git |
 | `docs/` | Действующая документация |

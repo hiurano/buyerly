@@ -26,22 +26,22 @@
 
 ## Meta invite — отдельный сценарий
 
-`/connect/meta/<token>` используется для подключения Meta-профиля через отдельную invite-ссылку. Это не приглашение в команду. Реализация находится в [api/meta_oauth.py](../api/meta_oauth.py) и [MetaConnectInviteView.tsx](../frontend/src/components/auth/MetaConnectInviteView.tsx).
+`/connect/meta/<token>` используется для подключения Meta-профиля через отдельную invite-ссылку. Это не приглашение в команду. Реализация находится в [server/src/meta/connections.ts](../server/src/meta/connections.ts), [server/src/routes/meta-oauth.ts](../server/src/routes/meta-oauth.ts) и [MetaConnectInviteView.tsx](../frontend/src/components/auth/MetaConnectInviteView.tsx).
 
 ## Почта и изображения
 
-Транзакционная почта отправляется через Resend; настройки перечислены в [.env.example](../.env.example). OTP и magic links обрабатываются в [services/otp.py](../services/otp.py).
+Транзакционная почта отправляется через Resend; настройки перечислены в [.env.example](../.env.example). OTP и magic links обрабатываются в [server/src/auth/otp.ts](../server/src/auth/otp.ts).
 
-SMTP transport не поддерживается. Для отправки задаются `RESEND_API_KEY` и `EMAIL_FROM`. Без ключа Resend транспорт переходит в локальный режим без доставки: в лог попадают адрес получателя и тема; тело письма и OTP-код не журналируются. Исключение — только локальный стек (`compose.dev.yaml`, `DEV_EMAIL_LOG=true`): там письмо целиком, со ссылкой и кодом, пишется в лог сервера на TypeScript (он ведёт `/api/auth/`, #611), чтобы войти без почты. Этот режим не заменяет работающую почту для production-входа.
+SMTP transport не поддерживается. Для отправки задаются `RESEND_API_KEY` и `EMAIL_FROM`. Без ключа Resend транспорт переходит в локальный режим без доставки: в лог попадают адрес получателя и тема; тело письма и OTP-код не журналируются. Исключение — только локальный стек (`compose.dev.yaml`, `DEV_EMAIL_LOG=true`): там письмо целиком, со ссылкой и кодом, пишется в лог сервера (`docker compose -f compose.dev.yaml logs api`), чтобы войти без почты. Этот режим не заменяет работающую почту для production-входа.
 
-Аватары и логотипы проходят серверную валидацию в [services/image_uploads.py](../services/image_uploads.py). Runtime-файлы хранятся в `uploads/`, production использует том `buyerly-uploads`; публичные URL остаются `/uploads/...`.
+Аватары и логотипы проходят серверную валидацию в [server/src/uploads/images.ts](../server/src/uploads/images.ts). Runtime-файлы хранятся в `uploads/`, production использует том `buyerly-uploads`; публичные URL остаются `/uploads/...`.
 
 ## Источники реализации
 
 | Область | Файлы |
 |---|---|
-| Сессии и проверка пользователя | [api/auth.py](../api/auth.py) |
-| Вход и профиль | [api/routers/auth.py](../api/routers/auth.py) |
-| Workspace и роли | [workspaces.py](../api/routers/workspaces.py), [members.py](../api/routers/members.py) |
-| Онбординг | [onboarding.py](../api/routers/onboarding.py) |
+| Сессии и проверка пользователя | [sessions.ts](../server/src/auth/sessions.ts), [plugin.ts](../server/src/auth/plugin.ts) |
+| Вход и профиль | [sign-in.resolver.ts](../server/src/graphql/areas/auth/sign-in.resolver.ts), [routes/auth.ts](../server/src/routes/auth.ts) |
+| Workspace и роли | [workspaces.resolver.ts](../server/src/graphql/areas/workspaces/workspaces.resolver.ts), [members.resolver.ts](../server/src/graphql/areas/workspaces/members.resolver.ts) |
+| Онбординг | [onboarding.resolver.ts](../server/src/graphql/areas/onboarding/onboarding.resolver.ts) |
 | Маршрутизация UI | [routing.ts](../frontend/src/lib/routing.ts) |
