@@ -38,7 +38,6 @@ describe('the jobs', () => {
       account_day_boundary: 60_000,
       account_sync: 60_000,
       monitoring: 60_000,
-      worker_watchdog: 60_000,
     });
     // Every job has its own advisory lock.
     expect(Object.keys(JOB_LOCKS).sort()).toEqual(Object.keys(definitions).sort());
@@ -68,16 +67,16 @@ describe.skipIf(!DATABASE_URL)('job locks and the sync log compaction', () => {
     const held = new Promise<void>((resolve) => { release = resolve; });
     let entered!: () => void;
     const inside = new Promise<void>((resolve) => { entered = resolve; });
-    const running = withJobLock(first, 'worker_watchdog', async () => { entered(); await held; });
+    const running = withJobLock(first, 'account_day_boundary', async () => { entered(); await held; });
     await inside;
     let ran = false;
-    expect(await withJobLock(second, 'worker_watchdog', async () => { ran = true; })).toBe(false);
+    expect(await withJobLock(second, 'account_day_boundary', async () => { ran = true; })).toBe(false);
     expect(ran).toBe(false);
     // Another job is free meanwhile.
     expect(await withJobLock(second, 'inbox_push', async () => {})).toBe(true);
     release();
     expect(await running).toBe(true);
-    expect(await withJobLock(second, 'worker_watchdog', async () => { ran = true; })).toBe(true);
+    expect(await withJobLock(second, 'account_day_boundary', async () => { ran = true; })).toBe(true);
     expect(ran).toBe(true);
   });
 

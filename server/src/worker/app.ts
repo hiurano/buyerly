@@ -15,7 +15,6 @@ import { AccountSync } from './account-sync.ts';
 import { RuleCycle } from './rule-cycle.ts';
 import { MetaClient } from '../meta/client.ts';
 import { PostgresInventoryCache } from '../meta/inventory-cache.ts';
-import { CHECK_INTERVAL_MS, checkOnce } from './watchdog.ts';
 import { RUNS_KEY, startScheduler, type JobDefinition, type RunRecord, type Scheduler } from './scheduler.ts';
 
 // The worker: Compose service `worker`, from the same image as the server
@@ -135,13 +134,6 @@ export function jobDefinitions(context: WorkerContext): Record<JobId, JobDefinit
       run: async () => {
         const stats = await ruleCycle().run();
         if (stats.accounts_checked || stats.errors.length) log.info({ ...stats, errors: stats.errors.length }, 'Rule cycle');
-      },
-    },
-    // Every minute, as the API's loop did (services/worker_watchdog.py).
-    worker_watchdog: {
-      everyMs: CHECK_INTERVAL_MS,
-      run: async () => {
-        await checkOnce(db, log);
       },
     },
   };
