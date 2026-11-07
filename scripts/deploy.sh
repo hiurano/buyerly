@@ -330,7 +330,7 @@ fi
 
 echo "[4/7] Building buyerly-app:${TARGET_SHA}..."
 build_log=$(mktemp)
-if ! docker compose build --pull --progress=plain api >"${build_log}" 2>&1; then
+if ! BUILDKIT_PROGRESS=plain docker compose build --pull api >"${build_log}" 2>&1; then
     echo "[ERROR] Image build failed; last lines of the build output:"
     tail -n 40 "${build_log}" | sed 's/^/[ERROR] build: /'
     echo "[ERROR] Disk: $(df -hP "${APP_DIR}" | awk 'NR == 2 {print $3 " used of " $2 " (" $5 ")"}')"
