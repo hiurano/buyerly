@@ -1,71 +1,21 @@
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import fastifyMultipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
-import type { ImageUploadResponse, LogoUploadResponse } from '@buyerly/shared';
+import type { SignedUploadResponse } from '@buyerly/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { currentUser } from '../auth/plugin.ts';
 import { rateLimit } from '../http/rate-limit.ts';
-import { UserEntity } from '../entities/index.ts';
-import { HttpError, ValidationFailed } from '../http/errors.ts';
-import { ImageStorage, InvalidImageUpload, MAX_UPLOAD_BYTES } from '../uploads/images.ts';
+import { HttpError } from '../http/errors.ts';
+import { ImageStorage, InvalidImageUpload } from '../uploads/images.ts';
 import { SIGNED_UPLOAD_PATH, verifyUpload } from '../uploads/signed.ts';
 
-// Image uploads (api/routers/onboarding.py: avatar and workspace logo) and
-// the files themselves under /uploads/ (api/server.py mounts them), on the
-// same paths, limits and answers. Attaching a logo to a workspace is a
-// workspace update and moves with Workspaces.
+// The files under /uploads/ (api/server.py mounted them) and the byte upload
+// to a signed link that GraphQL's fileUpload hands out (decision 55). Avatars
+// and logos are attached by userUpdate and the workspace update.
 
 // The Python API's cap on an upload request (api/server.py): 6 MB, for a
 // 5 MB image and the form around it.
 export const UPLOAD_REQUEST_LIMIT = 6 * 1024 * 1024;
 const TOO_LARGE = 'The request body exceeds the allowed size limit.';
-
-interface UploadedFile {
-  content: Buffer;
-  filename: string;
-  contentType: string | null;
-}
-
-function missingFile(): ValidationFailed {
-  return new ValidationFailed([{ type: 'missing', loc: ['body', 'file'], msg: 'Field required', input: null }]);
-}
-
-// The form's "file" part, as FastAPI's `file: UploadFile = File(...)` reads
-// it: the last part of that name wins; other parts are ignored. At most
-// MAX_UPLOAD_BYTES + 1 bytes are kept, as `file.read(MAX_UPLOAD_BYTES + 1)`.
-async function formFile(request: FastifyRequest): Promise<UploadedFile> {
-  if (!request.isMultipart()) throw missingFile();
-  let found: UploadedFile | null = null;
-  let text: string | null = null;
-  for await (const part of request.parts({ limits: { fileSize: MAX_UPLOAD_BYTES + 1 } })) {
-    if (part.fieldname !== 'file') {
-      if (part.type === 'file') part.file.resume();
-      continue;
-    }
-    if (part.type === 'file') {
-      // busboy says text/plain for a part without a type; Starlette says
-      // nothing, which the image check accepts.
-      const declared = part.mimetype === 'text/plain' ? null : part.mimetype;
-      found = { content: await part.toBuffer(), filename: part.filename, contentType: declared };
-      text = null;
-    } else {
-      found = null;
-      text = String(part.value);
-    }
-  }
-  if (found) return found;
-  if (text !== null) {
-    throw new ValidationFailed([{
-      type: 'value_error',
-      loc: ['body', 'file'],
-      msg: "Value error, Expected UploadFile, received: <class 'str'>",
-      input: text,
-      ctx: { error: {} },
-    }]);
-  }
-  throw missingFile();
-}
 
 async function stored<T>(save: () => Promise<T>): Promise<T> {
   try {
@@ -80,9 +30,6 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
   const images = new ImageStorage(app.config.uploadsRoot);
   await mkdir(join(images.root, 'avatars'), { recursive: true });
   await mkdir(join(images.root, 'workspaces'), { recursive: true });
-
-  // Past the limit the part is cut, not refused: the image check answers.
-  await app.register(fastifyMultipart, { throwFileSizeLimit: false });
 
   // Uploads get a new name on every change, so browsers may keep them.
   // Anything but a file (a directory, a dotfile, a path out of the
@@ -112,14 +59,10 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
-  // Refused before the body is read, as the Python API's middleware does.
-  const upload = {
-    bodyLimit: UPLOAD_REQUEST_LIMIT,
-    onRequest: async (request: FastifyRequest) => {
-      const length = Number(request.headers['content-length']);
-      if (Number.isFinite(length) && length > UPLOAD_REQUEST_LIMIT) throw new HttpError(413, TOO_LARGE);
-    },
-    preValidation: [currentUser],
+  // Refused before the body is read, as the Python API's middleware did.
+  const refuseTooLarge = async (request: FastifyRequest) => {
+    const length = Number(request.headers['content-length']);
+    if (Number.isFinite(length) && length > UPLOAD_REQUEST_LIMIT) throw new HttpError(413, TOO_LARGE);
   };
 
   // The bytes of a file `fileUpload` granted (graphql/areas/uploads), PUT to
@@ -133,10 +76,10 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
       SIGNED_UPLOAD_PATH,
       {
         bodyLimit: UPLOAD_REQUEST_LIMIT,
-        onRequest: upload.onRequest,
+        onRequest: refuseTooLarge,
         preValidation: [rateLimit({ limit: 20, scope: 'signed_upload' })],
       },
-      async (request): Promise<{ asset_url: string }> => {
+      async (request): Promise<SignedUploadResponse> => {
         const grant = verifyUpload(app.config.otpPepper, String(request.query.token ?? ''));
         if (!grant) throw new HttpError(403, 'This upload link is invalid or has expired');
         const content = Buffer.isBuffer(request.body) ? request.body : Buffer.alloc(0);
@@ -148,62 +91,5 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
         return { asset_url: assetUrl };
       },
     );
-  });
-
-  // A new avatar for the member; the old one, if uploaded here, is removed.
-  app.post('/api/onboarding/avatar', upload, async (request): Promise<ImageUploadResponse> => {
-    const { user } = request.auth!;
-    const file = await formFile(request);
-    const avatarUrl = await stored(() =>
-      images.save(file.content, {
-        filename: file.filename || 'avatar.png',
-        contentType: file.contentType,
-        category: 'avatars',
-        ownerUserId: user.id,
-      }),
-    );
-    const ownPrefix = `avatar_${user.id}_`;
-    let oldAvatar: string;
-    try {
-      oldAvatar = await app.db.transaction(async (tx) => {
-        const row = await tx.findOneByOrFail(UserEntity, { id: user.id });
-        await tx.update(UserEntity, { id: user.id }, { avatarUrl });
-        return row.avatarUrl;
-      });
-    } catch (error) {
-      await images.delete(avatarUrl, 'avatars', ownPrefix);
-      throw error;
-    }
-    await images.delete(oldAvatar, 'avatars', ownPrefix);
-    return { status: 'ok', avatar_url: avatarUrl };
-  });
-
-  // Back to the initial badge.
-  app.delete('/api/onboarding/avatar', { preValidation: [currentUser] }, async (request): Promise<ImageUploadResponse> => {
-    const { user } = request.auth!;
-    const oldAvatar = await app.db.transaction(async (tx) => {
-      const row = await tx.findOneByOrFail(UserEntity, { id: user.id });
-      await tx.update(UserEntity, { id: user.id }, { avatarUrl: '' });
-      return row.avatarUrl;
-    });
-    await images.delete(oldAvatar, 'avatars', `avatar_${user.id}_`);
-    return { status: 'ok', avatar_url: '' };
-  });
-
-  // A logo for a workspace being made or edited; the workspace takes it with
-  // its next update. Logos nobody took for a day are removed first.
-  app.post('/api/onboarding/workspace/logo', upload, async (request): Promise<LogoUploadResponse> => {
-    const { user } = request.auth!;
-    const file = await formFile(request);
-    await app.db.transaction((tx) => images.cleanupStaleWorkspaceLogos(tx));
-    const logoUrl = await stored(() =>
-      images.save(file.content, {
-        filename: file.filename || 'logo.png',
-        contentType: file.contentType,
-        category: 'workspaces',
-        ownerUserId: user.id,
-      }),
-    );
-    return { status: 'ok', logo_url: logoUrl };
   });
 }

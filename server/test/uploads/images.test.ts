@@ -14,12 +14,28 @@ import { DATABASE_URL, contractTarget, type Target } from '../support/target.ts'
 // Avatar and workspace logo uploads and the files under /uploads/:
 // tests/test_api.py (test_avatar_and_logo_disallow_svg,
 // test_image_uploads_are_canonical_owned_and_cleaned) over HTTP, and the
-// limits of services/image_uploads.py. Attaching a logo with
-// PATCH /api/workspaces/… is Workspaces' and stays in the Python tests; here
+// limits of services/image_uploads.py. An upload goes as the page sends it
+// (decision 55): fileUpload grants a signed link, the bytes are PUT there,
+// and an avatar is taken by userUpdate. Attaching a logo is Workspaces'; here
 // the workspace takes it in the database.
 
-const AVATAR = '/api/onboarding/avatar';
-const LOGO = '/api/onboarding/workspace/logo';
+const AVATAR = 'avatar';
+const LOGO = 'workspace_logo';
+const FILE_UPLOAD = 'mutation F($input: JSON!) { fileUpload(input: $input) { uploadFile } }';
+const USER_UPDATE = 'mutation U($input: JSON!) { userUpdate(input: $input) { success } }';
+
+interface GraphQLAnswer {
+  data: Record<string, { uploadFile?: { upload_url: string; headers: Record<string, string> } } | null> | null;
+  errors?: { message: string; extensions?: { statusCode?: number } }[];
+}
+
+// An upload's outcome: the status and answer of the step that ended it.
+interface Uploaded {
+  status: number;
+  json<T = Record<string, unknown>>(): T;
+}
+
+const outcome = (status: number, body: unknown): Uploaded => ({ status, json: <T>() => body as T });
 
 // A PNG with a text chunk that must not survive (Pillow's PngInfo "Comment").
 async function pngWithComment(): Promise<Buffer> {
@@ -107,18 +123,37 @@ describe.skipIf(!DATABASE_URL)('image uploads', () => {
     return { user, workspace, browser };
   }
 
-  function upload(browser: Browser, path: string, filename: string, content: Buffer | string, type?: string) {
-    return browser.postForm(path, [{ name: 'file', filename, content, type }], browser.csrf());
+  async function graphql(browser: Browser, query: string, input: Record<string, unknown>): Promise<GraphQLAnswer> {
+    const answer = await browser.post('/api/graphql', { query, variables: { input } }, browser.csrf());
+    expect(answer.status).toBe(200);
+    return answer.json<GraphQLAnswer>();
+  }
+
+  // The link is granted for the bytes' size (at least 1: an empty file is
+  // the stored check's to refuse), then the bytes go to it.
+  async function upload(browser: Browser, purpose: string, filename: string, content: Buffer | string, type?: string): Promise<Uploaded> {
+    const bytes = Buffer.from(content);
+    const grant = await graphql(browser, FILE_UPLOAD, { purpose, content_type: type ?? '', filename, size: Math.max(bytes.length, 1) });
+    const refused = grant.errors?.[0];
+    if (refused) return outcome(refused.extensions?.statusCode ?? 400, { detail: refused.message });
+    const { upload_url: uploadUrl, headers } = grant.data!.fileUpload!.uploadFile!;
+    const put = await browser.request('PUT', uploadUrl, { body: bytes, headers });
+    if (put.status !== 200) return outcome(put.status, put.json());
+    const url = put.json<{ asset_url: string }>().asset_url;
+    if (purpose === LOGO) return outcome(200, { status: 'ok', logo_url: url });
+    const taken = await graphql(browser, USER_UPDATE, { avatar_url: url });
+    if (taken.errors?.length) return outcome(taken.errors[0].extensions?.statusCode ?? 400, { detail: taken.errors[0].message });
+    return outcome(200, { status: 'ok', avatar_url: url });
   }
 
   it('refuses a signed-out upload and one without the CSRF header', async () => {
-    const png = await solid(4, 4).png().toBuffer();
-    const anonymous = await new Browser(target).postForm(AVATAR, [{ name: 'file', filename: 'a.png', content: png, type: 'image/png' }]);
+    const input = { purpose: AVATAR, content_type: 'image/png', filename: 'a.png', size: 5 };
+    const anonymous = await new Browser(target).post('/api/graphql', { query: FILE_UPLOAD, variables: { input } });
     expect(anonymous.status).toBe(401);
     expect(anonymous.json()).toEqual({ detail: 'Sign-in is required' });
 
     const { browser } = await signedIn();
-    const forged = await browser.postForm(AVATAR, [{ name: 'file', filename: 'a.png', content: png, type: 'image/png' }]);
+    const forged = await browser.post('/api/graphql', { query: FILE_UPLOAD, variables: { input } });
     expect(forged.status).toBe(403);
   });
 
@@ -176,18 +211,12 @@ describe.skipIf(!DATABASE_URL)('image uploads', () => {
   });
 
   it('refuses a request over 6 MB before reading it', async () => {
-    const response = await new Browser(target).postForm(AVATAR, [
-      { name: 'file', filename: 'avatar.png', content: Buffer.alloc(6 * 1024 * 1024 + 1), type: 'image/png' },
-    ]);
+    const { browser } = await signedIn();
+    const grant = await graphql(browser, FILE_UPLOAD, { purpose: AVATAR, content_type: 'image/png', filename: 'avatar.png', size: 5 });
+    const { upload_url: uploadUrl, headers } = grant.data!.fileUpload!.uploadFile!;
+    const response = await new Browser(target).request('PUT', uploadUrl, { body: Buffer.alloc(6 * 1024 * 1024 + 1), headers });
     expect(response.status).toBe(413);
     expect(response.json()).toEqual({ detail: 'The request body exceeds the allowed size limit.' });
-  });
-
-  it('answers a form without the file as FastAPI does', async () => {
-    const { browser } = await signedIn();
-    const response = await browser.postForm(AVATAR, [{ name: 'other', value: 'x' }], browser.csrf());
-    expect(response.status).toBe(422);
-    expect(response.json()).toEqual({ detail: [{ type: 'missing', loc: ['body', 'file'], msg: 'Field required', input: null }] });
   });
 
   it('stores images canonical, upright, small and without metadata', async () => {
@@ -269,9 +298,8 @@ describe.skipIf(!DATABASE_URL)('image uploads', () => {
     const uploaded = await upload(browser, AVATAR, 'avatar.png', await solid(8, 8).png().toBuffer(), 'image/png');
     const url = uploaded.json<{ avatar_url: string }>().avatar_url;
 
-    const removed = await browser.delete(AVATAR, browser.csrf());
-    expect(removed.status).toBe(200);
-    expect(removed.json()).toEqual({ status: 'ok', avatar_url: '' });
+    const removed = await graphql(browser, USER_UPDATE, { avatar_url: '' });
+    expect(removed.errors).toBeUndefined();
     expect(existsSync(onDisk(url))).toBe(false);
     expect((await db.getRepository(UserEntity).findOneByOrFail({ id: user.id })).avatarUrl).toBe('');
     expect((await browser.get('/api/me')).json()).toMatchObject({ avatar_url: '' });

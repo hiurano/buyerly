@@ -384,6 +384,9 @@ type Query {
   """What an invite link offers, for the page shown before signing in."""
   workspaceInviteDetails(token: String!): JSON!
 
+  """What a Meta connection invite link offers, for the page shown before connecting."""
+  metaInviteDetails(token: String!): JSON!
+
   """Reliability signals and ad account health of the active workspace."""
   healthOverview: JSON!
 

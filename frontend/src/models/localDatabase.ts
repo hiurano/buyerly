@@ -26,7 +26,7 @@ const SCHEMA_VERSION = 1;
 const PREFIX = 'buyerly_';
 /** Every database this browser made, by name, with the scope it holds: sign-out finds them here. */
 const REGISTRY_KEY = 'buyerly-local-databases';
-/** The signed-in profile last seen, so a reload draws the workspace before /api/me answers. */
+/** The signed-in profile last seen, so a reload draws the workspace before `viewer` answers. */
 const SESSION_KEY = 'buyerly-session';
 
 const MODELS = 'models';

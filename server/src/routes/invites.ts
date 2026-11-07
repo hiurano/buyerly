@@ -1,13 +1,11 @@
 import type { PublicInviteInfo, PublicInviteStatus } from '@buyerly/shared';
 import type { FastifyInstance } from 'fastify';
 import { UserEntity, WorkspaceEntity, WorkspaceInviteEntity } from '../entities/index.ts';
-import { rateLimit } from '../http/rate-limit.ts';
 import { utcIso } from './auth.ts';
 
 // The public side of workspace invites (api/routers/members.py,
-// get_public_invite_info): what the invite page shows before anyone signs in.
-// Everything else about invites (create, list, revoke, resend, accept, the
-// invite link) is served by the client API (GraphQL) and moves with it.
+// get_public_invite_info): what the invite page shows before anyone signs in,
+// read through GraphQL's workspaceInviteDetails (decision 55).
 
 function refused(status: PublicInviteStatus, message: string): PublicInviteInfo {
   return {
@@ -25,15 +23,7 @@ function refused(status: PublicInviteStatus, message: string): PublicInviteInfo 
   };
 }
 
-export async function inviteRoutes(app: FastifyInstance): Promise<void> {
-  app.get<{ Params: { token: string } }>(
-    '/api/invites/:token',
-    { preValidation: [rateLimit({ limit: 30, windowSeconds: 60, scope: 'invite_info' })] },
-    async (request): Promise<PublicInviteInfo> => publicInviteInfo(app, request.params.token),
-  );
-}
-
-// The invite behind a link, for the route above and workspaceInviteDetails.
+// The invite behind a link.
 export async function publicInviteInfo(app: FastifyInstance, token: string): Promise<PublicInviteInfo> {
   return app.db.transaction(async (tx) => {
     const invite = await tx.getRepository(WorkspaceInviteEntity).findOneBy({ token });
