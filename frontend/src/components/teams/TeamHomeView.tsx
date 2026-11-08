@@ -45,7 +45,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { BuyerlyDataListRow, BuyerlyDataListToolbar, BuyerlyDataTable, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import type { AppTab } from '@/models/shellStore';
 import { colors } from '@/styles/tokens.stylex';
+import { linkMarker } from '@/ui/markers.stylex';
+import { withClassName } from '@/ui/withClassName';
 import { BuyerlyToolbarButton } from '@/ui/BuyerlyToolbarButton';
+
+const WIDE_OVERVIEW = '@media (min-width: 901px)';
+const NARROW_OVERVIEW = '@media (max-width: 900px)';
+const HOVER = '@media (any-hover: hover) and (any-pointer: fine)';
+const TOUCH = '@media (hover: none) and (pointer: coarse)';
 
 const truncate = {
   overflow: 'hidden',
@@ -81,6 +88,57 @@ const styles = stylex.create({
     display: 'flex',
     minWidth: 0,
     alignItems: 'center',
+  },
+  // A team page's header, as Linear's "Team › Issues": the team links to it, a dim "›", the page.
+  breadcrumbLink: {
+    display: 'inline-flex',
+    minWidth: 0,
+    alignItems: 'center',
+    height: 24,
+    marginTop: 0,
+    marginRight: -5,
+    marginBottom: 0,
+    marginLeft: -4,
+    paddingTop: 0,
+    paddingRight: 5,
+    paddingBottom: 0,
+    paddingLeft: 4,
+    borderRadius: 8,
+    backgroundColor: {
+      default: null,
+      ':hover': {
+        default: null,
+        [HOVER]: colors['--item-hover-bg'],
+      },
+    },
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': {
+        default: null,
+        [HOVER]: colors['--text-primary'],
+      },
+    },
+    fontSize: 13,
+    // Linear's team name in the header is 450, lighter than a page title's 500.
+    fontWeight: 450,
+    cursor: 'default',
+    outline: {
+      default: 'none',
+      ':focus-visible': `1px solid ${colors['--focus-ring-color']}`,
+    },
+    outlineOffset: {
+      default: null,
+      ':focus-visible': -1,
+    },
+  },
+  breadcrumbSeparator: {
+    marginTop: -2,
+    marginRight: 8,
+    marginBottom: 0,
+    marginLeft: 8,
+    color: colors['--breadcrumb-separator-fg'],
+    fontSize: 13,
+    fontWeight: 500,
   },
   teamIcon: {
     marginRight: 6,
@@ -119,6 +177,375 @@ const styles = stylex.create({
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: '0%',
+  },
+  // Linear's team Home (measured 01.11): a column up to 700px (12px of it on the right) and a 220px aside,
+  // 32px apart and centred between two empty tracks.
+  overview: {
+    display: 'grid',
+    gridTemplateColumns: {
+      default: 'minmax(0, 1fr) minmax(0, 700px) 220px minmax(0, 1fr)',
+      [NARROW_OVERVIEW]: 'minmax(0, 1fr)',
+    },
+    gap: 32,
+    alignContent: 'start',
+    width: '100%',
+    minWidth: 0,
+    paddingTop: 24,
+    paddingRight: {
+      default: 0,
+      [NARROW_OVERVIEW]: 20,
+    },
+    paddingBottom: {
+      default: 48,
+      [NARROW_OVERVIEW]: 40,
+    },
+    paddingLeft: {
+      default: 0,
+      [NARROW_OVERVIEW]: 20,
+    },
+    overflowY: 'auto',
+    containerType: 'inline-size',
+    userSelect: 'text',
+  },
+  overviewMain: {
+    gridColumn: {
+      default: null,
+      [WIDE_OVERVIEW]: '2',
+    },
+    paddingRight: {
+      default: null,
+      [WIDE_OVERVIEW]: 12,
+    },
+  },
+  overviewHeading: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+  },
+  overviewIcon: {
+    display: 'inline-flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 36,
+    height: 36,
+    borderRadius: 6,
+    backgroundColor: `color-mix(in lch, ${colors['--action-primary']} 12.5%, transparent)`,
+  },
+  overviewTitle: {
+    ...truncate,
+    minWidth: 0,
+    marginTop: 0,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    color: colors['--text-primary'],
+    fontSize: 24,
+    fontWeight: 600,
+    lineHeight: '32px',
+  },
+  overviewDescription: {
+    display: 'block',
+    width: '100%',
+    marginTop: 20,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    borderWidth: 0,
+    borderStyle: 'none',
+    borderColor: 'currentColor',
+    backgroundColor: 'transparent',
+    backgroundPosition: '0px 0px',
+    color: colors['--text-secondary'],
+    fontSize: 15,
+    fontWeight: 450,
+    lineHeight: '23px',
+    resize: 'none',
+    outline: 'none',
+    '::placeholder': {
+      color: colors['--text-muted'],
+    },
+  },
+  overviewResources: {
+    marginTop: 34,
+  },
+  overviewSectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 28,
+    // Linear's header buttons run 10px into the column's right gutter.
+    marginRight: -10,
+  },
+  overviewSectionTitle: {
+    marginTop: 0,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    color: colors['--text-primary'],
+    fontSize: 18,
+    fontWeight: 500,
+  },
+  overviewPlaceholder: {
+    marginTop: 11,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    color: colors['--text-muted'],
+    fontSize: 15,
+    fontWeight: 450,
+    lineHeight: '23px',
+  },
+  overviewResourceList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+    marginTop: 10,
+  },
+  teamResource: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    height: 36,
+    paddingTop: 0,
+    paddingRight: 10,
+    paddingBottom: 0,
+    paddingLeft: 10,
+    borderRadius: 8,
+    backgroundColor: {
+      default: null,
+      ':hover': {
+        default: null,
+        [HOVER]: colors['--data-row-hover-bg'],
+      },
+    },
+    color: colors['--text-primary'],
+    fontSize: 14,
+    fontWeight: 500,
+    textAlign: 'left',
+    cursor: 'default',
+  },
+  overviewAside: {
+    gridColumn: {
+      default: null,
+      [WIDE_OVERVIEW]: '3',
+    },
+    order: {
+      default: null,
+      [NARROW_OVERVIEW]: -1,
+    },
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    paddingTop: 16,
+  },
+  overviewAsideLabel: {
+    color: colors['--text-tertiary'],
+    fontSize: 13,
+    fontWeight: 500,
+  },
+  overviewAsideLabelSpaced: {
+    marginTop: 24.5,
+  },
+  overviewFaces: {
+    display: 'flex',
+    alignItems: 'center',
+    marginTop: 13.5,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: -4,
+    paddingTop: 4,
+    paddingRight: 8,
+    paddingBottom: 4,
+    paddingLeft: 4,
+    borderRadius: 9999,
+    backgroundColor: {
+      default: null,
+      ':hover': {
+        default: null,
+        [HOVER]: colors['--item-hover-bg'],
+      },
+    },
+    cursor: 'default',
+  },
+  // Members' faces overlap a little, as Linear's.
+  face: {
+    position: 'relative',
+    display: 'inline-flex',
+    borderRadius: 9999,
+    boxShadow: `0 0 0 1.5px ${colors['--bg-canvas']}`,
+  },
+  faceOverlap: {
+    marginLeft: -4,
+  },
+  overviewLinks: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 12,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: -7,
+  },
+  overviewLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 5,
+    height: 28,
+    paddingTop: 5,
+    paddingRight: 8,
+    paddingBottom: 5,
+    paddingLeft: 6,
+    borderRadius: 9999,
+    backgroundColor: {
+      default: null,
+      ':hover': {
+        default: null,
+        [HOVER]: colors['--item-hover-bg'],
+      },
+    },
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': {
+        default: null,
+        [HOVER]: colors['--text-primary'],
+      },
+    },
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: 'default',
+  },
+  overviewLinkIcon: {
+    display: 'inline-flex',
+    color: colors['--text-tertiary'],
+  },
+  // Linear shows the chevron only on the link under the cursor or in focus.
+  overviewLinkArrow: {
+    marginLeft: 3,
+    color: colors['--text-primary'],
+    opacity: {
+      default: 0,
+      [stylex.when.ancestor(':focus-visible', linkMarker)]: 1,
+      [stylex.when.ancestor(':hover', linkMarker)]: {
+        default: null,
+        [HOVER]: 1,
+      },
+      [TOUCH]: 1,
+    },
+  },
+  // Linear's empty Documents tab, measured live (21.10): a 280px column in the middle of the
+  // page, the illustration, a 15px/600 title 24px under it, the text 8px lower, the button 16px.
+  documentsEmpty: {
+    display: 'flex',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 0,
+    paddingTop: 88,
+    paddingRight: 16,
+    paddingBottom: 88,
+    paddingLeft: 16,
+    overflowY: 'auto',
+  },
+  documentsEmptyColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    width: 280,
+    maxWidth: '100%',
+  },
+  documentsEmptyIcon: {
+    color: colors['--text-tertiary'],
+  },
+  documentsEmptyTitle: {
+    marginTop: 24,
+    color: colors['--text-secondary'],
+    fontSize: 15,
+    fontWeight: 600,
+    lineHeight: '23px',
+  },
+  documentsEmptyDetail: {
+    marginTop: 8,
+    color: colors['--text-tertiary'],
+    fontSize: 13,
+    fontWeight: 450,
+    lineHeight: 'normal',
+  },
+  documentsEmptyAction: {
+    marginTop: 16,
+    paddingTop: 0,
+    paddingRight: 10,
+    paddingBottom: 0,
+    paddingLeft: 10,
+  },
+  // One team document: Linear's centered page, a 24px/600 title over a 15px body.
+  documentPage: {
+    width: '100%',
+    minWidth: 0,
+    overflowY: 'auto',
+    userSelect: 'text',
+  },
+  documentInner: {
+    display: 'flex',
+    flexDirection: 'column',
+    maxWidth: 760,
+    marginTop: 0,
+    marginRight: 'auto',
+    marginBottom: 0,
+    marginLeft: 'auto',
+    paddingTop: 24,
+    paddingRight: 32,
+    paddingBottom: 80,
+    paddingLeft: 32,
+  },
+  documentMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 28,
+    color: colors['--text-muted'],
+    fontSize: 12,
+    fontWeight: 450,
+  },
+  documentField: {
+    width: '100%',
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    borderWidth: 0,
+    borderStyle: 'none',
+    borderColor: 'currentColor',
+    backgroundColor: 'transparent',
+    backgroundPosition: '0px 0px',
+    resize: 'none',
+    outline: 'none',
+    '::placeholder': {
+      color: colors['--text-muted'],
+    },
+  },
+  documentTitle: {
+    marginTop: 20,
+    color: colors['--text-primary'],
+    fontSize: 24,
+    fontWeight: 600,
+    lineHeight: '32px',
+  },
+  documentBody: {
+    minHeight: 240,
+    marginTop: 14,
+    overflow: 'hidden',
+    color: colors['--text-secondary'],
+    fontSize: 15,
+    fontWeight: 450,
+    lineHeight: '23px',
   },
   documentIcon: {
     flexShrink: 0,
@@ -288,13 +715,13 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
       }
       if (documents.length === 0) {
         return (
-          <div className="documents-empty" role="status">
-            <div className="documents-empty__column">
-              <BuyerlyIcon name="documents-empty" size={80} className="documents-empty__icon" />
-              <span className="documents-empty__title">Team documents</span>
-              <span className="documents-empty__detail">Create documents to share notes, decisions, and plans with your team.</span>
+          <div {...stylex.props(styles.documentsEmpty)} role="status">
+            <div {...stylex.props(styles.documentsEmptyColumn)}>
+              <BuyerlyIcon name="documents-empty" size={80} {...stylex.props(styles.documentsEmptyIcon)} />
+              <span {...stylex.props(styles.documentsEmptyTitle)}>Team documents</span>
+              <span {...stylex.props(styles.documentsEmptyDetail)}>Create documents to share notes, decisions, and plans with your team.</span>
               {canWrite && (
-                <Button variant="primary" size="compact" className="documents-empty__action" onClick={() => void createDocument()}>
+                <Button variant="primary" size="compact" xstyle={styles.documentsEmptyAction} onClick={() => void createDocument()}>
                   Create document
                 </Button>
               )}
@@ -325,7 +752,7 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
           <div {...stylex.props(styles.title)}>
             <SidebarCollapsedNavigation />
             {team && (
-              <button type="button" className="team-breadcrumb-link" onClick={() => open('overview')}>
+              <button type="button" {...stylex.props(styles.breadcrumbLink)} onClick={() => open('overview')}>
                 <TeamIcon size={16} className={stylex.props(styles.teamIcon).className} />
                 <span {...stylex.props(styles.teamName)}>{team.name}</span>
               </button>
@@ -341,7 +768,7 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
             )}
             {team && documentId && openDocument && (
               <>
-                <span className="team-breadcrumb-separator" aria-hidden="true">›</span>
+                <span {...stylex.props(styles.breadcrumbSeparator)} aria-hidden="true">›</span>
                 <h2 {...stylex.props(styles.documentHeading)}>{documentTitle(openDocument)}</h2>
               </>
             )}
@@ -430,17 +857,17 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
   ];
 
   return (
-    <div className="team-overview">
-      <div className="team-overview__main">
-        <div className="team-overview__heading">
-          <span className="team-overview__icon"><TeamIcon size={24} /></span>
-          <h1 className="team-overview__title">{team.name}</h1>
+    <div {...withClassName(stylex.props(styles.overview), 'team-overview')}>
+      <div {...stylex.props(styles.overviewMain)}>
+        <div {...stylex.props(styles.overviewHeading)}>
+          <span {...stylex.props(styles.overviewIcon)}><TeamIcon size={24} /></span>
+          <h1 {...stylex.props(styles.overviewTitle)}>{team.name}</h1>
         </div>
         <TeamDescription team={team} canEdit={canEdit} />
 
-        <section className="team-overview__resources">
-          <div className="team-overview__section-header">
-            <h3 className="team-overview__section-title">Team resources</h3>
+        <section {...stylex.props(styles.overviewResources)}>
+          <div {...stylex.props(styles.overviewSectionHeader)}>
+            <h3 {...stylex.props(styles.overviewSectionTitle)}>Team resources</h3>
             {canWrite && (
               <Tooltip content="Add document" side="bottom" align="end">
                 <BuyerlyToolbarButton aria-label="Add document" onClick={onCreateDocument}>
@@ -450,11 +877,11 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
             )}
           </div>
           {documents.length === 0 ? (
-            <p className="team-overview__placeholder">Add documents for the team. They are listed here and under Documents.</p>
+            <p {...stylex.props(styles.overviewPlaceholder)}>Add documents for the team. They are listed here and under Documents.</p>
           ) : (
-            <div className="team-overview__resource-list">
+            <div {...stylex.props(styles.overviewResourceList)}>
               {documents.map((document) => (
-                <button key={document.id} type="button" className="team-resource" onClick={() => onOpenTab('documents', document.id)}>
+                <button key={document.id} type="button" {...stylex.props(styles.teamResource)} onClick={() => onOpenTab('documents', document.id)}>
                   <BuyerlyIcon name="document" size={16} {...stylex.props(styles.documentIcon)} />
                   <span {...stylex.props(styles.resourceTitle)}>{documentTitle(document)}</span>
                 </button>
@@ -464,22 +891,27 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
         </section>
       </div>
 
-      <aside className="team-overview__aside">
-        <div className="team-overview__aside-label">Members</div>
-        <button type="button" className="team-overview__faces" onClick={() => onOpenTab('members')} aria-label={`${people.length} members`}>
+      <aside {...stylex.props(styles.overviewAside)}>
+        <div {...stylex.props(styles.overviewAsideLabel)}>Members</div>
+        <button type="button" {...stylex.props(styles.overviewFaces)} onClick={() => onOpenTab('members')} aria-label={`${people.length} members`}>
           {people.slice(0, 8).map((member, index) => (
-            <span key={member.user_id} className="team-face" style={{ zIndex: 8 - index }} title={memberName(member)}>
+            <span
+              key={member.user_id}
+              {...stylex.props(styles.face, index > 0 && styles.faceOverlap)}
+              style={{ zIndex: 8 - index }}
+              title={memberName(member)}
+            >
               <Initials label={memberName(member)} avatarUrl={member.avatar_url} size={18} />
             </span>
           ))}
           {people.length === 0 && <span {...stylex.props(styles.noMembers)}>No members</span>}
         </button>
 
-        <div className="team-overview__aside-label team-overview__aside-label--spaced">Go to</div>
-        <div className="team-overview__links">
+        <div {...stylex.props(styles.overviewAsideLabel, styles.overviewAsideLabelSpaced)}>Go to</div>
+        <div {...stylex.props(styles.overviewLinks)}>
           {links.map((link) => (
-            <button key={link.id} type="button" className="team-overview__link" onClick={link.run}>
-              <span className="team-overview__link-icon">{link.icon}</span>
+            <button key={link.id} type="button" {...stylex.props(styles.overviewLink, linkMarker)} onClick={link.run}>
+              <span {...stylex.props(styles.overviewLinkIcon)}>{link.icon}</span>
               <span>{link.label}</span>
               <GoToChevron />
             </button>
@@ -520,7 +952,7 @@ const TeamDescription: React.FC<{ team: TeamItem; canEdit: boolean }> = ({ team,
   const [value, setValue] = useState(team.description);
   useEffect(() => setValue(team.description), [team.description]);
   if (!canEdit) {
-    return team.description ? <p className="team-overview__description">{team.description}</p> : null;
+    return team.description ? <p {...stylex.props(styles.overviewDescription)}>{team.description}</p> : null;
   }
   const save = async () => {
     const next = value.trim();
@@ -535,7 +967,7 @@ const TeamDescription: React.FC<{ team: TeamItem; canEdit: boolean }> = ({ team,
   };
   return (
     <textarea
-      className="team-overview__description team-overview__description--input"
+      {...stylex.props(styles.overviewDescription)}
       value={value}
       maxLength={255}
       rows={1}
@@ -562,7 +994,7 @@ const TeamSettingsIcon: React.FC = () => (
 
 /** The chevron at the end of a "Go to" link. */
 const GoToChevron: React.FC = () => (
-  <BuyerlyIcon name="chevron-right" size={14} className="team-overview__link-arrow" />
+  <BuyerlyIcon name="chevron-right" size={14} {...stylex.props(styles.overviewLinkArrow)} />
 );
 
 const DOCUMENT_COLUMNS: BuyerlyDataListColumn[] = [
@@ -685,9 +1117,9 @@ const TeamDocumentEditor: React.FC<TeamDocumentEditorProps> = ({ team, document,
   }, [document.updated_at, saving]);
 
   return (
-    <div className="team-document">
-      <div className="team-document__inner">
-        <div className="team-document__meta">
+    <div {...stylex.props(styles.documentPage)}>
+      <div {...stylex.props(styles.documentInner)}>
+        <div {...stylex.props(styles.documentMeta)}>
           <span>{status}</span>
           {!readOnly && (
             <DropdownMenu>
@@ -703,7 +1135,7 @@ const TeamDocumentEditor: React.FC<TeamDocumentEditorProps> = ({ team, document,
           )}
         </div>
         <textarea
-          className="team-document__title"
+          {...stylex.props(styles.documentField, styles.documentTitle)}
           value={title}
           rows={1}
           maxLength={255}
@@ -724,7 +1156,7 @@ const TeamDocumentEditor: React.FC<TeamDocumentEditorProps> = ({ team, document,
         />
         <textarea
           ref={bodyRef}
-          className="team-document__body"
+          {...stylex.props(styles.documentField, styles.documentBody)}
           value={content}
           readOnly={readOnly}
           placeholder={readOnly ? '' : 'Write notes, decisions or a plan… Markdown works.'}
