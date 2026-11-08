@@ -1,10 +1,279 @@
 import React, { useEffect, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { BuyerlyMark } from '@/icons/BuyerlyIcons';
 import { isSplashShown } from '@/lib/splash';
+import { colors, type } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
+import css from './AuthFrame.module.css';
 
-export const BuyerlyBrand: React.FC<{ compact?: boolean }> = ({ compact = false }) => (
+/**
+ * Shared styles for screens outside the app shell: sign-in, sign-up,
+ * workspace creation, onboarding, invitation errors, and 404.
+ * Theme custom properties (--auth-*) are set on AuthFrame's root by AuthFrame.module.css.
+ */
+export const authStyles = stylex.create({
+  page: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 1000,
+    display: 'grid',
+    minHeight: '100dvh',
+    placeItems: 'center',
+    overflow: 'auto',
+    paddingTop: 32,
+    paddingRight: 20,
+    paddingBottom: 32,
+    paddingLeft: 20,
+    backgroundColor: 'var(--auth-bg)',
+    color: 'var(--auth-text)',
+    fontFamily: `${type['--font-regular']}, Inter, sans-serif`,
+  },
+  brand: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  brandCompact: {
+    justifyContent: 'flex-start',
+    marginTop: 0,
+    marginRight: 0,
+    marginBottom: 76,
+    marginLeft: 0,
+    color: 'var(--auth-text)',
+  },
+  brandSignin: {
+    display: 'flex',
+    marginBottom: 32,
+  },
+  card: {
+    width: 'min(100%, 360px)',
+    textAlign: 'center',
+  },
+  heading: {
+    marginTop: 0,
+    marginRight: 0,
+    marginBottom: 20,
+    marginLeft: 0,
+    color: 'var(--auth-text)',
+    fontSize: 16,
+    fontWeight: 600,
+    letterSpacing: '-0.22px',
+    lineHeight: 1.35,
+  },
+  formHeading: {
+    marginBottom: 16,
+  },
+  copy: {
+    marginTop: -7,
+    marginRight: 'auto',
+    marginBottom: 24,
+    marginLeft: 'auto',
+    maxWidth: '100%',
+    color: 'var(--auth-text-muted)',
+    fontSize: 13,
+    lineHeight: 1.55,
+    textWrap: 'balance',
+  },
+  field: {
+    display: 'block',
+    marginBottom: 10,
+  },
+  fieldLabel: {
+    display: 'block',
+    marginTop: 0,
+    marginRight: 0,
+    marginBottom: 7,
+    marginLeft: 2,
+    color: 'var(--auth-text-muted)',
+    fontSize: 12,
+    fontWeight: 520,
+  },
+  input: {
+    width: '100%',
+    height: 44,
+    marginTop: 0,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    paddingTop: 0,
+    paddingRight: 12,
+    paddingBottom: 0,
+    paddingLeft: 12,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: {
+      default: 'var(--auth-input-border)',
+      ':hover:not(:disabled)': 'var(--auth-input-hover-border)',
+    },
+    borderRadius: 10,
+    outlineStyle: {
+      default: 'none',
+      ':focus': 'solid',
+    },
+    outlineWidth: {
+      default: 0,
+      ':focus': 1,
+    },
+    outlineColor: {
+      default: 'currentColor',
+      ':focus': 'var(--auth-input-focus)',
+    },
+    outlineOffset: -1,
+    boxShadow: 'none',
+    backgroundColor: 'var(--auth-input-bg)',
+    color: 'var(--auth-input-text)',
+    fontSize: 13,
+    appearance: 'none',
+    transitionProperty: 'border-color',
+    transitionDuration: {
+      default: '150ms',
+      ':hover:not(:disabled)': '0s',
+    },
+    '::placeholder': {
+      color: 'var(--auth-input-placeholder)',
+    },
+  },
+  inputInvalid: {
+    borderColor: {
+      default: '#d84949',
+      ':hover:not(:disabled)': 'var(--auth-input-hover-border)',
+    },
+    outlineColor: {
+      default: 'currentColor',
+      ':focus': '#d84949',
+    },
+  },
+  button: {
+    display: 'flex',
+    width: '100%',
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    paddingTop: 9,
+    paddingRight: 16,
+    paddingBottom: 9,
+    paddingLeft: 16,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    borderRadius: 999,
+    backgroundColor: {
+      default: 'var(--auth-button-bg)',
+      ':hover:not(:disabled)': 'var(--auth-button-hover-bg)',
+    },
+    color: 'var(--auth-button-text)',
+    fontSize: 13,
+    fontWeight: 540,
+    cursor: {
+      default: 'pointer',
+      ':disabled': 'not-allowed',
+    },
+    opacity: {
+      default: 1,
+      ':disabled': 0.5,
+    },
+    transform: {
+      default: null,
+      ':active:not(:disabled)': 'translateY(1px)',
+    },
+    boxShadow: 'var(--auth-button-shadow)',
+    transition: 'background 120ms ease, border-color 120ms ease, transform 80ms ease',
+  },
+  /** Linear: 16px from the last field (or its error) to the button. */
+  buttonAfterField: {
+    marginTop: 16,
+  },
+  buttonFlush: {
+    marginTop: 0,
+  },
+  /** Linear's first sign-in choice is filled with the accent; the rest stay outlined. */
+  buttonPrimary: {
+    borderColor: 'transparent',
+    backgroundColor: {
+      default: colors['--button-primary-bg'],
+      ':hover:not(:disabled)': colors['--button-primary-hover-bg'],
+    },
+    color: colors['--button-primary-text'],
+    boxShadow: 'var(--auth-button-primary-shadow)',
+  },
+  linkButton: {
+    textDecoration: 'none',
+  },
+  /** Linear's account screens: "Back to …" top left, "Logged in as <email>" top right. */
+  back: {
+    position: 'fixed',
+    top: 24,
+    left: 24,
+    borderWidth: 0,
+    borderStyle: 'none',
+    borderColor: 'currentColor',
+    backgroundColor: 'transparent',
+    backgroundPosition: '0px 0px',
+    color: {
+      default: 'var(--auth-text-muted)',
+      ':hover': 'var(--auth-text)',
+    },
+    fontSize: 12,
+    cursor: 'pointer',
+  },
+  corner: {
+    position: 'fixed',
+    top: 22,
+    right: 24,
+    marginTop: 0,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    color: 'var(--auth-text-muted)',
+    fontSize: 11,
+    lineHeight: 1.5,
+    textAlign: 'right',
+  },
+  cornerStrong: {
+    display: 'block',
+    color: 'var(--auth-text)',
+    fontSize: 12,
+    fontWeight: 540,
+  },
+  error: {
+    marginTop: 8,
+    marginRight: 3,
+    marginBottom: 2,
+    marginLeft: 3,
+    textAlign: 'left',
+    color: 'var(--auth-error)',
+    fontSize: 12,
+    lineHeight: 1.45,
+  },
+  hint: {
+    marginTop: 8,
+    marginRight: 3,
+    marginBottom: 2,
+    marginLeft: 3,
+    textAlign: 'left',
+    color: 'var(--auth-text-muted)',
+    fontSize: 12,
+    lineHeight: 1.45,
+  },
+});
+
+export const BuyerlyBrand: React.FC<{
+  compact?: boolean;
+  signin?: boolean;
+  style?: stylex.StyleXStyles;
+}> = ({ compact = false, signin = false, style }) => (
   <div
-    className={`buyerly-auth-brand${compact ? ' buyerly-auth-brand--compact' : ''}`}
+    {...withClassName(
+      stylex.props(
+        authStyles.brand,
+        compact && authStyles.brandCompact,
+        signin && authStyles.brandSignin,
+        style,
+      ),
+      `buyerly-auth-brand ${css.brand}${compact ? ` ${css.brandCompact}` : ''}${signin ? ` ${css.brandSignin}` : ''}`,
+    )}
     role="img"
     aria-label="Buyerly"
   >
@@ -12,12 +281,22 @@ export const BuyerlyBrand: React.FC<{ compact?: boolean }> = ({ compact = false 
   </div>
 );
 
-export const AuthFrame: React.FC<React.PropsWithChildren<{ dark?: boolean; className?: string }>> = ({
+export const AuthFrame: React.FC<React.PropsWithChildren<{
+  dark?: boolean;
+  className?: string;
+  style?: stylex.StyleXStyles;
+}>> = ({
   children,
   dark = false,
   className = '',
+  style,
 }) => (
-  <main className={`buyerly-auth-page${dark ? ' buyerly-auth-page--dark' : ''}${className ? ` ${className}` : ''}`}>
+  <main
+    {...withClassName(
+      stylex.props(authStyles.page, style),
+      `buyerly-auth-page ${css.page}${dark ? ` ${css.dark}` : ''}${className ? ` ${className}` : ''}`,
+    )}
+  >
     {children}
   </main>
 );

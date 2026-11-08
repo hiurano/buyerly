@@ -1,5 +1,7 @@
 import React from 'react';
-import { AuthFrame, BuyerlyBrand } from './AuthFrame';
+import * as stylex from '@stylexjs/stylex';
+import { withClassName } from '@/ui/withClassName';
+import { AuthFrame, BuyerlyBrand, authStyles } from './AuthFrame';
 
 interface NotFoundViewProps {
   homePath: string;
@@ -7,11 +9,11 @@ interface NotFoundViewProps {
 
 export const NotFoundView: React.FC<NotFoundViewProps> = ({ homePath }) => (
   <AuthFrame>
-    <section className="buyerly-auth-card">
+    <section {...withClassName(stylex.props(authStyles.card), 'buyerly-auth-card')}>
       <BuyerlyBrand />
-      <h1>Page not found</h1>
-      <p className="buyerly-auth-copy">This address doesn’t exist in Buyerly.</p>
-      <a className="buyerly-auth-button buyerly-auth-link-button" href={homePath}>
+      <h1 {...stylex.props(authStyles.heading)}>Page not found</h1>
+      <p {...stylex.props(authStyles.copy)}>This address doesn’t exist in Buyerly.</p>
+      <a {...stylex.props(authStyles.button, authStyles.linkButton)} href={homePath}>
         Go to Buyerly
       </a>
     </section>
