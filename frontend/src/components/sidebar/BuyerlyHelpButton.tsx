@@ -149,6 +149,104 @@ const styles = stylex.create({
     clipPath: 'inset(50%)',
     whiteSpace: 'nowrap',
   },
+  button: {
+    width: 24,
+    height: 24,
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    borderRadius: 9999,
+    borderWidth: 0.5,
+    borderStyle: 'solid',
+    borderColor: {
+      default: colors['--color-border-tertiary'],
+      ':hover': 'transparent',
+      ':is([data-state="open"])': 'transparent',
+    },
+    backgroundColor: {
+      default: 'transparent',
+      ':hover': colors['--help-button-hover-bg'],
+      ':is([data-state="open"])': colors['--help-button-hover-bg'],
+    },
+    color: {
+      default: colors['--help-button-fg'],
+      ':hover': colors['--help-button-hover-fg'],
+      ':is([data-state="open"])': colors['--help-button-hover-fg'],
+    },
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'default',
+    flexShrink: 0,
+    outline: 'none',
+    transition: 'background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease',
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 1px ${colors['--help-focus-ring']}`,
+    },
+  },
+  menu: {
+    backgroundColor: colors['--help-menu-bg'],
+    borderColor: colors['--help-menu-border'],
+    color: colors['--help-menu-fg'],
+  },
+  icon: {
+    width: 16,
+    height: 16,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    color: colors['--help-menu-secondary'],
+  },
+  timeline: {
+    width: 16,
+    height: 32,
+    marginTop: -8,
+    marginRight: 0,
+    marginBottom: -8,
+    marginLeft: 0,
+    display: 'block',
+    flexShrink: 0,
+  },
+  timelineLine: {
+    stroke: colors['--help-menu-timeline'],
+  },
+  timelineCircle: {
+    fill: colors['--help-menu-secondary'],
+  },
+  group: {
+    height: 24,
+    paddingTop: 6,
+    paddingRight: 14,
+    paddingBottom: 2,
+    paddingLeft: 14,
+    display: 'flex',
+    alignItems: 'center',
+    fontSize: 12,
+    fontWeight: 500,
+    lineHeight: '14px',
+    color: colors['--help-menu-secondary'],
+    userSelect: 'none',
+  },
+  shortcut: {
+    marginLeft: 'auto',
+    paddingLeft: 16,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--help-menu-secondary'],
+  },
+  shortcutKbd: {
+    fontFamily: 'inherit',
+    fontSize: 12,
+    fontWeight: 500,
+    lineHeight: '13.2px',
+    color: colors['--help-menu-secondary'],
+  },
 });
 
 /**
@@ -160,9 +258,9 @@ type TimelinePart = 'first' | 'middle' | 'last' | 'only';
 function TimelineMark({ part }: { part: TimelinePart }) {
   const [from, to] = part === 'first' ? [16, 32] : part === 'middle' ? [0, 32] : [0, 16];
   return (
-    <svg className="buyerly-help-timeline" viewBox="0 0 16 32" aria-hidden="true">
-      {part !== 'only' && <line x1="8" x2="8" y1={from} y2={to} strokeWidth="2" strokeDasharray="4 4" strokeDashoffset="2" />}
-      <circle cx="8" cy="16" r="3" />
+    <svg {...stylex.props(styles.timeline)} viewBox="0 0 16 32" aria-hidden="true">
+      {part !== 'only' && <line {...stylex.props(styles.timelineLine)} x1="8" x2="8" y1={from} y2={to} strokeWidth="2" strokeDasharray="4 4" strokeDashoffset="2" />}
+      <circle {...stylex.props(styles.timelineCircle)} cx="8" cy="16" r="3" />
     </svg>
   );
 }
@@ -270,9 +368,9 @@ export function BuyerlyHelpButton() {
       news: false,
       icon: () => <BuyerlyIcon name="keyboard" size={16} />,
       keys: (
-        <span className="buyerly-help-shortcut" aria-label={IS_MAC ? 'Command /' : 'Control /'}>
-          <kbd>{IS_MAC ? '⌘' : 'Ctrl'}</kbd>
-          <kbd>/</kbd>
+        <span {...stylex.props(styles.shortcut)} aria-label={IS_MAC ? 'Command /' : 'Control /'}>
+          <kbd {...stylex.props(styles.shortcutKbd)}>{IS_MAC ? '⌘' : 'Ctrl'}</kbd>
+          <kbd {...stylex.props(styles.shortcutKbd)}>/</kbd>
         </span>
       ),
       run: () => setShortcutsOpen(true),
@@ -283,10 +381,10 @@ export function BuyerlyHelpButton() {
       news: false,
       icon: () => <BuyerlyIcon name="settings" size={16} />,
       keys: (
-        <span className="buyerly-help-shortcut" aria-label={`G, then ${GO_TO_KEYS.preferences}`}>
-          <kbd>G</kbd>
+        <span {...stylex.props(styles.shortcut)} aria-label={`G, then ${GO_TO_KEYS.preferences}`}>
+          <kbd {...stylex.props(styles.shortcutKbd)}>G</kbd>
           <span>then</span>
-          <kbd>{GO_TO_KEYS.preferences}</kbd>
+          <kbd {...stylex.props(styles.shortcutKbd)}>{GO_TO_KEYS.preferences}</kbd>
         </span>
       ),
       run: () => openSettings('preferences'),
@@ -356,7 +454,7 @@ export function BuyerlyHelpButton() {
           <button
             type="button"
             aria-label="Open Help menu"
-            className="buyerly-help-button"
+            {...stylex.props(styles.button)}
             onPointerDown={() => { byKeyboardRef.current = false; }}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') byKeyboardRef.current = true;
@@ -373,8 +471,16 @@ export function BuyerlyHelpButton() {
         alignOffset={2}
         role="dialog"
         aria-label="Help"
-        className="buyerly-help-menu"
-        style={{ width: 270 }}
+        xstyle={styles.menu}
+        style={{
+          width: 270,
+          '--menu-item-fg': 'var(--help-menu-fg)',
+          '--menu-item-fg-highlighted': 'var(--help-menu-fg-highlighted)',
+          '--menu-item-highlight': 'var(--help-menu-highlight)',
+          '--menu-icon-fg': 'var(--help-menu-secondary)',
+          '--menu-icon-fg-highlighted': 'var(--help-menu-fg-highlighted)',
+          '--menu-shortcut-fg': 'var(--help-menu-secondary)',
+        } as React.CSSProperties}
         // Radix focuses the menu itself on opening; typing goes to the field from the start.
         onFocus={(event) => {
           if (event.target === event.currentTarget) inputRef.current?.focus({ preventScroll: true });
@@ -428,7 +534,7 @@ export function BuyerlyHelpButton() {
               const part: TimelinePart = before && after ? 'middle' : before ? 'last' : after ? 'first' : 'only';
               return (
                 <React.Fragment key={row.id}>
-                  {heading && <div role="presentation" className="buyerly-help-group">{heading}</div>}
+                  {heading && <div role="presentation" {...stylex.props(styles.group)}>{heading}</div>}
                   <div
                     id={rowId(row)}
                     role="option"
@@ -441,7 +547,7 @@ export function BuyerlyHelpButton() {
                   >
                     <div {...stylex.props(styles.pill, isActive && styles.pillActive)} />
                     <span {...stylex.props(styles.body)}>
-                      <span className="buyerly-help-icon">{row.icon(part)}</span>
+                      <span {...stylex.props(styles.icon)}>{row.icon(part)}</span>
                       <span {...stylex.props(styles.label)}>{row.label}</span>
                       {row.keys}
                     </span>

@@ -16,3 +16,6 @@ export const commandItemMarker = stylex.defineMarker();
 
 /** A list cell's property button (Rules in Ads Manager), whose pill or icon lights up under the pointer. */
 export const propertyMarker = stylex.defineMarker();
+
+/** A sidebar link row, for an inline action button (such as removing a favorite) that shows when the row is hovered or focused. */
+export const sidebarNavItemMarker = stylex.defineMarker();

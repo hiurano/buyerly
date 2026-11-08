@@ -474,6 +474,13 @@ export const layout = stylex.defineVars({
   '--site-footer-brand-width': '440px',
   '--site-focus-width': '2px',
   '--site-border-width': '1px',
+  '--resizer-spot-mask': `radial-gradient(
+    2px 150px at 0px var(--mouse-y, -200px),
+    rgb(0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.67) 42%,
+    rgba(0, 0, 0, 0.25) 75%,
+    rgba(0, 0, 0, 0) 100%
+  )`,
 });
 
 /** Durations and easings. */
@@ -487,6 +494,10 @@ export const motion = stylex.defineVars({
   '--motion-dock-enter-duration': '450ms',
   '--motion-toast-enter-duration': '180ms',
   '--site-ease': 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+  '--sidebar-spring-duration': '0.45s',
+  '--sidebar-spring': 'linear(0, 0.009, 0.036 2%, 0.144 4.3%, 0.727 12.6%, 0.941 16.9%, 1.01 19%, 1.053 21.1%, 1.073 23.4%, 1.077 25.8%, 1.069 28.9%, 1.014 40.9%, 0.999 47.4%, 0.996 54.4%, 1.001 73%, 1)',
+  '--sidebar-spring-show': 'linear(0, 0.008, 0.032 1.9%, 0.129 4.2%, 0.654 12.6%, 0.874 17%, 0.961 19.6%, 1.019 22.4%, 1.045 25%, 1.053 27.9%, 1.045 31.8%, 1.006 43.8%, 0.997 50.8%, 0.998 63%, 1)',
+  '--sidebar-spring-hide': 'linear(0, 0.007, 0.029 1.9%, 0.118 4.1%, 0.631 12.5%, 0.862 17.1%, 0.958 19.8%, 1.015 22.5%, 1.045 25.4%, 1.051 28.1%, 1.041 32.1%, 1.006 43.4%, 0.997 50.6%, 1)',
 });
 
 /** Linear's light theme; the boot script in index.html sets data-theme from Settings or the system. */

@@ -26,3 +26,132 @@ body {
   font-size: 13px;
   line-height: normal;
 }
+
+/* Custom Scrollbar (Linear: 10px with 2px transparent border -> 6px pill) */
+::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+  height: var(--scrollbar-width);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--app-scrollbar-bg);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  min-height: var(--scrollbar-min-size);
+  min-width: var(--scrollbar-min-size);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--app-scrollbar-bg-hover);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--app-scrollbar-bg-active);
+}
+
+@keyframes buyerlyTooltipScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes buyerlyTooltipScaleOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.97) translateY(-2px);
+  }
+}
+
+/* Linear's popover scale-in (Display options, 75ms ease-out-quad from 0.96, 17.10). */
+@keyframes buyerlyPopoverScale {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes buyerlyMenuFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes buyerlyMenuScaleIn {
+  from { transform: scale(0.95); }
+  to { transform: scale(1); }
+}
+
+@keyframes buyerlyMenuFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes buyerlyShortcutsIn {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes buyerlyShortcutsFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes buyerlyCommandMenuFade {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes buyerlyCommandMenuGrow {
+  0% { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+
+@keyframes buyerlyCommandMenuShut {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.98); }
+}

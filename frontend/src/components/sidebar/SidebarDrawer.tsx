@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useRef } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { useIsSmallScreen } from '@/lib/useMediaQuery';
 import { shellStore, useShellStore } from '@/models/shellStore';
+import { colors, motion } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/stylex';
 
 /** Linear's swipe: 50px within 300ms, abandoned once the finger drifts 50px vertically. */
 const SWIPE_DISTANCE = 50;
@@ -164,7 +167,7 @@ export function useSidebarPeek(surfaceRef: React.RefObject<HTMLElement | null>, 
 
 export const SidebarBackdrop: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => (
   <div
-    className="sidebar-backdrop"
+    {...withClassName(stylex.props(styles.backdrop, open && styles.backdropOpen), 'sidebar-backdrop')}
     data-open={open ? 'true' : 'false'}
     aria-hidden="true"
     onMouseDown={onClose}
@@ -172,3 +175,19 @@ export const SidebarBackdrop: React.FC<{ open: boolean; onClose: () => void }> =
     onClick={onClose}
   />
 );
+
+const styles = stylex.create({
+  backdrop: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 95,
+    backgroundColor: colors['--modal-overlay-bg'],
+    opacity: 0,
+    pointerEvents: 'none',
+    transition: `opacity 0.25s ${motion['--ease-out-cubic']}`,
+  },
+  backdropOpen: {
+    opacity: 1,
+    pointerEvents: 'auto',
+  },
+});

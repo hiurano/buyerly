@@ -1,4 +1,5 @@
 import React, { Suspense, createContext, use, useEffect, useMemo } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { Outlet, useLocation, useOutlet, useOutletContext } from 'react-router';
 import { Sidebar } from '@/components/sidebar/Sidebar';
 import { BuyerlyPageGate, BuyerlyPageSkeleton, useHeldPage } from '@/components/layout/BuyerlyPageSwitch';
@@ -8,6 +9,8 @@ import { pathForTab, useAppNavigate, useNavigationKey, useRoute, type BuyerlyRou
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import type { SessionUser } from '@/lib/types';
 import { useViewStore } from '@/models/viewStore';
+import { colors } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/stylex';
 
 /** What the workspace's routes get from the App above them. */
 export interface BuyerlyWorkspaceOutlet {
@@ -74,7 +77,7 @@ export const BuyerlyAppPages: React.FC = () => {
   return (
     <>
       <Sidebar />
-      <main className="buyerly-floating-canvas">
+      <main {...withClassName(stylex.props(styles.canvas), 'buyerly-floating-canvas')}>
         <BuyerlyPageScopeContext value={pageScope}>
           <BuyerlyHeldPageContext value={held}>
             <Suspense fallback={<BuyerlyPageSkeleton />}>
@@ -202,3 +205,27 @@ export function pageComponentFor(opened: Extract<BuyerlyRouteHandle, { page: unk
     default: return undefined;
   }
 }
+
+const styles = stylex.create({
+  canvas: {
+    display: 'flex',
+    flexDirection: 'column',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    backgroundColor: colors['--bg-canvas'],
+    marginTop: { default: 8, '@media (max-width: 880px)': 0 },
+    marginRight: { default: 8, '@media (max-width: 880px)': 0 },
+    marginBottom: { default: 8, '@media (max-width: 880px)': 0 },
+    marginLeft: 0,
+    borderRadius: { default: 6, '@media (max-width: 880px)': 0 },
+    borderWidth: { default: 0.5, '@media (max-width: 880px)': 0 },
+    borderStyle: { default: 'solid', '@media (max-width: 880px)': 'none' },
+    borderColor: { default: colors['--search-header-border'], '@media (max-width: 880px)': 'currentColor' },
+    boxShadow: { default: colors['--canvas-shadow'], '@media (max-width: 880px)': 'none' },
+    overflow: 'hidden',
+    position: 'relative',
+    minWidth: 0,
+    zIndex: 1,
+  },
+});

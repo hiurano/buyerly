@@ -18,8 +18,77 @@ import { SidebarBackdrop, useSidebarDrawer, useSidebarPeek } from './SidebarDraw
 import { useInboxStore } from '@/models/inboxStore';
 import { useShellStore, type AppTab } from '@/models/shellStore';
 import { useScopeStore } from '@/models/scopeStore';
+import { colors, fonts, layout, motion } from '@/styles/tokens.stylex';
+
+const RESIZER_MASK = 'radial-gradient(2px 150px at 0px 50%, rgb(0, 0, 0) 0%, rgba(0, 0, 0, 0.67) 42%, rgba(0, 0, 0, 0.25) 75%, rgba(0, 0, 0, 0) 100%)';
 
 const styles = stylex.create({
+  slotWrapper: {
+    flexShrink: 0,
+    height: '100%',
+    transition: `width ${motion['--sidebar-spring-duration']} ${motion['--sidebar-spring']}`,
+    position: 'relative',
+    overflow: 'visible',
+  },
+  resizing: {
+    transition: 'none',
+  },
+  surface: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    height: '100%',
+    backgroundColor: colors['--bg-sidebar'],
+    display: 'flex',
+    flexDirection: 'column',
+    userSelect: 'none',
+    zIndex: 96,
+    transitionProperty: 'transform',
+    transitionDuration: motion['--sidebar-spring-duration'],
+    transitionTimingFunction: motion['--sidebar-spring'],
+  },
+  surfaceSmall: {
+    position: 'fixed',
+    width: `min(${layout['--sidebar-width']}, 85vw)`,
+    margin: 0,
+    borderRadius: 0,
+    borderRightWidth: 0.5,
+    borderRightStyle: 'solid',
+    borderRightColor: colors['--search-header-border'],
+    boxShadow: colors['--dropdown-shadow'],
+    transitionTimingFunction: motion['--sidebar-spring-show'],
+  },
+  surfacePeek: {
+    top: 44,
+    height: 'calc(100% - 88px)',
+    borderRadius: '0 8px 8px 0',
+    borderTopWidth: 0.5,
+    borderRightWidth: 0.5,
+    borderBottomWidth: 0.5,
+    borderLeftWidth: 0,
+    borderTopStyle: 'solid',
+    borderRightStyle: 'solid',
+    borderBottomStyle: 'solid',
+    borderLeftStyle: 'none',
+    borderTopColor: colors['--search-header-border'],
+    borderRightColor: colors['--search-header-border'],
+    borderBottomColor: colors['--search-header-border'],
+    borderLeftColor: 'currentColor',
+    boxShadow: colors['--dropdown-shadow'],
+    transitionTimingFunction: motion['--sidebar-spring-show'],
+  },
+  surfacePeekClosed: {
+    pointerEvents: 'none',
+    transitionTimingFunction: motion['--sidebar-spring-hide'],
+  },
+  peekEdge: {
+    position: 'fixed',
+    top: 44,
+    bottom: 0,
+    left: 0,
+    width: 8,
+    zIndex: 97,
+  },
   /** Inbox, then the sections; Sidebar.module.css sets each row 1px below the one before. */
   navigation: {
     flexGrow: 1,
@@ -30,6 +99,56 @@ const styles = stylex.create({
     paddingRight: 12,
     paddingBottom: 16,
     paddingTop: 0.5,
+  },
+  count: {
+    marginLeft: 'auto',
+    paddingRight: 4,
+    fontFamily: fonts['--font-regular'],
+    fontSize: 12,
+    fontWeight: 450,
+    lineHeight: '16px',
+    color: colors['--sidebar-item-fg'],
+    fontVariantNumeric: 'tabular-nums',
+  },
+  resizerHitTarget: {
+    position: 'absolute',
+    top: 12,
+    bottom: 12,
+    right: -3.5,
+    width: 6,
+    cursor: 'col-resize',
+    zIndex: 97,
+    display: 'flex',
+    justifyContent: 'center',
+    userSelect: 'none',
+    touchAction: 'none',
+  },
+  resizerTrack: {
+    position: 'relative',
+    width: 1,
+    height: '100%',
+    backgroundColor: colors['--sidebar-resizer-track'],
+    opacity: 0,
+    transitionProperty: 'opacity',
+    transitionDuration: '0.1s',
+    transitionTimingFunction: 'ease-out',
+    overflow: 'hidden',
+    pointerEvents: 'none',
+  },
+  resizerTrackDragging: {
+    opacity: 1,
+    transitionDelay: '0.05s',
+  },
+  resizerIndicator: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: colors['--resizer-line-color'],
+    maskImage: RESIZER_MASK,
+    WebkitMaskImage: RESIZER_MASK,
+    willChange: 'transform',
   },
 });
 
@@ -148,7 +267,7 @@ const SidebarContent: React.FC = () => {
 
   return (
     <div
-      className="sidebar-slot-wrapper"
+      {...withClassName(stylex.props(styles.slotWrapper, isDragging && styles.resizing), 'sidebar-slot-wrapper')}
       data-resizing={isDragging ? 'true' : 'false'}
       style={{
         width: drawer.isSmall ? '0px' : isSidebarCollapsed ? '8px' : `${sidebarWidth}px`,
@@ -159,7 +278,7 @@ const SidebarContent: React.FC = () => {
         open={drawer.isSmall ? drawer.isOpen : peek.isOpen}
         onClose={drawer.isSmall ? drawer.close : peek.close}
       />
-      {isPeekSurface && <div className="sidebar-peek-edge" aria-hidden="true" {...peek.edgeHandlers} />}
+      {isPeekSurface && <div {...stylex.props(styles.peekEdge)} aria-hidden="true" {...peek.edgeHandlers} />}
       <aside
         ref={surfaceRef}
         data-sidebar-surface="true"
@@ -171,7 +290,16 @@ const SidebarContent: React.FC = () => {
           transform: surfaceTransform,
           transition: isDragging ? 'none' : undefined,
         }}
-        className="sidebar-surface app-sidebar"
+        {...withClassName(
+          stylex.props(
+            styles.surface,
+            drawer.isSmall && styles.surfaceSmall,
+            isPeekSurface && styles.surfacePeek,
+            isPeekSurface && !peek.isOpen && styles.surfacePeekClosed,
+            isDragging && styles.resizing,
+          ),
+          'sidebar-surface app-sidebar',
+        )}
         {...drawer.swipeHandlers}
       >
         {/* 1. Header (Workspace + Search + Create) */}
@@ -187,7 +315,7 @@ const SidebarContent: React.FC = () => {
             active={activeTab === 'inbox'}
             onClick={() => openWorkspacePage('inbox')}
             trailing={inboxUnreadCount > 0 && (
-              <span className="buyerly-sidebar-count" aria-label={`${inboxUnreadCount} unread`}>
+              <span {...withClassName(stylex.props(styles.count), 'buyerly-sidebar-count')} aria-label={`${inboxUnreadCount} unread`}>
                 {inboxUnreadCount}
               </span>
             )}
@@ -252,15 +380,15 @@ const SidebarContent: React.FC = () => {
 
         {/* 3. Linear Exact 3-Layer Spotlight Resizer with Double-Click Reset */}
         {!drawer.isSmall && <div
-          className="buyerly-resizer-hit-target"
+          {...withClassName(stylex.props(styles.resizerHitTarget), css.resizerHitTarget)}
           data-dragging={isDragging ? 'true' : 'false'}
           onMouseMove={handleMouseMove}
           onMouseDown={startResizing}
           onDoubleClick={resetSidebarWidth}
           title="Drag to resize, double-click to reset"
         >
-          <div ref={trackRef} className="buyerly-resizer-track" aria-hidden="true">
-            <div ref={indicatorRef} className="buyerly-resizer-indicator" />
+          <div ref={trackRef} {...withClassName(stylex.props(styles.resizerTrack, isDragging && styles.resizerTrackDragging), css.resizerTrack)} aria-hidden="true">
+            <div ref={indicatorRef} {...stylex.props(styles.resizerIndicator)} />
           </div>
         </div>}
       </aside>
