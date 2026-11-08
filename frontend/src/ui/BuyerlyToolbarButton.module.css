@@ -1,0 +1,26 @@
+/* Linear draws the toolbar buttons' ring on ::after, like an inactive tab's. */
+.toolbar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  pointer-events: none;
+  box-shadow: var(--toolbar-button-ring);
+}
+
+.toolbar:hover::after {
+  box-shadow: var(--toolbar-button-ring-hover);
+}
+
+.toolbar[data-active='true']::after {
+  box-shadow: var(--toolbar-button-ring-active);
+}
+
+/* Linear's pure-touch headers (measured at 375px): icon buttons grow from 28px to 32px square. */
+@media (hover: none) and (pointer: coarse) {
+  :global(.buyerly-header-target) {
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+  }
+}

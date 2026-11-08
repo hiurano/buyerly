@@ -1,5 +1,8 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import * as stylex from '@stylexjs/stylex';
+import { displayCss, displayStyles } from '@/ui/BuyerlyDisplayOptions';
+import { withClassName } from '@/ui/withClassName';
 
 interface BuyerlyDisplayOptionsPopoverProps {
   isOpen: boolean;
@@ -48,7 +51,11 @@ export const BuyerlyDisplayOptionsPopover: React.FC<BuyerlyDisplayOptionsPopover
 
   if (!isOpen) return null;
   return createPortal(
-    <div ref={popoverRef} className="buyerly-display-options-popover" style={{ top: coords.top, right: coords.right }}>
+    <div
+      ref={popoverRef}
+      {...withClassName(stylex.props(displayStyles.popover), displayCss.popover, 'buyerly-display-options-popover')}
+      style={{ top: coords.top, right: coords.right }}
+    >
       {children}
     </div>,
     document.body,
