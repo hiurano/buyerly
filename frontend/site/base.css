@@ -1,0 +1,26 @@
+/* The public site's element base, global as the reset is. The build puts the token CSS before it (site/plugin.ts)
+   and the components' CSS Modules after it, in the order site/render.tsx imports them. */
+* { box-sizing: border-box; }
+html { background: var(--site-background); scroll-padding-top: var(--site-header-height); }
+body {
+  margin: 0;
+  color: var(--site-fg);
+  background: var(--site-background);
+  font-family: var(--font-regular);
+  font-size: var(--site-body-size);
+  line-height: var(--site-body-leading);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv01", "ss03";
+}
+a { color: inherit; text-underline-offset: var(--site-focus-offset); }
+a:hover { color: var(--text-primary); }
+a:focus-visible { outline: var(--site-focus-width) solid var(--focus-ring-color); outline-offset: var(--site-focus-offset); }
+body > main { padding-top: 72px; }
+h1 { margin: 0; font-size: var(--site-heading-size); font-weight: var(--font-weight-medium); line-height: var(--site-heading-leading); letter-spacing: var(--site-heading-tracking); }
+@media (max-width: 1024px) {
+  :root { --site-gutter: 34px; }
+}
+@media (max-width: 640px) {
+  :root { --site-gutter: 24px; }
+}

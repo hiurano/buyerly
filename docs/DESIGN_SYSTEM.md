@@ -24,7 +24,7 @@ Owner: Product / Frontend
 - `frontend/src/styles/index.css` composes shared and domain styles while consuming semantic tokens;
 - `frontend/src/components/` owns product surfaces and page-specific composition;
 - `frontend/src/lib/api.ts` and `frontend/src/lib/routing.ts` own the client API and canonical routes;
-- the `frontend` stage of the root `Dockerfile` builds hashed Vite assets and includes legal documents and assets from `frontend/public/`;
+- the `frontend` stage of the root `Dockerfile` builds hashed Vite assets, renders the public pages from `frontend/site/` and `changelog/`, and includes the assets in `frontend/public/`;
 - the retired authenticated interface has been removed.
 
 ## Tokens
@@ -181,7 +181,7 @@ Inside the screens (Rules, Ads Manager, Inbox; `scripts/mobile-screens-browser.t
 
 ## Review checklist
 
-- production source is under `frontend/`, with public documents in `frontend/public/`;
+- production source is under `frontend/`, with the public site's pages in `frontend/site/`;
 - shared controls and semantic tokens are reused;
 - primary, warning and destructive actions are distinct;
 - focus, disabled, busy, empty, partial, stale, error and success states are explicit;

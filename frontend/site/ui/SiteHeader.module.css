@@ -1,0 +1,18 @@
+/* Header as linear.app's (measured 2026-10-19, 1440px): fixed, 73px, blurred, pill links. */
+.siteHeader { position: fixed; inset: 0 0 auto; z-index: 100; height: var(--site-header-height); border-bottom: 1px solid var(--site-line); background: var(--site-header-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.siteHeader::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--site-header-fade); pointer-events: none; }
+.siteHeaderInner { height: 72px; display: flex; align-items: center; gap: 8px; }
+.siteBrand { display: inline-flex; align-items: center; gap: 8px; height: 32px; margin-left: -8px; margin-right: auto; padding-inline: 8px; border-radius: 6px; color: var(--site-fg); font-size: 18px; font-weight: 600; letter-spacing: -0.02em; text-decoration: none; }
+.siteNav { display: flex; align-items: center; gap: 0; }
+.siteNavLink { display: flex; align-items: center; height: 32px; padding-inline: 12px; border-radius: 9999px; color: var(--site-fg-tertiary); font-size: 13px; line-height: 19.5px; text-decoration: none; white-space: nowrap; transition: color 0.1s var(--site-ease), background 0.1s var(--site-ease); }
+.siteNavLink:hover { color: var(--site-fg); background: var(--site-hover-bg); }
+.siteNavDivider { width: 1px; height: 16px; margin-inline: 13px 5px; background: var(--site-divider); }
+/* Phone menu: Linear keeps the mark, the main button and a menu button; the rest moves into the menu. */
+.siteMenuButton { display: none; place-items: center; width: 32px; height: 32px; margin-left: 4px; padding: 0; border: 0; border-radius: 9999px; background: none; color: var(--site-fg-tertiary); cursor: pointer; }
+.siteMenuButton:hover { color: var(--site-fg); background: var(--site-hover-bg); }
+.siteMenu { position: fixed; inset: var(--site-header-height) 0 auto; width: auto; margin: 0; padding: 8px var(--site-gutter) 24px; border: 0; border-bottom: 1px solid var(--site-line); background: var(--site-bg); color: var(--site-fg); }
+.siteMenu a { display: flex; align-items: center; height: 48px; border-bottom: 1px solid var(--site-line); color: var(--site-fg); font-size: 15px; text-decoration: none; }
+@media (max-width: 768px) {
+  .siteNavLink, .siteNavDivider { display: none; }
+  .siteMenuButton { display: grid; }
+}
