@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { observer } from 'mobx-react-lite';
 import * as stylex from '@stylexjs/stylex';
 import { withClassName } from '@/ui/withClassName';
+import css from './Sidebar.module.css';
 import { SidebarHeader } from './SidebarHeader';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { goToShortcut } from '@/lib/shortcuts';
@@ -19,7 +20,7 @@ import { useShellStore, type AppTab } from '@/models/shellStore';
 import { useScopeStore } from '@/models/scopeStore';
 
 const styles = stylex.create({
-  /** Inbox, then the sections; `.buyerly-sidebar-navigation` sets each row 1px below the one before. */
+  /** Inbox, then the sections; Sidebar.module.css sets each row 1px below the one before. */
   navigation: {
     flexGrow: 1,
     flexShrink: 1,
@@ -177,7 +178,7 @@ const SidebarContent: React.FC = () => {
         <SidebarHeader />
 
         {/* 2. Navigation: Inbox, then Linear's "Workspace" and "Your teams" sections */}
-        <div {...withClassName(stylex.props(styles.navigation), 'buyerly-sidebar-navigation')}>
+        <div {...withClassName(stylex.props(styles.navigation), css.navigation)}>
           <SidebarLink
             icon={<BuyerlyIcon name="inbox" size={14} />}
             label="Inbox"

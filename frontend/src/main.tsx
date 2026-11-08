@@ -1,11 +1,13 @@
+// The app's stylesheet first, so its layers lead the built CSS, before any component's CSS Module.
+// The token variables join @layer base (vite.config.ts).
+import './styles/app.css';
+import 'virtual:buyerly-tokens.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
 import { firstPageCode, router } from './routes';
 import { keepFaviconAcrossRoutes } from './lib/favicon';
 import { registerServiceWorker } from './lib/serviceWorker';
-import 'virtual:buyerly-tokens.css';
-import './styles/index.css';
 
 keepFaviconAcrossRoutes();
 // The next start opens from the worker's copy of this build, with no network (#499).
