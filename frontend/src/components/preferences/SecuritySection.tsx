@@ -23,7 +23,9 @@ import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
 import { useLastPresent } from '@/ui/useLastPresent';
 import { withClassName } from '@/ui/withClassName';
-import { colors, radii } from '@/styles/tokens.stylex';
+import { colors, fonts, radii } from '@/styles/tokens.stylex';
+import { preferencesStyles } from './preferencesStyles';
+import css from './Preferences.module.css';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -63,6 +65,16 @@ const styles = stylex.create({
     position: 'relative',
     width: '100%',
     maxWidth: 572,
+    paddingTop: 24,
+    paddingBottom: 24,
+    paddingLeft: {
+      default: 40,
+      '@media (max-width: 640px)': 24,
+    },
+    paddingRight: {
+      default: 40,
+      '@media (max-width: 640px)': 24,
+    },
     borderRadius: radii['--canvas-border-radius'],
     borderWidth: 1,
     borderStyle: 'solid',
@@ -117,6 +129,106 @@ const styles = stylex.create({
     whiteSpace: 'nowrap',
     borderWidth: 0,
   },
+  facts: {
+    marginTop: 12,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    fontFamily: fonts['--font-regular'],
+    fontSize: 13,
+    lineHeight: '16px',
+  },
+  factRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 2fr',
+    gap: 4,
+    paddingTop: 20,
+    paddingBottom: 20,
+    paddingLeft: 0,
+    paddingRight: 0,
+    borderBottomWidth: 1,
+    borderBottomStyle: 'solid',
+    borderBottomColor: colors['--color-border-secondary'],
+  },
+  factRowLast: {
+    borderBottomWidth: 0,
+    borderBottomStyle: 'none',
+    borderBottomColor: 'currentColor',
+  },
+  factLabel: {
+    color: colors['--text-primary'],
+    fontWeight: 500,
+  },
+  factValue: {
+    marginTop: 0,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    color: colors['--text-primary'],
+    fontWeight: 450,
+    userSelect: 'text',
+    overflowWrap: 'anywhere',
+  },
+  dialogFooter: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    paddingTop: 20,
+  },
+  dangerButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    height: 32,
+    paddingTop: 0,
+    paddingBottom: 0,
+    paddingLeft: 12,
+    paddingRight: 12,
+    borderWidth: 0,
+    borderStyle: 'none',
+    borderColor: 'currentColor',
+    borderRadius: 9999,
+    backgroundColor: {
+      default: colors['--action-danger'],
+      ':hover:not(:disabled)': colors['--action-danger-hover'],
+    },
+    color: colors['--action-danger-text'],
+    fontFamily: fonts['--font-regular'],
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: {
+      default: 'pointer',
+      ':disabled': 'default',
+    },
+    opacity: {
+      default: null,
+      ':disabled': 0.7,
+    },
+    outline: {
+      default: null,
+      ':focus-visible': `2px solid ${colors['--focus-ring-color']}`,
+    },
+    outlineOffset: {
+      default: null,
+      ':focus-visible': 2,
+    },
+    transition: 'background-color 150ms ease',
+  },
+  labelWide: {
+    display: {
+      default: null,
+      '@media (max-width: 640px)': 'none',
+    },
+  },
+  labelNarrow: {
+    display: {
+      default: 'none',
+      '@media (max-width: 640px)': 'inline',
+    },
+  },
 });
 
 /** Linear lists five other sessions, then "Show all". */
@@ -133,7 +245,7 @@ type Busy = string | null;
 
 const ERROR_HINT = 'Please try again or contact Buyerly support.';
 
-const Spinner: React.FC = () => <span className="preferences-session-spinner" aria-hidden="true" />;
+const Spinner: React.FC = () => <span {...stylex.props(preferencesStyles.sessionSpinner)} aria-hidden="true" />;
 
 interface SessionRowProps {
   session: WebSession;
@@ -154,29 +266,42 @@ const SessionRow: React.FC<SessionRowProps> = ({ session, busy, onOpen, onAction
   const name = describeUserAgent(session.user_agent);
   const actionLabel = session.current ? 'Log out' : 'Revoke';
   const place = session.location?.trim() || '';
+  const isOld = busy || (!session.current && isStale(session));
   const parts: React.ReactNode[] = session.current
-    ? [<span key="current" className="preferences-session-current">Current session</span>, place]
+    ? [
+      <span key="current" {...withClassName(stylex.props(preferencesStyles.sessionCurrent), css.sessionCurrent)}>
+        Current session
+      </span>,
+      place,
+    ]
     : [place, formatLastSeen(session.last_seen_at)];
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <div
-          className="preferences-session"
+          {...withClassName(
+            stylex.props(preferencesStyles.session, isOld && preferencesStyles.sessionOld),
+            `${css.session} preferences-session`,
+          )}
           data-session-id={session.id}
           data-current={session.current}
-          data-old={busy || (!session.current && isStale(session)) ? 'true' : undefined}
+          data-old={isOld ? 'true' : undefined}
         >
-          <button type="button" className="preferences-session-main" onClick={onOpen}>
-            <span className="preferences-session-icon">
+          <button
+            type="button"
+            {...withClassName(stylex.props(preferencesStyles.sessionMain), 'preferences-session-main')}
+            onClick={onOpen}
+          >
+            <span {...withClassName(stylex.props(preferencesStyles.sessionIcon), 'preferences-session-icon')}>
               <BrowserIcon browser={browserOf(session.user_agent)} />
             </span>
-            <span className="preferences-session-copy">
-              <span className="preferences-row-title">{name}</span>
-              <span className="preferences-session-desc">
+            <span {...stylex.props(preferencesStyles.sessionCopy)}>
+              <span {...withClassName(stylex.props(preferencesStyles.rowTitle), 'preferences-row-title')}>{name}</span>
+              <span {...withClassName(stylex.props(preferencesStyles.sessionDesc), 'preferences-session-desc')}>
                 {parts.filter(Boolean).map((part, index) => (
                   <React.Fragment key={index}>
                     {index > 0 && ' · '}
-                    <span className="preferences-session-part">{part}</span>
+                    <span {...stylex.props(preferencesStyles.sessionPart)}>{part}</span>
                   </React.Fragment>
                 ))}
               </span>
@@ -184,7 +309,10 @@ const SessionRow: React.FC<SessionRowProps> = ({ session, busy, onOpen, onAction
           </button>
           <button
             type="button"
-            className="preferences-connect-button preferences-session-button--on-hover"
+            {...withClassName(
+              stylex.props(preferencesStyles.connectButton, preferencesStyles.sessionButtonOnHover),
+              `${css.sessionButtonOnHover} preferences-session-button--on-hover`,
+            )}
             data-busy={busy ? 'true' : undefined}
             disabled={busy}
             aria-label={session.current ? undefined : `Revoke ${name}, ${formatLastSeen(session.last_seen_at).toLowerCase()}`}
@@ -263,25 +391,25 @@ const SessionDetailsDialog: React.FC<SessionDetailsDialogProps> = ({ session, bu
               </button>
             </Dialog.Close>
             <header {...stylex.props(styles.header)}>
-              <span className="preferences-session-icon preferences-session-icon--outlined">
+              <span {...withClassName(stylex.props(preferencesStyles.sessionIcon, preferencesStyles.sessionIconOutlined), 'preferences-session-icon')}>
                 <BrowserIcon browser={browserOf(shown.user_agent)} />
               </span>
               <Dialog.Title {...stylex.props(styles.title)}>{name}</Dialog.Title>
             </header>
             <Dialog.Description {...stylex.props(styles.srOnly)}>Details of this session</Dialog.Description>
-            <dl className="preferences-session-facts">
-              {facts.map(([label, value]) => (
-                <div key={label}>
-                  <dt>{label}</dt>
-                  <dd>{value}</dd>
+            <dl {...stylex.props(styles.facts)}>
+              {facts.map(([label, value], index) => (
+                <div key={label} {...stylex.props(styles.factRow, index === facts.length - 1 && styles.factRowLast)}>
+                  <dt {...stylex.props(styles.factLabel)}>{label}</dt>
+                  <dd {...stylex.props(styles.factValue)}>{value}</dd>
                 </div>
               ))}
             </dl>
-            <div className="preferences-session-dialog-footer">
+            <div {...stylex.props(styles.dialogFooter)}>
               <button
                 ref={actionRef}
                 type="button"
-                className="preferences-session-danger-button"
+                {...stylex.props(styles.dangerButton)}
                 disabled={busy}
                 onClick={() => onAction(shown)}
               >
@@ -290,8 +418,8 @@ const SessionDetailsDialog: React.FC<SessionDetailsDialogProps> = ({ session, bu
                   'Log out'
                 ) : (
                   <>
-                    <span className="preferences-session-label--wide">Revoke Access</span>
-                    <span className="preferences-session-label--narrow">Revoke</span>
+                    <span {...stylex.props(styles.labelWide)}>Revoke Access</span>
+                    <span {...stylex.props(styles.labelNarrow)}>Revoke</span>
                   </>
                 )}
               </button>
@@ -392,8 +520,8 @@ export const SecuritySection: React.FC = () => {
 
   return (
     <>
-      <div className="preferences-title-container">
-        <h1 className="preferences-page-title">Security &amp; access</h1>
+      <div {...stylex.props(preferencesStyles.titleContainer)}>
+        <h1 {...stylex.props(preferencesStyles.pageTitle)}>Security &amp; access</h1>
       </div>
 
       {state === 'loading' && <DataState title="Loading sessions" detail="Fetching the devices signed in to your account." />}
@@ -408,14 +536,14 @@ export const SecuritySection: React.FC = () => {
       )}
 
       {state === 'ready' && (
-        <div className="preferences-section" aria-label="Sessions">
-          <div className="preferences-section-header">
-            <h3 className="preferences-section-title">Sessions</h3>
+        <div {...stylex.props(preferencesStyles.section)} aria-label="Sessions">
+          <div {...stylex.props(preferencesStyles.sectionHeader)}>
+            <h3 {...stylex.props(preferencesStyles.sectionTitle)}>Sessions</h3>
           </div>
-          <p className="preferences-section-note preferences-section-note--sessions">Devices logged into your account</p>
+          <p {...stylex.props(preferencesStyles.sectionNote, preferencesStyles.sectionNoteSessions)}>Devices logged into your account</p>
 
           {current.length > 0 && (
-            <section className="preferences-card-container preferences-sessions-card">
+            <section {...withClassName(stylex.props(preferencesStyles.cardContainer), 'preferences-sessions-card')}>
               {current.map((session) => (
                 <SessionRow
                   key={session.id}
@@ -430,13 +558,19 @@ export const SecuritySection: React.FC = () => {
 
           {/* With no other sessions Linear shows no card at all: the next section follows the current session. */}
           {others.length > 0 && (
-            <section className="preferences-card-container preferences-sessions-card" aria-label="Other sessions">
-              <div className="preferences-sessions-others">
+            <section
+              {...withClassName(
+                stylex.props(preferencesStyles.cardContainer, current.length > 0 && preferencesStyles.sessionsCardFollowing),
+                'preferences-sessions-card',
+              )}
+              aria-label="Other sessions"
+            >
+              <div {...withClassName(stylex.props(preferencesStyles.sessionsOthers), 'preferences-sessions-others')}>
                 <span>{others.length === 1 ? '1 other session' : `${others.length} other sessions`}</span>
                 <Tooltip content="Revoke all other sessions" side="top">
                   <button
                     type="button"
-                    className="preferences-connect-button"
+                    {...stylex.props(preferencesStyles.connectButton)}
                     disabled={busy === 'all'}
                     onClick={() => setConfirmation({ kind: 'revoke-all' })}
                   >
@@ -455,7 +589,7 @@ export const SecuritySection: React.FC = () => {
                 />
               ))}
               {others.length > OTHERS_SHOWN && !showAll && (
-                <button type="button" className="preferences-sessions-show-all" onClick={() => setShowAll(true)}>
+                <button type="button" {...stylex.props(preferencesStyles.sessionsShowAll)} onClick={() => setShowAll(true)}>
                   Show all
                 </button>
               )}

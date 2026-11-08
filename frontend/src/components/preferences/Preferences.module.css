@@ -1,0 +1,125 @@
+/* Child, sibling, and pseudo-element rules that StyleX cannot express directly. */
+
+.searchInput::-webkit-search-cancel-button {
+  display: none;
+}
+
+.navItem:active .navIcon {
+  fill: var(--sidebar-item-fg-strong);
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .navItem:hover .navIcon {
+    fill: var(--sidebar-item-fg-strong);
+  }
+}
+
+.listSelect svg {
+  position: absolute;
+  right: 11px;
+  fill: var(--settings-list-muted);
+}
+
+.listRow > * {
+  position: relative;
+  min-width: 0;
+}
+
+/* Linear's row highlight: 8px in from the canvas, 8px corners, at once. */
+.listRowInteractive:hover::before {
+  content: '';
+  position: absolute;
+  inset: 0 8px;
+  border-radius: 8px;
+  background: var(--settings-list-row-hover-bg);
+}
+
+.listSort svg {
+  flex-shrink: 0;
+  fill: var(--settings-list-muted);
+  /* As Linear's Settings lists: only the sorted column shows its arrow; another's appears under the cursor. */
+  opacity: 0;
+  transition: fill 0.15s, opacity 0.15s;
+}
+
+.listSort[data-active='true'] svg,
+.listSort:hover svg,
+.listSort:focus-visible svg {
+  opacity: 1;
+}
+
+.listSort[data-active='true'] svg {
+  fill: var(--text-secondary);
+}
+
+.listSort:hover svg,
+.listSort:active svg {
+  fill: var(--text-primary);
+  transition-duration: 0s;
+}
+
+.workspaceLogo > img,
+.workspaceLogo > span:first-child {
+  border-radius: 8px !important;
+}
+
+.workspaceLogo:hover .workspaceLogoOverlay,
+.workspaceLogo:focus-visible .workspaceLogoOverlay,
+.workspaceLogo:disabled .workspaceLogoOverlay {
+  opacity: 1;
+}
+
+/* Linear's hairline between the rows of one card: 0.5px, 16px in from its sides. */
+.cardDivided > .rowItem:not(:last-child)::after,
+.cardDivided > .filterRow:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 0;
+  border-bottom: 0.5px solid var(--preferences-divider);
+  pointer-events: none;
+}
+
+/* Linear shows a saved filter's "…" only on hover. */
+.filterRowSaved:hover .filterActionsTrigger {
+  opacity: 1;
+}
+
+.avatarButton:hover:not(:disabled) .avatarOverlay,
+.avatarButton:focus-visible .avatarOverlay,
+.avatarButton[data-state='open'] .avatarOverlay {
+  opacity: 1;
+}
+
+.smallHeaderLink svg {
+  height: 12px;
+  margin-right: 9px;
+  color: var(--text-tertiary);
+}
+
+.session + .session::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  border-top: 0.5px solid var(--preferences-divider);
+}
+
+/* Linear's dot is the lighter green of its channel dots. */
+.sessionCurrent::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--preferences-channel-on);
+}
+
+@media (hover: hover) {
+  .session:hover .sessionButtonOnHover,
+  .session:focus-within .sessionButtonOnHover,
+  .sessionButtonOnHover[data-busy='true'] {
+    opacity: 1;
+  }
+}

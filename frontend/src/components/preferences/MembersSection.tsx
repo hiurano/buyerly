@@ -16,6 +16,8 @@ import { withClassName } from '@/ui/withClassName';
 import { colors, radii } from '@/styles/tokens.stylex';
 import { SortHeader, sortedBy, useListSort } from './SettingsListSort';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
+import { preferencesStyles } from './preferencesStyles';
+import css from './Preferences.module.css';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -705,20 +707,20 @@ export const MembersSection: React.FC<{
 
   return (
     <>
-      <div className="preferences-title-container">
-        <h1 className="preferences-page-title">Members</h1>
+      <div {...stylex.props(preferencesStyles.titleContainer, preferencesStyles.titleContainerWide)}>
+        <h1 {...stylex.props(preferencesStyles.pageTitle)}>Members</h1>
       </div>
 
-      <div className="settings-list-toolbar">
-        <label className="settings-list-search">
+      <div {...stylex.props(preferencesStyles.listToolbar)}>
+        <label {...stylex.props(preferencesStyles.listSearch)}>
           <span {...stylex.props(styles.srOnly)}>Search by name or email</span>
-          <BuyerlyIcon name="search" className="settings-list-search-icon" />
+          <BuyerlyIcon name="search" {...stylex.props(preferencesStyles.listSearchIcon)} />
           <input
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search by name or email"
-            className="settings-list-search-input"
+            {...withClassName(stylex.props(preferencesStyles.listSearchInput), css.searchInput)}
           />
         </label>
         {canManage && (
@@ -727,7 +729,7 @@ export const MembersSection: React.FC<{
               <button
                 type="button"
                 aria-label={`Show: ${FILTER_LABELS[filter]}`}
-                className="settings-list-select"
+                {...withClassName(stylex.props(preferencesStyles.listSelect), css.listSelect)}
               >
                 {FILTER_LABELS[filter]}
                 <BuyerlyChevronGlyph />
@@ -749,12 +751,20 @@ export const MembersSection: React.FC<{
         )}
         <div {...stylex.props(styles.spacer)} />
         {canManage && state === 'ready' && (
-          <button type="button" {...withClassName(stylex.props(styles.exportButton), 'settings-list-button')} onClick={() => downloadMembersCsv(workspace, members, invites)}>
+          <button
+            type="button"
+            {...stylex.props(preferencesStyles.listButton, styles.exportButton)}
+            onClick={() => downloadMembersCsv(workspace, members, invites)}
+          >
             Export CSV
           </button>
         )}
         {canManage && (
-          <button type="button" className="settings-list-button settings-list-button--primary" onClick={() => setInviteOpen(true)}>
+          <button
+            type="button"
+            {...stylex.props(preferencesStyles.listButton, preferencesStyles.listButtonPrimary)}
+            onClick={() => setInviteOpen(true)}
+          >
             Invite
           </button>
         )}
@@ -774,37 +784,44 @@ export const MembersSection: React.FC<{
       )}
 
       {state === 'ready' && (
-        <div className="settings-list-table" role="table" aria-label="Workspace members">
-          <div role="row" className="settings-list-row settings-list-row--header">
+        <div {...stylex.props(preferencesStyles.listTable)} role="table" aria-label="Workspace members">
+          <div
+            role="row"
+            {...withClassName(stylex.props(preferencesStyles.listRow, preferencesStyles.listRowHeader), css.listRow)}
+          >
             <SortHeader label="Name" column="name" sort={sort} onSort={toggleSort} />
-            <SortHeader label="Email" column="email" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
+            <SortHeader label="Email" column="email" sort={sort} onSort={toggleSort} xstyle={preferencesStyles.listColWide} />
             <SortHeader label="Role" column="status" sort={sort} onSort={toggleSort} />
-            <span role="columnheader" className="settings-list-col-wide">Teams</span>
-            <SortHeader label="Joined" column="joined" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
+            <span role="columnheader" {...stylex.props(preferencesStyles.listColWide)}>Teams</span>
+            <SortHeader label="Joined" column="joined" sort={sort} onSort={toggleSort} xstyle={preferencesStyles.listColWide} />
             <span role="columnheader" {...stylex.props(styles.srOnly)}>Actions</span>
           </div>
 
           {filter !== 'invites' && (
-            <div className="settings-list-group">
+            <div {...stylex.props(preferencesStyles.listGroup)}>
               Active
-              <span className="settings-list-group-count">{visibleMembers.length}</span>
+              <span {...stylex.props(preferencesStyles.listGroupCount)}>{visibleMembers.length}</span>
             </div>
           )}
           {filter !== 'invites' && sortedMembers.map((member) => (
-            <div key={member.id} role="row" className="settings-list-row">
-              <span role="cell" className="settings-list-person">
+            <div
+              key={member.id}
+              role="row"
+              {...withClassName(stylex.props(preferencesStyles.listRow), `${css.listRow} ${css.listRowInteractive}`)}
+            >
+              <span role="cell" {...stylex.props(preferencesStyles.listPerson)}>
                 <Initials label={member.full_name || member.username} avatarUrl={member.avatar_url} size={24} />
                 <span {...stylex.props(styles.person)}>
-                  <span className="settings-list-person-name">{member.full_name || member.username}</span>
-                  <span className="settings-list-person-handle">{member.username}</span>
+                  <span {...stylex.props(preferencesStyles.listPersonName)}>{member.full_name || member.username}</span>
+                  <span {...stylex.props(preferencesStyles.listPersonHandle)}>{member.username}</span>
                 </span>
               </span>
-              <span role="cell" className="settings-list-cell settings-list-col-wide">{member.email || ''}</span>
-              <span role="cell" className="settings-list-cell"><RoleStatus role={member.role} /></span>
-              <span role="cell" className="settings-list-cell settings-list-col-wide">
+              <span role="cell" {...stylex.props(preferencesStyles.listCell, preferencesStyles.listColWide)}>{member.email || ''}</span>
+              <span role="cell" {...stylex.props(preferencesStyles.listCell)}><RoleStatus role={member.role} /></span>
+              <span role="cell" {...stylex.props(preferencesStyles.listCell, preferencesStyles.listColWide)}>
                 {teamCounts.get(member.user_id) ? plural(teamCounts.get(member.user_id) as number, 'team') : ''}
               </span>
-              <span role="cell" className="settings-list-cell settings-list-col-wide">{shortDate(member.joined_at)}</span>
+              <span role="cell" {...stylex.props(preferencesStyles.listCell, preferencesStyles.listColWide)}>{shortDate(member.joined_at)}</span>
               <span role="cell" {...stylex.props(styles.actions)}>
                 {/* Linear gives your row no menu while nobody else could run the workspace. */}
                 {member.is_current_user ? (workspace.role === 'owner' && members.length < 2 ? null : (
@@ -833,22 +850,26 @@ export const MembersSection: React.FC<{
 
           {canManage && filter !== 'members' && (visibleInvites.length > 0 || filter === 'invites') && (
             <>
-              <div className="settings-list-group">
+              <div {...stylex.props(preferencesStyles.listGroup)}>
                 Invited
-                <span className="settings-list-group-count">{visibleInvites.length}</span>
+                <span {...stylex.props(preferencesStyles.listGroupCount)}>{visibleInvites.length}</span>
               </div>
               {sortedInvites.map((invite) => (
-                <div key={invite.id} role="row" className="settings-list-row">
-                  <span role="cell" className="settings-list-person">
+                <div
+                  key={invite.id}
+                  role="row"
+                  {...withClassName(stylex.props(preferencesStyles.listRow), `${css.listRow} ${css.listRowInteractive}`)}
+                >
+                  <span role="cell" {...stylex.props(preferencesStyles.listPerson)}>
                     <Initials label={invite.email || ''} muted size={24} />
-                    <span className="settings-list-person-name">{invite.email}</span>
+                    <span {...stylex.props(preferencesStyles.listPersonName)}>{invite.email}</span>
                   </span>
-                  <span role="cell" className="settings-list-cell settings-list-col-wide">{invite.email}</span>
-                  <span role="cell" className="settings-list-cell">
+                  <span role="cell" {...stylex.props(preferencesStyles.listCell, preferencesStyles.listColWide)}>{invite.email}</span>
+                  <span role="cell" {...stylex.props(preferencesStyles.listCell)}>
                     {roleLabel(invite.role)} ({invite.status === 'expired' ? 'Expired' : 'Invited'})
                   </span>
-                  <span role="cell" className="settings-list-col-wide" />
-                  <span role="cell" className="settings-list-cell settings-list-col-wide">{shortDate(invite.created_at)}</span>
+                  <span role="cell" {...stylex.props(preferencesStyles.listColWide)} />
+                  <span role="cell" {...stylex.props(preferencesStyles.listCell, preferencesStyles.listColWide)}>{shortDate(invite.created_at)}</span>
                   <span role="cell" {...stylex.props(styles.actions)}>
                     <RowMenu label={`Invite actions for ${invite.email}`} visible>
                       <DropdownMenuItem onSelect={() => void resend(invite)}>

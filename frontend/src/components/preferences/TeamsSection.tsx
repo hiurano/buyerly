@@ -37,6 +37,8 @@ import { RestoreTeamDialog } from './TeamSettingsSection';
 import { colors } from '@/styles/tokens.stylex';
 import { openSettings, openTeamSettings } from '@/lib/routing';
 import { canAdministerWorkspace } from '@/lib/settingsPages';
+import { preferencesStyles } from './preferencesStyles';
+import css from './Preferences.module.css';
 
 const styles = stylex.create({
   srOnly: {
@@ -168,25 +170,29 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
 
   return (
     <>
-      <div className="preferences-title-container">
-        <h1 className="preferences-page-title">Teams</h1>
+      <div {...stylex.props(preferencesStyles.titleContainer, preferencesStyles.titleContainerWide)}>
+        <h1 {...stylex.props(preferencesStyles.pageTitle)}>Teams</h1>
       </div>
 
-      <div className="settings-list-toolbar">
-        <label className="settings-list-search">
+      <div {...stylex.props(preferencesStyles.listToolbar)}>
+        <label {...stylex.props(preferencesStyles.listSearch)}>
           <span {...stylex.props(styles.srOnly)}>Filter by name…</span>
-          <BuyerlyIcon name="search" className="settings-list-search-icon" />
+          <BuyerlyIcon name="search" {...stylex.props(preferencesStyles.listSearchIcon)} />
           <input
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Filter by name…"
-            className="settings-list-search-input"
+            {...withClassName(stylex.props(preferencesStyles.listSearchInput), css.searchInput)}
           />
         </label>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button type="button" aria-label={`Show teams: ${TEAM_FILTER_LABELS[filter]}`} className="settings-list-select">
+            <button
+              type="button"
+              aria-label={`Show teams: ${TEAM_FILTER_LABELS[filter]}`}
+              {...withClassName(stylex.props(preferencesStyles.listSelect), css.listSelect)}
+            >
               {TEAM_FILTER_LABELS[filter]}
               <BuyerlyChevronGlyph />
             </button>
@@ -206,11 +212,19 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
         </DropdownMenu>
         <div {...stylex.props(styles.spacer)} />
         {canAdministerWorkspace({ role: workspace.role }) && teams && (
-          <button type="button" {...withClassName(stylex.props(styles.exportButton), 'settings-list-button')} onClick={() => downloadTeamsCsv(workspace, teams)}>
+          <button
+            type="button"
+            {...stylex.props(preferencesStyles.listButton, styles.exportButton)}
+            onClick={() => downloadTeamsCsv(workspace, teams)}
+          >
             Export CSV
           </button>
         )}
-        <button type="button" className="settings-list-button settings-list-button--primary" onClick={() => openSettings('new-team')}>
+        <button
+          type="button"
+          {...stylex.props(preferencesStyles.listButton, preferencesStyles.listButtonPrimary)}
+          onClick={() => openSettings('new-team')}
+        >
           Create team
         </button>
       </div>
@@ -222,25 +236,31 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
 
       {!error && teams !== null && (
         <>
-          <div className="settings-list-table settings-list--teams" role="table" aria-label="Teams">
-            <div role="row" className="settings-list-row settings-list-row--header">
+          <div {...stylex.props(preferencesStyles.listTable)} role="table" aria-label="Teams">
+            <div
+              role="row"
+              {...withClassName(
+                stylex.props(preferencesStyles.listRow, preferencesStyles.listRowTeams, preferencesStyles.listRowHeader),
+                css.listRow,
+              )}
+            >
               <SortHeader label="Name" column="name" sort={sort} onSort={toggleSort} />
-              <SortHeader label="Visibility" column="visibility" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
+              <SortHeader label="Visibility" column="visibility" sort={sort} onSort={toggleSort} xstyle={preferencesStyles.listColWide} />
               <SortHeader label="Members" column="members" sort={sort} onSort={toggleSort} />
-              <SortHeader label="Accounts" column="accounts" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
+              <SortHeader label="Accounts" column="accounts" sort={sort} onSort={toggleSort} xstyle={preferencesStyles.listColWide} />
               <SortHeader
                 label={filter === 'deleted' ? 'Deleted' : 'Created'}
                 column="created"
                 sort={sort}
                 onSort={toggleSort}
-                className="settings-list-col-wide"
+                xstyle={preferencesStyles.listColWide}
               />
               <span role="columnheader" {...stylex.props(styles.srOnly)}>Actions</span>
             </div>
             {visible.length > 0 && (
-              <div className="settings-list-group">
+              <div {...stylex.props(preferencesStyles.listGroup)}>
                 {TEAM_FILTER_LABELS[filter]}
-                <span className="settings-list-group-count">{visible.length}</span>
+                <span {...stylex.props(preferencesStyles.listGroupCount)}>{visible.length}</span>
               </div>
             )}
             {visible.map((team) => {
@@ -253,15 +273,18 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
                 <div
                   key={team.id}
                   role="row"
-                  className="settings-list-row"
+                  {...withClassName(
+                    stylex.props(preferencesStyles.listRow, preferencesStyles.listRowTeams, preferencesStyles.listRowCompact),
+                    `${css.listRow} ${css.listRowInteractive}`,
+                  )}
                   onClick={openable ? () => openTeamSettings(team.key) : undefined}
                 >
-                  <span role="cell" className="settings-list-team">
+                  <span role="cell" {...stylex.props(preferencesStyles.listTeam)}>
                     <TeamIcon />
                     {openable ? (
                       <a
                         href={`#team-${team.key}`}
-                        {...withClassName(stylex.props(styles.teamLink), 'settings-list-team-name')}
+                        {...stylex.props(preferencesStyles.listTeamName, styles.teamLink)}
                         onClick={(event) => {
                           event.preventDefault();
                           event.stopPropagation();
@@ -271,20 +294,20 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
                         {team.name}
                       </a>
                     ) : (
-                      <span className="settings-list-team-name">{team.name}</span>
+                      <span {...stylex.props(preferencesStyles.listTeamName)}>{team.name}</span>
                     )}
-                    <span className="settings-list-team-key">{team.key}</span>
+                    <span {...stylex.props(preferencesStyles.listTeamKey)}>{team.key}</span>
                   </span>
-                  <span role="cell" {...withClassName(stylex.props(styles.medium), 'settings-list-cell settings-list-col-wide')}>Workspace</span>
-                  <span role="cell" {...withClassName(stylex.props(styles.medium), 'settings-list-cell')}>
+                  <span role="cell" {...stylex.props(preferencesStyles.listCell, preferencesStyles.listColWide, styles.medium)}>Workspace</span>
+                  <span role="cell" {...stylex.props(preferencesStyles.listCell, styles.medium)}>
                     {names.length > 0 ? (
                       <Tooltip content={names.join(', ')} side="top">
                         <span>{team.member_user_ids.length}</span>
                       </Tooltip>
                     ) : team.member_user_ids.length}
                   </span>
-                  <span role="cell" {...withClassName(stylex.props(styles.medium), 'settings-list-cell settings-list-col-wide')}>{team.account_ids.length}</span>
-                  <span role="cell" className="settings-list-cell settings-list-col-wide">
+                  <span role="cell" {...stylex.props(preferencesStyles.listCell, preferencesStyles.listColWide, styles.medium)}>{team.account_ids.length}</span>
+                  <span role="cell" {...stylex.props(preferencesStyles.listCell, preferencesStyles.listColWide)}>
                     {shortDate(filter === 'deleted' && team.deleted_at ? team.deleted_at : team.created_at)}
                   </span>
                   <span role="cell" {...stylex.props(styles.actions)} onClick={(event) => event.stopPropagation()}>
