@@ -16,3 +16,9 @@ export const commandItemMarker = stylex.defineMarker();
 
 /** A list cell's property button (Rules in Ads Manager), whose pill or icon lights up under the pointer. */
 export const propertyMarker = stylex.defineMarker();
+
+/** A team's Joined pill on Teams, which swaps its check and label for Leave under the pointer. */
+export const membershipMarker = stylex.defineMarker();
+
+/** A Go to link on a team's Overview, whose chevron shows under the pointer or in focus. */
+export const linkMarker = stylex.defineMarker();
