@@ -3,7 +3,8 @@ import * as stylex from '@stylexjs/stylex';
 import { ApiError } from '@/lib/api';
 import { graphql } from '@/lib/graphql';
 import type { LoginResult } from '@/lib/types';
-import { AuthFrame, BuyerlyBrand } from './AuthFrame';
+import { withClassName } from '@/ui/withClassName';
+import { AuthFrame, BuyerlyBrand, authStyles } from './AuthFrame';
 import { TurnstileWidget, loadTurnstile } from './TurnstileWidget';
 
 type LoginStage = 'start' | 'email' | 'verify' | 'check' | 'code';
@@ -23,6 +24,112 @@ const styles = stylex.create({
     clip: 'rect(0, 0, 0, 0)',
     whiteSpace: 'nowrap',
     borderWidth: 0,
+  },
+  /** Linear's sign-in column is 288px wide (linear.app/add-account, 2026-10-08). */
+  card: {
+    width: 'min(100%, 288px)',
+  },
+  /**
+   * Sign-in heading as on linear.app/add-account → Continue with email (2026-10-08):
+   * 18px / 500, line-height normal, no letter-spacing, 32px below the 48px logo box
+   * and 24px above the first button or field.
+   */
+  heading: {
+    marginTop: 0,
+    marginRight: 0,
+    marginBottom: 24,
+    marginLeft: 0,
+    color: 'var(--auth-text)',
+    fontSize: 18,
+    fontWeight: 500,
+    letterSpacing: 'normal',
+    lineHeight: 'normal',
+  },
+  email: {
+    display: 'block',
+    marginTop: 4,
+    color: 'var(--auth-text)',
+    fontWeight: 520,
+    wordBreak: 'break-all',
+  },
+  codeInput: {
+    textAlign: 'center',
+    fontFamily: 'var(--font-mono), monospace',
+    fontSize: 20,
+    fontWeight: 650,
+    letterSpacing: 8,
+  },
+  /**
+   * linear.app/signup, measured 2026-10-20 at 1024×768: the legal note 36px under the
+   * last button, "Already have an account? Log in" 24px under it; both 13px / 450 /
+   * 19.5px in the muted color with links in the text color. /login ends with the same
+   * line: "Don't have an account? Sign up".
+   */
+  legal: {
+    marginTop: 36,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    color: 'var(--auth-text-muted)',
+    fontSize: 13,
+    fontWeight: 450,
+    lineHeight: '19.5px',
+  },
+  switchText: {
+    marginTop: 24,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    color: 'var(--auth-text-muted)',
+    fontSize: 13,
+    fontWeight: 450,
+    lineHeight: '19.5px',
+  },
+  inlineLink: {
+    color: {
+      default: 'var(--auth-text)',
+      ':hover': 'var(--auth-link-hover)',
+    },
+    textDecoration: 'none',
+  },
+  /** Linear's "Back to login": 13px, main text color, 16px under the button, dims on hover. */
+  textButton: {
+    display: 'block',
+    marginTop: 16,
+    marginRight: 'auto',
+    marginBottom: 0,
+    marginLeft: 'auto',
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    borderWidth: 0,
+    borderStyle: 'none',
+    borderColor: 'currentColor',
+    backgroundColor: 'transparent',
+    backgroundPosition: '0px 0px',
+    color: {
+      default: 'var(--auth-text)',
+      ':hover': 'var(--auth-link-hover)',
+    },
+    fontSize: 13,
+    lineHeight: '20px',
+    cursor: 'pointer',
+  },
+  /**
+   * Linear: "Please enter an email address for login." 24px under the field and 16px
+   * above the button, 11px / 450.
+   */
+  error: {
+    marginTop: 24,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    textAlign: 'left',
+    color: 'var(--auth-signin-error)',
+    fontSize: 11,
+    fontWeight: 450,
+    lineHeight: 'normal',
   },
 });
 
@@ -77,6 +184,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
   const switchLink = (path: '/login' | '/signup', label: string) => (
     <a
+      {...stylex.props(styles.inlineLink)}
       href={path}
       onClick={(event) => {
         if (!onSwitchMode || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -155,31 +263,31 @@ export const LoginView: React.FC<LoginViewProps> = ({
   return (
     <AuthFrame>
       {onBack && (
-        <button className="buyerly-auth-back" type="button" onClick={onBack}>
+        <button {...stylex.props(authStyles.back)} type="button" onClick={onBack}>
           ‹ Back to Buyerly
         </button>
       )}
       {loggedInAs && (
-        <p className="buyerly-auth-corner">
+        <p {...stylex.props(authStyles.corner)}>
           Logged in as
-          <strong>{loggedInAs}</strong>
+          <strong {...stylex.props(authStyles.cornerStrong)}>{loggedInAs}</strong>
         </p>
       )}
-      <section className="buyerly-auth-card buyerly-auth-card--signin">
-        <BuyerlyBrand />
+      <section {...withClassName(stylex.props(authStyles.card, styles.card), 'buyerly-auth-card')}>
+        <BuyerlyBrand signin />
 
         {stage === 'start' && signup && (
           <>
-            <h1>Create your workspace</h1>
-            <button className="buyerly-auth-button buyerly-auth-button--primary" type="button" onClick={() => goTo('email')}>
+            <h1 {...stylex.props(styles.heading)}>Create your workspace</h1>
+            <button {...stylex.props(authStyles.button, authStyles.buttonPrimary, authStyles.buttonFlush)} type="button" onClick={() => goTo('email')}>
               Continue with email
             </button>
-            <p className="buyerly-auth-legal">
+            <p {...stylex.props(styles.legal)}>
               By signing up, you agree to our
               <br />
-              <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy Policy</a>.
+              <a {...stylex.props(styles.inlineLink)} href="/terms">Terms of Service</a> and <a {...stylex.props(styles.inlineLink)} href="/privacy">Privacy Policy</a>.
             </p>
-            <p className="buyerly-auth-switch">
+            <p {...stylex.props(styles.switchText)}>
               Already have an account? {switchLink('/login', 'Log in')}
             </p>
           </>
@@ -187,12 +295,12 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
         {stage === 'start' && !signup && (
           <>
-            <h1>{title}</h1>
-            <button className="buyerly-auth-button buyerly-auth-button--primary" type="button" onClick={() => goTo('email')}>
+            <h1 {...stylex.props(styles.heading)}>{title}</h1>
+            <button {...stylex.props(authStyles.button, authStyles.buttonPrimary, authStyles.buttonFlush)} type="button" onClick={() => goTo('email')}>
               Continue with email
             </button>
             {onSwitchMode && (
-              <p className="buyerly-auth-switch">
+              <p {...stylex.props(styles.switchText)}>
                 Don’t have an account? {switchLink('/signup', 'Sign up')}
               </p>
             )}
@@ -201,10 +309,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
         {stage === 'email' && (
           <form onSubmit={requestLogin} noValidate>
-            <h1>What’s your email address?</h1>
-            <label className="buyerly-auth-field">
+            <h1 {...stylex.props(styles.heading)}>What’s your email address?</h1>
+            <label {...withClassName(stylex.props(authStyles.field), 'buyerly-auth-field')}>
               <span {...stylex.props(styles.srOnly)}>Email address</span>
               <input
+                {...stylex.props(authStyles.input, Boolean(error) && authStyles.inputInvalid)}
                 type="email"
                 inputMode="email"
                 autoComplete="email"
@@ -215,11 +324,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 aria-invalid={Boolean(error)}
               />
             </label>
-            {error && <p className="buyerly-auth-error" role="alert">{error}</p>}
-            <button className="buyerly-auth-button" type="submit" disabled={busy}>
+            {error && <p {...stylex.props(styles.error)} role="alert">{error}</p>}
+            <button {...stylex.props(authStyles.button, authStyles.buttonAfterField)} type="submit" disabled={busy}>
               {busy ? 'Sending…' : 'Continue with email'}
             </button>
-            <button className="buyerly-auth-text-button" type="button" onClick={() => goTo('start')}>
+            <button {...stylex.props(styles.textButton)} type="button" onClick={() => goTo('start')}>
               {signup ? 'Back to signup' : 'Back to login'}
             </button>
           </form>
@@ -227,13 +336,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
         {stage === 'verify' && (
           <>
-            <h1>Verifying it’s you</h1>
+            <h1 {...stylex.props(styles.heading)}>Verifying it’s you</h1>
             <TurnstileWidget
               onToken={(token) => sendCode(email, token)}
               onError={() => setError(HUMAN_CHECK_FAILED)}
             />
-            {error && <p className="buyerly-auth-error" role="alert">{error}</p>}
-            <button className="buyerly-auth-text-button" type="button" onClick={() => goTo('start')}>
+            {error && <p {...stylex.props(styles.error)} role="alert">{error}</p>}
+            <button {...stylex.props(styles.textButton)} type="button" onClick={() => goTo('start')}>
               {signup ? 'Back to signup' : 'Back to login'}
             </button>
           </>
@@ -241,18 +350,18 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
         {stage === 'check' && (
           <>
-            <h1>Check your email</h1>
-            <p className="buyerly-auth-copy">
+            <h1 {...stylex.props(styles.heading)}>Check your email</h1>
+            <p {...stylex.props(authStyles.copy)}>
               We’ve sent you a temporary login link.
               <br />
               Please check your inbox at
-              <strong className="buyerly-auth-email">{email}</strong>
+              <strong {...stylex.props(styles.email)}>{email}</strong>
             </p>
-            {error && <p className="buyerly-auth-error" role="alert">{error}</p>}
-            <button className="buyerly-auth-button" type="button" onClick={() => goTo('code')}>
+            {error && <p {...stylex.props(styles.error)} role="alert">{error}</p>}
+            <button {...stylex.props(authStyles.button, Boolean(error) && authStyles.buttonAfterField)} type="button" onClick={() => goTo('code')}>
               Enter code manually
             </button>
-            <button className="buyerly-auth-text-button" type="button" onClick={() => goTo('start')}>
+            <button {...stylex.props(styles.textButton)} type="button" onClick={() => goTo('start')}>
               {signup ? 'Back to signup' : 'Back to login'}
             </button>
           </>
@@ -260,16 +369,17 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
         {stage === 'code' && (
           <form onSubmit={verifyCode} noValidate>
-            <h1>Check your email</h1>
-            <p className="buyerly-auth-copy">
+            <h1 {...stylex.props(styles.heading)}>Check your email</h1>
+            <p {...stylex.props(authStyles.copy)}>
               We’ve sent you a temporary login code.
               <br />
               Please check your inbox at
-              <strong className="buyerly-auth-email">{email}</strong>
+              <strong {...stylex.props(styles.email)}>{email}</strong>
             </p>
-            <label className="buyerly-auth-field buyerly-auth-code-field">
+            <label {...withClassName(stylex.props(authStyles.field), 'buyerly-auth-field')}>
               <span {...stylex.props(styles.srOnly)}>Login code</span>
               <input
+                {...stylex.props(authStyles.input, styles.codeInput, Boolean(error) && authStyles.inputInvalid)}
                 type="text"
                 autoComplete="one-time-code"
                 autoCapitalize="characters"
@@ -282,11 +392,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 aria-invalid={Boolean(error)}
               />
             </label>
-            {error && <p className="buyerly-auth-error" role="alert">{error}</p>}
-            <button className="buyerly-auth-button buyerly-auth-button--primary" type="submit" disabled={busy}>
+            {error && <p {...stylex.props(styles.error)} role="alert">{error}</p>}
+            <button {...stylex.props(authStyles.button, authStyles.buttonPrimary, authStyles.buttonAfterField)} type="submit" disabled={busy}>
               {busy ? 'Checking…' : 'Continue with login code'}
             </button>
-            <button className="buyerly-auth-text-button" type="button" onClick={() => goTo('start')}>
+            <button {...stylex.props(styles.textButton)} type="button" onClick={() => goTo('start')}>
               {signup ? 'Back to signup' : 'Back to login'}
             </button>
           </form>

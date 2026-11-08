@@ -1,10 +1,27 @@
 import React, { useEffect, useEffectEvent, useRef } from 'react';
+import * as stylex from '@stylexjs/stylex';
 
 /**
  * Cloudflare Turnstile, as on linear.app/signup: the script loads when the
  * email step opens, and "Verifying it's you" shows Cloudflare's managed check
  * before the code is sent. The server checks the token (services/turnstile.py).
  */
+
+const styles = stylex.create({
+  /**
+   * "Verifying it's you": Cloudflare's 300×65 check, centred over the 288px column;
+   * Linear keeps a 71.5px slot for it, so "Back to signup" does not move when it loads.
+   */
+  turnstile: {
+    display: 'flex',
+    minHeight: 71.5,
+    justifyContent: 'center',
+    marginTop: 0,
+    marginRight: -6,
+    marginBottom: 0,
+    marginLeft: -6,
+  },
+});
 
 interface TurnstileOptions {
   sitekey: string;
@@ -84,5 +101,5 @@ export const TurnstileWidget: React.FC<{
     };
   }, []);
 
-  return <div ref={container} className="buyerly-auth-turnstile" />;
+  return <div ref={container} {...stylex.props(styles.turnstile)} />;
 };
