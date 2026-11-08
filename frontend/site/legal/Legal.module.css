@@ -1,0 +1,11 @@
+.legalArticle { width: min(var(--site-reading-width), calc(100% - 2 * var(--site-gutter))); margin: var(--site-hero-space) auto var(--site-section-space); overflow-wrap: break-word; }
+.legalDate { margin: var(--site-space-lg) 0; color: var(--text-tertiary); font-family: var(--font-monospace); font-size: var(--site-small-size); text-transform: uppercase; }
+.legalArticle p, .legalArticle li { color: var(--text-secondary); }
+.legalArticle p { margin-block: var(--site-space-md); }
+.legalArticle .legalDate { margin-block: var(--site-space-lg); }
+.legalContents { margin-block: var(--site-space-lg); }
+.legalArticle ol, .legalArticle ul { padding-left: var(--site-space-md); }
+.legalArticle li + li { margin-top: var(--site-space-xs); }
+.legalArticle section { margin-top: var(--site-space-xl); scroll-margin-top: var(--site-space-md); }
+.legalArticle h2 { font-size: var(--site-section-size); font-weight: var(--font-weight-medium); line-height: 1.3; letter-spacing: var(--site-heading-tracking); margin: 0 0 var(--site-space-md); }
+.legalArticle strong { color: var(--text-primary); font-weight: var(--font-weight-semibold); }

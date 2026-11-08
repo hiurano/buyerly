@@ -2,11 +2,8 @@
 *.sh text eol=lf
 
 # Generated files: collapsed in PR diffs and kept out of GitHub's language bar.
-# changelog*.html and changelog/*.html are removed from git by #700.
 frontend/src/lib/changelogLatest.json linguist-generated
 frontend/src/icons/buyerlyIconPaths.ts linguist-generated
-frontend/public/changelog*.html linguist-generated
-frontend/public/changelog/*.html linguist-generated
 server/test/fixtures/*-email.html linguist-generated
 server/test/fixtures/fake-meta-golden.json linguist-generated
 server/test/fixtures/meta-client-answers.json linguist-generated

@@ -318,8 +318,8 @@ const run = (tree: string, argv: string[], wait: (output: string) => boolean): P
     output += chunk.toString();
     if (wait(output)) done();
   };
-  child.stdout!.on('data', read);
-  child.stderr!.on('data', read);
+  child.stdout.on('data', read);
+  child.stderr.on('data', read);
   child.once('exit', (code) => (code === 0 ? done() : fail(new Error(`vite ${argv[0] ?? ''} in ${tree} exited ${code}:\n${output.slice(-3000)}`))));
 });
 async function serve(side: Side): Promise<string> {
@@ -329,7 +329,7 @@ async function serve(side: Side): Promise<string> {
   if (args.dev) {
     await run(tree, host, (output) => output.includes(`:${port}`));
   } else {
-    const dist = join(args.out!, `${side}-dist`);
+    const dist = join(args.out, `${side}-dist`);
     console.log(`Building ${side} (${tree})…`);
     await run(tree, ['build', '--outDir', dist, '--emptyOutDir', '--logLevel', 'warn'], () => false);
     await run(tree, ['preview', '--outDir', dist, ...host], (output) => output.includes(`:${port}`));
@@ -531,11 +531,11 @@ async function compare(browser: Browser, blank: Page, origins: Record<Side, stri
     }
     const errors = sides.flatMap(({ errors }, i) => errors.map((error) => `${i ? 'head' : 'base'} page error: ${error}`));
     if (args['save-all']) {
-      await mkdir(join(args.out!, 'screens'), { recursive: true });
-      await writeFile(join(args.out!, 'screens', `${label}.png`), shots[1]);
+      await mkdir(join(args.out, 'screens'), { recursive: true });
+      await writeFile(join(args.out, 'screens', `${label}.png`), shots[1]);
     }
     if (pixels.count !== 0 || styles !== 0 || errors.length > 0) {
-      const dir = join(args.out!, 'differences');
+      const dir = join(args.out, 'differences');
       await mkdir(dir, { recursive: true });
       await writeFile(join(dir, `${label}-base.png`), shots[0]);
       await writeFile(join(dir, `${label}-head.png`), shots[1]);
@@ -554,10 +554,10 @@ const only = args.only ? new RegExp(args.only) : null;
 const jobs = SCENARIOS.filter((scenario) => !only || only.test(scenario.name)).flatMap((scenario) => THEMES.flatMap((theme) =>
   (Object.keys(SIZES) as Size[]).filter((size) => !scenario.only || scenario.only === size).map((size) => ({ scenario, theme, size }))));
 let browser: Browser | undefined;
-let failed = false;
+let failed: boolean;
 try {
-  await rm(join(args.out!, 'differences'), { recursive: true, force: true });
-  await mkdir(args.out!, { recursive: true });
+  await rm(join(args.out, 'differences'), { recursive: true, force: true });
+  await mkdir(args.out, { recursive: true });
   const [base, head] = await Promise.all([serve('base'), serve('head')]);
   const origins = { base, head };
   // Software rendering in one colour profile without LCD text, so the same page draws the same pixels.
@@ -592,8 +592,8 @@ try {
     '| --- | --- | --- | ---: | ---: | --- |',
     ...results.map((r) => `| ${r.scenario} | ${r.theme} | ${SIZES[r.size].viewport.width}×${SIZES[r.size].viewport.height} | ${r.pixels} | ${r.styles} | ${r.note} |`),
   ].join('\n');
-  await writeFile(join(args.out!, 'report.md'), `${table}\n`);
-  console.log(`\n${results.length - results.filter((r) => r.pixels !== 0 || r.styles !== 0 || r.note).length}/${results.length} identical. Report: ${join(args.out!, 'report.md')}${failed ? `, differences in ${join(args.out!, 'differences')}` : ''}`);
+  await writeFile(join(args.out, 'report.md'), `${table}\n`);
+  console.log(`\n${results.length - results.filter((r) => r.pixels !== 0 || r.styles !== 0 || r.note).length}/${results.length} identical. Report: ${join(args.out, 'report.md')}${failed ? `, differences in ${join(args.out, 'differences')}` : ''}`);
 } finally {
   await browser?.close();
   for (const child of children) child.kill();

@@ -85,7 +85,9 @@ npm run typecheck && npm run lint
 | Каталог | Назначение |
 |---|---|
 | `frontend/` | React, TypeScript, Vite, UI primitives и tokens |
-| `frontend/public/` | Публичные юридические HTML и ресурсы |
+| `frontend/site/` | Публичный сайт (лендинг, юридические страницы, changelog): компоненты TSX и CSS Modules, которые сборка рендерит в статический HTML |
+| `frontend/public/` | Шрифты, иконки и картинки, которые отдаются как есть |
+| `changelog/` | Записи публичного changelog в Markdown |
 | `server/src/` | Сервер на TypeScript: маршруты (`routes/`), GraphQL (`graphql/`), авторизация, синхронизация, уведомления |
 | `server/src/entities/`, `server/src/migrations/` | Сущности TypeORM и миграции PostgreSQL |
 | `server/src/meta/` | Meta HTTP-клиент и OAuth |

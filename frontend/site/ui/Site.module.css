@@ -1,0 +1,10 @@
+/* Pieces every public page shares: the page column, the logo mark, the pill buttons and the skip link. */
+.siteContainer { width: min(var(--site-width), calc(100% - 2 * var(--site-gutter))); margin-inline: auto; }
+.siteBrandMark { display: block; flex-shrink: 0; width: 22px; height: 22px; background: var(--site-logo); -webkit-mask: url('/buyerly-logo.png') center / contain no-repeat; mask: url('/buyerly-logo.png') center / contain no-repeat; }
+.siteButtonInvert { display: inline-flex; align-items: center; justify-content: center; height: 32px; margin-left: 8px; padding-inline: 12px; border: 1px solid var(--site-invert-bg); border-radius: 9999px; background: var(--site-invert-bg); color: var(--site-invert-fg); font-size: 13px; font-weight: 510; line-height: 32px; text-decoration: none; white-space: nowrap; box-shadow: 0 8px 2px rgb(0 0 0 / 0), 0 5px 2px rgb(0 0 0 / 0.01), 0 3px 2px rgb(0 0 0 / 0.04), 0 1px 1px rgb(0 0 0 / 0.07), 0 0 1px rgb(0 0 0 / 0.08); transition: filter 0.16s var(--site-ease); }
+.siteButtonInvert:hover { color: var(--site-invert-fg); filter: brightness(1.1); }
+.siteButtonInvert.isLarge { height: 44px; margin: 0; padding-inline: 20px; font-size: 16px; line-height: 44px; }
+.siteButtonSecondary { display: inline-flex; align-items: center; height: 44px; padding-inline: 20px; border-radius: 9999px; background: color-mix(in srgb, var(--site-fg) 5%, transparent); color: var(--site-fg); font-size: 16px; font-weight: 510; text-decoration: none; transition: background 0.16s var(--site-ease); }
+.siteButtonSecondary:hover { color: var(--site-fg); background: color-mix(in srgb, var(--site-fg) 9%, transparent); }
+.skipLink { position: absolute; transform: translateY(-150%); left: var(--site-gutter); top: var(--site-space-sm); background: var(--site-background); padding: var(--site-space-xs); }
+.skipLink:focus { transform: none; }

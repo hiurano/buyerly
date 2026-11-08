@@ -222,8 +222,15 @@ jobs:
           echo
           test "$(curl -fsS http://127.0.0.1:8090/health/live)" = '{"status":"alive","version":"ci"}'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/health/ready)" = 503
-          # The site: landing page, the React app, the service worker.
-          curl -fsS http://127.0.0.1:8090/ | grep -qi '<html'
+          # The site: the public pages the image renders (#700), the React app,
+          # the service worker.
+          curl -fsS http://127.0.0.1:8090/ | grep -q '<h1 id="hero-title"'
+          curl -fsS http://127.0.0.1:8090/privacy | grep -q '<h1>Privacy</h1>'
+          curl -fsS http://127.0.0.1:8090/changelog | grep -q '<h1 class="[^"]*">Changelog</h1>'
+          release=$(ls changelog | sort | tail -n 1)
+          curl -fsS "http://127.0.0.1:8090/changelog/${release%.md}" | grep -q 'href="/changelog"'
+          stylesheet=$(curl -fsS http://127.0.0.1:8090/about | grep -o '/assets/public-website-[^"]*\.css')
+          curl -fsS "http://127.0.0.1:8090${stylesheet}" | grep -q 'font-face'
           curl -fsS http://127.0.0.1:8090/login | grep -q 'id="root"'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/sw.js)" = 200
           docker logs buyerly-server-ci
