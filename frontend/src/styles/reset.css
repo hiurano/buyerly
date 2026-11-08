@@ -1,5 +1,5 @@
 /*
- * The app's element reset, ahead of index.css and StyleX. Components style
+ * The app's element reset, in @layer reset (app.css), under everything else. Components style
  * themselves with StyleX on top of it: no default margins, borders that take
  * only a width, form controls that inherit their text, block images and SVGs.
  * It is Tailwind CSS v3's Preflight (MIT, built on modern-normalize) with the
@@ -239,4 +239,15 @@ video {
 
 [hidden]:where(:not([hidden="until-found"])) {
   display: none;
+}
+
+/* The app's own additions after Preflight: font smoothing and Inter's contextual alternates on every element. */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "calt";
 }

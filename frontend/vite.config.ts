@@ -45,7 +45,8 @@ async function compileTokens(): Promise<Tokens> {
   return { code, map: result?.map ?? null, css };
 }
 
-// The app imports the token CSS as virtual:buyerly-tokens.css, ahead of index.css.
+// The app imports the token CSS as virtual:buyerly-tokens.css, in @layer base
+// (src/styles/app.css has the order); the public website's copy has no layer.
 // The tokens module itself is compiled here, before StyleX's plugin sees it, so
 // StyleX does not add a second copy of every variable to its own CSS.
 function buyerlyTokens(): Plugin {
@@ -58,12 +59,44 @@ function buyerlyTokens(): Plugin {
     async load(source) {
       if (source !== resolved) return null;
       this.addWatchFile(tokensModule);
-      return (await compileTokens()).css;
+      return `@layer base {\n${(await compileTokens()).css}}\n`;
     },
     async transform(_code, source) {
       if (source.split('?')[0] !== tokensModule) return null;
       const { code, map } = await compileTokens();
       return { code, map: map as never };
+    },
+  };
+}
+
+// The cascade order, as Linear's: the reset, the tokens and page base, index.css's
+// global classes (until #699), then StyleX's priority layers (src/styles/app.css).
+// Declared up front: first in index.html's inline <style>, before its splash
+// styles (checked here), and at the top of the built CSS, where the minifier would
+// otherwise fold the statement into the layers' first blocks. StyleX's own
+// statement repeats the layers below its own.
+const layersBelowStylex = ['reset', 'base', 'app.base'];
+const layerOrder = `@layer ${[...layersBelowStylex, 'priority1'].join(', ')};`;
+
+function cssLayerOrder(): Plugin {
+  return {
+    name: 'buyerly-css-layer-order',
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html) {
+        const splash = html.indexOf('<style>');
+        if (splash < 0 || !html.slice(splash + '<style>'.length).trimStart().startsWith(layerOrder)) {
+          throw new Error(`index.html: its first <style> must start with ${layerOrder}`);
+        }
+      },
+    },
+    // After StyleX's plugin has added its rules to the app's CSS (the public website's has no layers).
+    generateBundle(_options, bundle) {
+      for (const item of Object.values(bundle)) {
+        if (item.type === 'asset' && /^assets\/index-[\w-]+\.css$/.test(item.fileName)) {
+          item.source = `${layerOrder}\n${String(item.source)}`;
+        }
+      }
     },
   };
 }
@@ -251,16 +284,22 @@ const apiOrigin = process.env.VITE_API_ORIGIN || 'http://127.0.0.1:8080';
 export default defineConfig({
   // StyleX compiles a component's styles before the React Compiler sees it, and
   // its CSS joins index.css's in the build; dev serves it at /virtual:stylex.css.
+  // Its rules sit in @layer priority1…N, after reset, base and app.base, as
+  // Linear's (src/styles/app.css): the layers rank them instead of :not(#\#).
   plugins: [
     publicWebsite(),
     buyerlyTokens(),
     stylex.vite({
       aliases: { '@/*': [path.resolve(__dirname, 'src/*')] },
       unstable_moduleResolution: { type: 'commonJS', rootDir: __dirname },
+      // Its own @layer statement names the layers below its own, so the order holds
+      // in dev too, where its stylesheet loads before the app's.
+      useCSSLayers: { before: layersBelowStylex },
       // Vite's default build target, so StyleX's CSS keeps lch() as index.css does
       // instead of lowering it to hex and lab() for older browsers.
       lightningcssOptions: { targets: { chrome: 111 << 16, edge: 111 << 16, firefox: 114 << 16, safari: (16 << 16) | (4 << 8) } },
     }),
+    cssLayerOrder(),
     reactCompiler(),
     react(),
     serviceWorker(),

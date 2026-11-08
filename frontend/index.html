@@ -7,8 +7,11 @@
          the mark with a pulsing ring only after 1s, "Loading…" after 8s. src/lib/splash.ts removes it;
          AuthLoading (src/components/auth/AuthFrame.tsx) draws the same splash for later loading states. -->
     <script>/* Signed-out pages get a plain backdrop instead of the app frame, like Linear's html.logged-out. */(function(){var d=document.documentElement,p=location.pathname,o=/^\/(login|signup|auth|invite|connect|create-workspace)(\/|$)|^\/[^/]+\/welcome\/?$/.test(p);try{o=o||!localStorage.getItem('buyerly-last-account')}catch(e){o=true}o&&d.classList.add('logged-out');var m=document.createElement('meta');m.name='theme-color';m.content=d.getAttribute('data-theme')==='dark'?'#09090A':'#EEEEF0';document.head.appendChild(m)})()</script>
+    <!-- The cascade order first, as Linear's (cssLayerOrder in vite.config.ts). The splash's html background is in
+         @layer base, so the app's in src/styles/base.css takes over once it loads; the rest stays outside any layer. -->
     <style>
-      html{--splash-sidebar:lch(94.44% 0.5 282);--splash-canvas:lch(97.94% 0.5 282);--splash-border:lch(89.84% 0 282);--splash-shadow:0 3px 6px -2px rgb(0 0 0/.02),0 1px 1px rgb(0 0 0/.04);--splash-signed-out:rgb(248 248 249);--splash-content:#b0b5c0;background-color:var(--splash-sidebar)}
+      @layer reset, base, app.base, priority1;
+      @layer base{html{--splash-sidebar:lch(94.44% 0.5 282);--splash-canvas:lch(97.94% 0.5 282);--splash-border:lch(89.84% 0 282);--splash-shadow:0 3px 6px -2px rgb(0 0 0/.02),0 1px 1px rgb(0 0 0/.04);--splash-signed-out:rgb(248 248 249);--splash-content:#b0b5c0;background-color:var(--splash-sidebar)}}
       html[data-theme=dark]{--splash-sidebar:lch(2.595% 0.4 272);--splash-canvas:lch(5.52% 0.4 272);--splash-border:lch(13.08% 1.48 272);--splash-shadow:0 .5px 1px 1px lch(0% 0 0/.3);--splash-signed-out:rgb(9 9 10);--splash-content:#6b6f76}
       html.logged-out{background-color:var(--splash-signed-out)}
       body{margin:0}

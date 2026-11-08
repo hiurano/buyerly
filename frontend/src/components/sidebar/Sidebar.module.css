@@ -1,0 +1,5 @@
+/* The sidebar's rows and sections, 1px apart: StyleX cannot style an element's children. */
+.navigation > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 1px;
+  margin-bottom: 0;
+}

@@ -1,39 +1,3 @@
-@import './tokens.css';
-@import './reset.css';
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-  font-feature-settings: "calt";
-}
-
-html, body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background-color: var(--bg-window);
-  font-family: var(--font-regular);
-  color: var(--text-primary);
-  user-select: none;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-}
-
-html {
-  font-size: 16px;
-  line-height: normal;
-}
-
-body {
-  font-size: 13px;
-  line-height: normal;
-}
-
 /* Linear My Issues Display options contract, shared by Ads Manager and Rules. */
 .buyerly-display-options-popover {
   position: fixed;
@@ -6194,8 +6158,3 @@ button.buyerly-board-hidden-row:hover,
   color: var(--text-tertiary);
 }
 
-/* The sidebar's rows and sections, 1px apart: StyleX cannot style an element's children. */
-.buyerly-sidebar-navigation > :not([hidden]) ~ :not([hidden]) {
-  margin-top: 1px;
-  margin-bottom: 0;
-}
