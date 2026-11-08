@@ -8,7 +8,49 @@ import { Tooltip } from '@/ui/Tooltip';
 import type { AccountMember } from './accountsData';
 import { colors } from '@/styles/tokens.stylex';
 
+const HOVER = '@media (any-hover: hover) and (any-pointer: fine)';
+
 const styles = stylex.create({
+  trigger: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    height: 28,
+    borderRadius: 9999,
+    cursor: 'default',
+    backgroundColor: {
+      default: null,
+      ':is([data-state="open"])': colors['--item-hover-bg'],
+    },
+  },
+  editable: {
+    backgroundColor: {
+      default: null,
+      ':hover': {
+        default: null,
+        [HOVER]: colors['--item-hover-bg'],
+      },
+      ':is([data-state="open"])': colors['--item-hover-bg'],
+    },
+  },
+  // Linear's Lead on a project row: a 28px round button around a 16px avatar.
+  cell: {
+    justifyContent: 'center',
+    width: 28,
+  },
+  // The same Lead on the account's page, with the member's name.
+  // Linear's Lead property: a pill, its avatar 6px before a 12px name in the panel's value tone.
+  property: {
+    minWidth: 0,
+    gap: 6,
+    marginLeft: -6,
+    paddingTop: 0,
+    paddingRight: 8,
+    paddingBottom: 0,
+    paddingLeft: 6,
+    color: colors['--details-row-fg'],
+    fontSize: 12,
+    fontWeight: 450,
+  },
   noLead: {
     color: colors['--text-tertiary'],
   },
@@ -54,7 +96,7 @@ export const AccountLeadPicker: React.FC<AccountLeadPickerProps> = ({ account, m
       type="button"
       disabled={!canEdit}
       aria-label={lead ? `Lead: ${memberLabel(lead)}` : 'Set lead'}
-      className={variant === 'cell' ? 'account-lead-cell' : 'account-lead-property'}
+      {...stylex.props(styles.trigger, variant === 'cell' ? styles.cell : styles.property, canEdit && styles.editable)}
       onClick={(event) => event.stopPropagation()}
     >
       {avatar}

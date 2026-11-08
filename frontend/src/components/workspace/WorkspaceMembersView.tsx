@@ -29,6 +29,7 @@ import {
 } from './workspaceListModels';
 
 const NO_MEMBERS: MemberItem[] = [];
+const HOVER = '@media (any-hover: hover) and (any-pointer: fine)';
 
 const styles = stylex.create({
   root: {
@@ -125,6 +126,30 @@ const styles = stylex.create({
     gap: 4,
     overflow: 'hidden',
   },
+  // A team in a list cell (Members' Teams column): its icon and identifier, a pill under the cursor.
+  teamChip: {
+    display: 'inline-flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 8,
+    height: 28,
+    paddingTop: 3,
+    paddingRight: 6,
+    paddingBottom: 3,
+    paddingLeft: 6,
+    borderRadius: 9999,
+    backgroundColor: {
+      default: null,
+      ':hover': {
+        default: null,
+        [HOVER]: colors['--item-hover-bg'],
+      },
+    },
+    color: colors['--text-secondary'],
+    fontSize: 12,
+    fontWeight: 450,
+    cursor: 'default',
+  },
 });
 
 // As Linear's Members: the name takes the room, Role and Teams keep to their content, and the
@@ -168,7 +193,7 @@ const MemberRow = React.memo(function MemberRow({ member, teams, columns, proper
             <button
               key={team.id}
               type="button"
-              className="team-chip"
+              {...stylex.props(styles.teamChip)}
               title={team.name}
               onClick={() => {
                 openTab('team', { teamKey: team.key });
