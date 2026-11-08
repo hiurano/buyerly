@@ -108,25 +108,25 @@ jobs:
       # through it fills them, so no first page outruns a 10 s timeout.
       - name: Warm the dev server
         working-directory: frontend
-        run: node ../scripts/warm-dev-server.mjs
+        run: node ../scripts/warm-dev-server.ts
 
       # Every script in the group runs even after one fails, so a single run
       # reports all broken screens. The runner's Google Chrome has WebMCP
-      # behind a flag; Playwright's Chromium does not, and webmcp-browser.mjs
+      # behind a flag; Playwright's Chromium does not, and webmcp-browser.ts
       # then uses a stand-in instead.
       - name: Check in Chromium
         working-directory: frontend
         run: |
           status=0
           for name in ${{ matrix.scripts }}; do
-            echo "::group::${name}-browser.mjs"
+            echo "::group::${name}-browser.ts"
             if [ "${name}" = webmcp ]; then
               export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="$(command -v google-chrome || true)"
             else
               unset PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
             fi
-            if ! node "../scripts/${name}-browser.mjs"; then
-              echo "::error title=Browser check failed::scripts/${name}-browser.mjs"
+            if ! node "../scripts/${name}-browser.ts"; then
+              echo "::error title=Browser check failed::scripts/${name}-browser.ts"
               status=1
             fi
             echo "::endgroup::"
@@ -314,7 +314,7 @@ jobs:
               echo "📥 Pulling latest git changes..."
               git fetch origin main
               git reset --hard origin/main
-              chmod +x scripts/*.sh scripts/*.py || true
+              chmod +x scripts/*.sh || true
               deploy_log="/tmp/buyerly-deploy-${{ github.sha }}.log"
               umask 077
               : >"${deploy_log}"

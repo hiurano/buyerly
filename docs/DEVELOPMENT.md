@@ -68,7 +68,7 @@ gh run view <run-id> --log-failed
 
 ### Тесты сервера
 
-Тесты [server/test](../server/test/) (Vitest) идут по HTTP против Postgres, который мигрировал `node server/dist/migrate.js`; без `SCHEMA_DATABASE_URL` они пропускаются (в CI — никогда). Тесту тренажёра правил нужна ещё одноразовая база `buyerly_test` (`TEST_DATABASE_URL`, `TEST_DATABASE_DISPOSABLE=buyerly_test`), тестам воркера — Redis. Проверки frontend — юнит-тесты Vitest рядом с кодом (`frontend/src/**/*.test.ts`, `npm test --workspace buyerly-frontend`) и сборка `npm run build --workspace buyerly-frontend`, браузерные сценарии — `scripts/*-browser.mjs`; полный список — в job-ах `frontend`, `browser` и `server` workflow.
+Тесты [server/test](../server/test/) (Vitest) идут по HTTP против Postgres, который мигрировал `node server/dist/migrate.js`; без `SCHEMA_DATABASE_URL` они пропускаются (в CI — никогда). Тесту тренажёра правил нужна ещё одноразовая база `buyerly_test` (`TEST_DATABASE_URL`, `TEST_DATABASE_DISPOSABLE=buyerly_test`), тестам воркера — Redis. Проверки frontend — юнит-тесты Vitest рядом с кодом (`frontend/src/**/*.test.ts`, `npm test --workspace buyerly-frontend`) и сборка `npm run build --workspace buyerly-frontend`, браузерные сценарии — `scripts/*-browser.ts`; полный список — в job-ах `frontend`, `browser` и `server` workflow. Сценарии и их помощники написаны на TypeScript, который Node запускает без сборки (`cd frontend && node ../scripts/members-browser.ts`); `npm run typecheck` и `npm run lint` проверяют и `scripts/` ([tsconfig](../scripts/tsconfig.json)).
 
 ```bash
 export SCHEMA_DATABASE_URL=postgresql://buyerly:<пароль>@localhost:5432/buyerly_schema

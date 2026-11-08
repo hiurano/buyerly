@@ -104,7 +104,7 @@ Recorded so that nobody has to rediscover them, and so this contract does not cl
 
 - **No shared form dialog primitive.** Confirmations use `ConfirmDialog`, but `MetaConnectionDialog`, `CreateRuleModal` and `ChangeEmailDialog` each still compose Radix directly. A fourth form dialog should extract a shared primitive into `frontend/src/ui/` first.
 - **`prefers-reduced-motion` is not honored anywhere.** Motion tokens exist; the media query does not. Open work.
-- **Small screens are covered screen by screen.** Navigation, Settings, Search, Rules, Ads Manager and Inbox follow Linear's small layout and are checked in Chromium at 390/768/1024/1440px (`scripts/mobile-sidebar-browser.mjs`, `scripts/mobile-screens-browser.mjs`, `scripts/rules-phone-browser.mjs`, `scripts/search-page-browser.mjs`). A new screen, or a new control in a header, joins those checks before it is called mobile-ready.
+- **Small screens are covered screen by screen.** Navigation, Settings, Search, Rules, Ads Manager and Inbox follow Linear's small layout and are checked in Chromium at 390/768/1024/1440px (`scripts/mobile-sidebar-browser.ts`, `scripts/mobile-screens-browser.ts`, `scripts/rules-phone-browser.ts`, `scripts/search-page-browser.ts`). A new screen, or a new control in a header, joins those checks before it is called mobile-ready.
 
 ## Change protocol
 
@@ -114,7 +114,7 @@ Every UI pull request must:
 2. Reuse an existing primitive from `frontend/src/ui/`. If none fits and the pattern will repeat, add and document a shared React primitive first.
 3. Change semantic values in `frontend/src/styles/tokens.stylex.ts`; consume them from components or `frontend/src/styles/index.css`.
 4. Preserve ids, handlers, API payloads, workspace isolation and security boundaries unless explicitly in scope.
-5. Update the browser checks in `scripts/*-browser.mjs` when the production UI contract changes. Public route coverage lives in `server/test/site.test.ts`, and `frontend/site/site.test.ts` checks the rendered pages (`npm test` in `frontend/`).
+5. Update the browser checks in `scripts/*-browser.ts` when the production UI contract changes. Public route coverage lives in `server/test/site.test.ts`, and `frontend/site/site.test.ts` checks the rendered pages (`npm test` in `frontend/`).
 6. Pass GitHub Actions, and check keyboard focus, disabled/busy/error states and overflow.
 7. For a change users will notice, add or extend a release note in `changelog/` and run `npm run changelog`, which checks the entries and updates the app's What's new (`frontend/src/lib/changelogLatest.json`). The frontend build renders the pages; `npm run dev` in `frontend/` shows them at `/changelog`.
 

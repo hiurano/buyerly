@@ -1,0 +1,184 @@
+// Real App + MobX stores, synthetic API only. No production server or ad actions.
+import assert from 'node:assert/strict';
+import type { Browser, Route } from 'playwright';
+import type { MockMe, MockWorkspace } from './mock-types.ts';
+import { mkdir } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { mockSync } from './sync-mock.ts';
+const require = createRequire(new URL('../frontend/package.json', import.meta.url));
+const { chromium } = require('playwright') as typeof import('playwright');
+const { createServer } = await import(require.resolve('vite')) as typeof import('vite');
+const root = new URL('../frontend/', import.meta.url).pathname;
+process.chdir(root);
+const output = '/tmp/buyerly-scoped-state';
+await mkdir(output, { recursive: true });
+/** The UI state's stores read as one (see `window.testStore` below); only what this check touches. */
+interface TestState {
+  rulesLoadState: string;
+  selectedRuleIds: string[];
+  interfaceTheme: string;
+  isCreateRuleModalOpen: boolean;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  setInterfaceTheme: (theme: string) => void;
+  setRuleSelection: (ids: string[]) => void;
+  openEditRuleModal: (id: string) => void;
+  loadRules: () => Promise<void>;
+  toggleRuleStatus: (id: string) => Promise<void>;
+  deleteRule: (id: string) => Promise<void>;
+}
+declare global {
+  interface Window {
+    testStore: { getState: () => TestState };
+    undoFinished?: boolean;
+    staleRedo?: boolean;
+  }
+}
+const server = await createServer({ root, server: { host: '127.0.0.1', port: 5174 } });
+const preset = (id: number, name: string) => ({
+  id, name, action: 'turn_off', level: 'adset', enabled: true,
+  conditions: [{ metric: 'spend', operator: 'gt', value: 10, time_window: 'today' }],
+  condition_logic: 'and', cooldown_minutes: 0, check_interval_minutes: 5,
+  budget_change_percent: 0, budget_max_daily: 0, needs_review: false,
+  review_reason: '', last_run_at: '', attached_account_ids: [], attached_scopes: {},
+});
+const workspaces: MockWorkspace[] = ['alpha', 'beta'].map((slug, i) => ({
+  id: i + 1, slug, name: slug, role: 'owner', badge_text: slug[0], badge_color: '', logo_url: '', is_active: i === 0,
+}));
+const user: Omit<MockMe, 'id' | 'unconfirmed_email'> = { username: 'scope-test', full_name: 'Scope Test', first_name: 'Scope', last_name: 'Test',
+  email: 'scope@example.test', email_verified: true, avatar_url: '', onboarding_completed: true,
+  onboarding_step: 'completed', active_workspace: workspaces[0], workspaces };
+let browser!: Browser;
+try {
+  await server.listen();
+  browser = await chromium.launch();
+  for (const width of [390, 768, 1024, 1440]) {
+    const page = await browser.newPage({ viewport: { width, height: 1000 } });
+    const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+    let delayAlpha = false;
+    let failBeta = false;
+    let delayedWrite: Route | undefined;
+    let notifyWrite!: () => void;
+    const writeSeen = new Promise<void>(resolve => { notifyWrite = resolve; });
+    const delayed: Route[] = [];
+    const writes: { path: string; workspace: string | undefined }[] = [];
+    await page.route('**/api/**', async route => {
+      const request = route.request();
+      const url = new URL(request.url());
+      const workspace = request.headers()['x-workspace-slug'];
+      if (url.pathname === '/api/me') return route.fulfill({ json: user });
+      // The editor's draft check (ruleDraftCheck) goes 350ms after it opens: a read, not a write.
+      // Taken as one, a slow run counted alpha's check as the held write.
+      if (url.pathname === '/api/presets/check') return route.fulfill({ json: { valid: true } });
+      if (request.method() !== 'GET') {
+        writes.push({ path: url.pathname, workspace });
+        // The first write and the Undo are held; a write sent again (#508: beta's toggle was never
+        // confirmed to beta, so going back to beta sends it again) is answered at once.
+        if (delayedWrite && !url.pathname.endsWith('/api/test-undo')) return route.fulfill({ json: preset(2, 'beta rule') });
+        delayedWrite = route;
+        notifyWrite();
+        return;
+      }
+      if (url.pathname === '/api/presets') {
+        if (workspace === 'alpha' && delayAlpha) { delayed.push(route); return; }
+        if (workspace === 'beta' && failBeta) return route.fulfill({ status: 503, json: { detail: 'Beta unavailable' } });
+        return route.fulfill({ json: [preset(workspace === 'alpha' ? 1 : 2, `${workspace} rule`)] });
+      }
+      if (url.pathname === '/api/accounts') return route.fulfill({ json: [
+        { account_id: 'A', name: 'Account A', is_active: true, active_rules: [] },
+        { account_id: 'B', name: 'Account B', is_active: true, active_rules: [] },
+      ] });
+      if (url.pathname === '/api/analytics/hierarchy/accounts') {
+        const ids = url.searchParams.get('account_ids')?.split(',') ?? ['A', 'B'];
+        const rows = (_id: string, _level: string): never[] => [];
+        const accounts = ids.map((id) => ({ account_id: id, campaigns: rows(id, 'campaign'), adsets: rows(id, 'adset'), ads: rows(id, 'ad') }));
+        return route.fulfill({ json: { period: url.searchParams.get('period'), source: 'analytics_fact_store', accounts, missing: [] } });
+      }
+      if (url.pathname === '/api/analytics/hierarchy') return route.fulfill({ json: { items: [] } });
+      return route.fulfill({ json: [] });
+    });
+    await mockSync(page);
+    const navigate = (path: string) => page.evaluate((path: string) => {
+      history.pushState({}, '', path); dispatchEvent(new PopStateEvent('popstate'));
+    }, path);
+    await page.goto('http://127.0.0.1:5174/alpha/rules');
+    await page.evaluate(async () => {
+      // The UI state's MobX stores (#510), read as one: each name is found on the store that has it.
+      const names = ['scope', 'shell', 'commandMenu', 'inbox', 'notificationSettings', 'view', 'detailsPane', 'selection', 'dialog', 'rules'];
+      const stores = await Promise.all(names.map(async name => ((await import(`/src/models/${name}Store.ts`)) as Record<string, object>)[`${name}Store`]));
+      const all = new Proxy({}, { get: (_, key) => (stores.find(store => key in store) as Record<string | symbol, unknown> | undefined)?.[key] });
+      window.testStore = { getState: () => all as TestState };
+    });
+    await page.waitForFunction(() => window.testStore.getState().rulesLoadState === 'ready');
+    await page.getByText('alpha rule', { exact: true }).first().waitFor();
+    await page.evaluate(() => {
+      const s = window.testStore.getState();
+      s.setSidebarCollapsed(innerWidth < 768); s.setInterfaceTheme('dark');
+      s.setRuleSelection(['1']); s.openEditRuleModal('1');
+    });
+    await page.getByRole('dialog').waitFor();
+    delayAlpha = true;
+    const alphaRequest = page.waitForRequest(req => req.url().endsWith('/api/presets'));
+    await page.evaluate(() => { void window.testStore.getState().loadRules(); });
+    await alphaRequest;
+    // Navigation must reset the singleton before beta's children can consume it.
+    await navigate('/beta/rules');
+    await page.getByText('beta rule', { exact: true }).first().waitFor();
+    assert.equal(await page.getByRole('dialog').count(), 0);
+    await page.waitForFunction(() => window.testStore.getState().selectedRuleIds.length === 0);
+    for (const route of delayed.splice(0)) await route.fulfill({ json: [preset(1, 'late alpha rule')] });
+    await page.waitForFunction(() => window.testStore.getState().rulesLoadState === 'ready');
+    assert.equal(await page.getByText('late alpha rule', { exact: true }).count(), 0);
+    assert.equal(await page.evaluate(() => window.testStore.getState().interfaceTheme), 'dark');
+
+    // Complete a mutation after navigation. It must not reload alpha or beta.
+    await page.evaluate(() => { void window.testStore.getState().toggleRuleStatus('2'); });
+    await writeSeen;
+    assert.ok(delayedWrite); assert.equal(writes[0].workspace, 'beta');
+    delayAlpha = false;
+    await navigate('/alpha/rules');
+    await page.getByText('alpha rule', { exact: true }).first().waitFor();
+    await page.evaluate(() => window.testStore.getState().openEditRuleModal('1'));
+    await delayedWrite.fulfill({ json: preset(2, 'beta rule') });
+    await page.getByRole('dialog').waitFor();
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !window.testStore.getState().isCreateRuleModalOpen);
+
+    // An in-flight Undo must not repopulate the new workspace's history/toasts.
+    await page.evaluate(async () => {
+      // @ts-expect-error served by Vite in the page, not a module of this project
+      const { pushHistory } = await import('/src/lib/undoHistory.ts') as { pushHistory: (entry: { label: string; undo: () => Promise<void>; redo: () => Promise<void> }) => void };
+      pushHistory({ label: 'old workspace action', undo: async () => {
+        await fetch('/api/test-undo', { method: 'POST' });
+        window.undoFinished = true;
+      }, redo: async () => { window.staleRedo = true; } });
+    });
+    const undoRequest = page.waitForRequest(req => req.url().endsWith('/api/test-undo'));
+    await page.keyboard.press('Control+z');
+    await undoRequest;
+    failBeta = true;
+    await navigate('/beta/rules');
+    await page.getByText('Beta unavailable', { exact: true }).waitFor();
+    await delayedWrite.fulfill({ json: {} });
+    await page.waitForFunction(() => window.undoFinished);
+    await page.keyboard.press('Control+Shift+z');
+    assert.equal(await page.evaluate(() => Boolean(window.staleRedo)), false);
+    assert.equal(await page.evaluate(async () => {
+      // @ts-expect-error served by Vite in the page, not a module of this project
+      const { toastStore } = await import('/src/ui/toast.ts') as { toastStore: { toasts: unknown[] } };
+      return toastStore.toasts.length;
+    }), 0);
+    assert.equal(await page.getByText('alpha rule', { exact: true }).count(), 0);
+    await page.evaluate(() => window.testStore.getState().deleteRule('1').catch(() => {}));
+    // Beta's toggle (sent again once beta was open again, #508) and the Undo; no deletion in alpha.
+    assert.deepEqual(writes.filter((write) => write.path !== '/api/presets/2').map((write) => write.path), ['/api/test-undo']);
+    assert.ok(writes.filter((write) => write.path === '/api/presets/2').every((write) => write.workspace === 'beta'));
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `overflow at ${width}`);
+    await page.screenshot({ path: `${output}/rules-error-${width}.png`, fullPage: true });
+    assert.deepEqual(errors, []);
+    await page.close();
+    console.log(`App scope navigation, editor reset, stale mutation and error state passed at ${width}px`);
+  }
+} finally {
+  await browser?.close();
+  await server.close();
+}
