@@ -1,0 +1,66 @@
+/* Screens outside the app follow the same theme as the app: the choice from
+   Settings → Preferences, otherwise the system (set on <html> before first paint
+   by the script in index.html). Colors measured on linear.app/login, 2026-10-07. */
+.page {
+  --auth-bg: rgb(248, 248, 249);
+  --auth-text: rgb(47, 47, 49);
+  --auth-text-muted: rgb(91, 92, 94);
+  --auth-input-bg: rgb(248, 248, 249);
+  --auth-input-border: rgb(210, 210, 210);
+  --auth-input-text: rgb(27, 27, 27);
+  --auth-input-placeholder: rgb(156, 156, 158);
+  /* Field hover and focus, measured on linear.app/add-account → Continue with email, 2026-10-08:
+     the border darkens on hover; focus is a 1px accent outline over the border, no glow. */
+  --auth-input-hover-border: rgb(189, 189, 189);
+  --auth-input-focus: rgb(94, 105, 209);
+  --auth-link-hover: rgb(101, 102, 104);
+  --auth-button-bg: rgb(254, 254, 255);
+  --auth-button-hover-bg: rgb(243, 243, 244);
+  --auth-button-text: rgb(47, 47, 49);
+  --auth-button-shadow: rgba(0, 0, 0, 0.1) 0 0 0 1px, rgba(0, 0, 0, 0.02) 0 3px 6px -2px,
+    rgba(0, 0, 0, 0.04) 0 1px 1px 0;
+  --auth-button-primary-shadow: rgba(0, 0, 0, 0.02) 0 3px 6px -2px, rgba(0, 0, 0, 0.04) 0 1px 1px 0;
+  --auth-error: #b32f2f;
+  /* Linear's sign-in field error, linear.app/signup → Continue with email, 2026-10-20. */
+  --auth-signin-error: rgb(225, 36, 58);
+  color-scheme: light;
+}
+
+:global(html[data-theme='dark']) .page,
+.dark {
+  --site-logo: #fff;
+  --auth-bg: rgb(9, 9, 10);
+  --auth-text: rgb(226, 227, 229);
+  --auth-text-muted: rgb(148, 149, 151);
+  --auth-input-bg: rgb(17, 18, 18);
+  --auth-input-border: rgb(39, 40, 42);
+  --auth-input-text: #fff;
+  --auth-input-placeholder: rgb(86, 86, 88);
+  --auth-input-hover-border: rgb(54, 58, 67);
+  --auth-link-hover: rgb(191, 192, 194);
+  --auth-button-bg: rgb(27, 27, 28);
+  --auth-button-hover-bg: rgb(35, 35, 36);
+  --auth-button-text: rgb(226, 227, 229);
+  --auth-button-shadow: none;
+  --auth-button-primary-shadow: rgba(0, 0, 0, 0.298) 0 0.5px 1px 1px;
+  --auth-error: rgb(235, 87, 87);
+  --auth-signin-error: rgb(235, 87, 87);
+  color-scheme: dark;
+}
+
+/* BuyerlyMark's <svg> inside BuyerlyBrand: StyleX cannot style an element's children. */
+.brand svg {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.brandCompact svg {
+  width: 32px;
+  height: 32px;
+}
+
+.brandSignin svg {
+  width: 48px;
+  height: 48px;
+}
