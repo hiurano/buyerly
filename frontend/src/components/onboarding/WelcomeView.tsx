@@ -1,8 +1,16 @@
 import React, { FormEvent, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { graphql } from '@/lib/graphql';
 import type { OnboardingStatus, SessionUser, Workspace } from '@/lib/types';
-import { AuthFrame, BuyerlyBrand } from '@/components/auth/AuthFrame';
+import { AuthFrame, BuyerlyBrand, authStyles } from '@/components/auth/AuthFrame';
+import { withClassName } from '@/ui/withClassName';
 import { InviteTeamStep } from './InviteTeamStep';
+
+const styles = stylex.create({
+  cardInvites: {
+    width: 'min(100%, 400px)',
+  },
+});
 
 interface WelcomeViewProps {
   user: SessionUser;
@@ -74,16 +82,16 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
 
   return (
     <AuthFrame>
-      <section className={`buyerly-auth-card${step === 'invites' ? ' buyerly-auth-card--invites' : ''}`}>
+      <section {...withClassName(stylex.props(authStyles.card, step === 'invites' && styles.cardInvites), 'buyerly-auth-card')}>
         <BuyerlyBrand />
         {step === 'profile' ? (
           <form onSubmit={submitProfile} noValidate>
-            <h1>Set up your profile</h1>
-            <p className="buyerly-auth-copy">Choose how you’ll appear in Buyerly.</p>
-            <label className="buyerly-auth-field buyerly-auth-field--labeled">
-              <span>Name</span>
+            <h1 {...stylex.props(authStyles.heading, authStyles.formHeading)}>Set up your profile</h1>
+            <p {...stylex.props(authStyles.copy)}>Choose how you’ll appear in Buyerly.</p>
+            <label {...withClassName(stylex.props(authStyles.field), 'buyerly-auth-field')}>
+              <span {...stylex.props(authStyles.fieldLabel)}>Name</span>
               <input
-                className="ui-input"
+                {...stylex.props(authStyles.input, Boolean(error) && authStyles.inputInvalid)}
                 type="text"
                 autoComplete="name"
                 autoFocus
@@ -93,8 +101,8 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
                 aria-invalid={Boolean(error)}
               />
             </label>
-            {error && <p className="buyerly-auth-error" role="alert">{error}</p>}
-            <button className="buyerly-auth-button ui-button ui-button-primary" type="submit" disabled={busy} aria-busy={busy}>
+            {error && <p {...stylex.props(authStyles.error)} role="alert">{error}</p>}
+            <button {...stylex.props(authStyles.button, authStyles.buttonAfterField)} type="submit" disabled={busy} aria-busy={busy}>
               {busy ? 'Saving…' : 'Continue'}
             </button>
           </form>
