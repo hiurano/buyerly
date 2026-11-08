@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { graphql } from '@/lib/graphql';
 import type { LoginResult } from '@/lib/types';
-import { AuthFrame, AuthLoading, BuyerlyBrand } from './AuthFrame';
+import { withClassName } from '@/ui/withClassName';
+import { AuthFrame, AuthLoading, BuyerlyBrand, authStyles } from './AuthFrame';
 
 interface VerifyEmailLinkViewProps {
   token: string;
@@ -41,11 +43,11 @@ export const VerifyEmailLinkView: React.FC<VerifyEmailLinkViewProps> = ({
   if (!error) return <AuthLoading plain label="Logging you in securely…" />;
   return (
     <AuthFrame>
-      <section className="buyerly-auth-card">
+      <section {...withClassName(stylex.props(authStyles.card), 'buyerly-auth-card')}>
         <BuyerlyBrand />
-        <h1>Link expired</h1>
-        <p className="buyerly-auth-copy">{error}</p>
-        <button className="buyerly-auth-button" type="button" onClick={onBackToLogin}>
+        <h1 {...stylex.props(authStyles.heading)}>Link expired</h1>
+        <p {...stylex.props(authStyles.copy)}>{error}</p>
+        <button {...stylex.props(authStyles.button)} type="button" onClick={onBackToLogin}>
           Back to login
         </button>
       </section>
