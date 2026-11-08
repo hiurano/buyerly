@@ -19,3 +19,9 @@ export const propertyMarker = stylex.defineMarker();
 
 /** A sidebar link row, for an inline action button (such as removing a favorite) that shows when the row is hovered or focused. */
 export const sidebarNavItemMarker = stylex.defineMarker();
+
+/** A team's Joined pill on Teams, which swaps its check and label for Leave under the pointer. */
+export const membershipMarker = stylex.defineMarker();
+
+/** A Go to link on a team's Overview, whose chevron shows under the pointer or in focus. */
+export const linkMarker = stylex.defineMarker();

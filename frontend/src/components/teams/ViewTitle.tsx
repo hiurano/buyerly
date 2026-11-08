@@ -7,6 +7,8 @@ import { BuyerlyFavoriteButton } from '@/ui/BuyerlyFavoriteButton';
 import { colors } from '@/styles/tokens.stylex';
 import { openTab } from '@/lib/navigation';
 
+const HOVER = '@media (any-hover: hover) and (any-pointer: fine)';
+
 const styles = stylex.create({
   heading: {
     overflow: 'hidden',
@@ -26,6 +28,57 @@ const styles = stylex.create({
     display: 'flex',
     minWidth: 0,
     alignItems: 'center',
+  },
+  // A team page's header, as Linear's "Team › Issues": the team links to it, a dim "›", the page.
+  breadcrumbLink: {
+    display: 'inline-flex',
+    minWidth: 0,
+    alignItems: 'center',
+    height: 24,
+    marginTop: 0,
+    marginRight: -5,
+    marginBottom: 0,
+    marginLeft: -4,
+    paddingTop: 0,
+    paddingRight: 5,
+    paddingBottom: 0,
+    paddingLeft: 4,
+    borderRadius: 8,
+    backgroundColor: {
+      default: null,
+      ':hover': {
+        default: null,
+        [HOVER]: colors['--item-hover-bg'],
+      },
+    },
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': {
+        default: null,
+        [HOVER]: colors['--text-primary'],
+      },
+    },
+    fontSize: 13,
+    // Linear's team name in the header is 450, lighter than a page title's 500.
+    fontWeight: 450,
+    cursor: 'default',
+    outline: {
+      default: 'none',
+      ':focus-visible': `1px solid ${colors['--focus-ring-color']}`,
+    },
+    outlineOffset: {
+      default: null,
+      ':focus-visible': -1,
+    },
+  },
+  breadcrumbSeparator: {
+    marginTop: -2,
+    marginRight: 8,
+    marginBottom: 0,
+    marginLeft: 8,
+    color: colors['--breadcrumb-separator-fg'],
+    fontSize: 13,
+    fontWeight: 500,
   },
   teamIcon: {
     marginRight: 6,
@@ -54,7 +107,7 @@ export const ViewTitle: React.FC<{ title: string; team?: TeamItem | null; favori
     <div {...stylex.props(styles.root)}>
       <button
         type="button"
-        className="team-breadcrumb-link"
+        {...stylex.props(styles.breadcrumbLink)}
         onClick={() => {
           openTab('team', { teamKey: team.key });
         }}
@@ -62,7 +115,7 @@ export const ViewTitle: React.FC<{ title: string; team?: TeamItem | null; favori
         <TeamIcon size={16} className={stylex.props(styles.teamIcon).className} />
         <span {...stylex.props(styles.teamName)}>{team.name}</span>
       </button>
-      <span className="team-breadcrumb-separator" aria-hidden="true">›</span>
+      <span {...stylex.props(styles.breadcrumbSeparator)} aria-hidden="true">›</span>
       {heading}
       {star}
     </div>

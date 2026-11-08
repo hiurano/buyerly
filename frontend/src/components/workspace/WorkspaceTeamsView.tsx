@@ -15,6 +15,7 @@ import { BuyerlyDataListRow, BuyerlyDataListToolbar, BuyerlyDataTable, type Buye
 import { toast } from '@/ui/toast';
 import { ListSearchField } from './ListSearchField';
 import { colors } from '@/styles/tokens.stylex';
+import { membershipMarker } from '@/ui/markers.stylex';
 import { openSettings } from '@/lib/routing';
 import { openTab } from '@/lib/navigation';
 import { FilteredEmptyState } from '@/components/filters/BuyerlyFilter';
@@ -28,6 +29,8 @@ import {
   createTeamFilterFields,
   sortTeams,
 } from './workspaceListModels';
+
+const HOVER = '@media (any-hover: hover) and (any-pointer: fine)';
 
 const styles = stylex.create({
   root: {
@@ -105,6 +108,65 @@ const styles = stylex.create({
   faces: {
     display: 'flex',
     alignItems: 'center',
+  },
+  // Members' faces on a team row overlap a little, as Linear's.
+  face: {
+    position: 'relative',
+    display: 'inline-flex',
+    borderRadius: 9999,
+    boxShadow: `0 0 0 1.5px ${colors['--bg-canvas']}`,
+  },
+  faceOverlap: {
+    marginLeft: -4,
+  },
+  // Linear's Membership cell on Teams: a "Joined" pill that offers Leave under the cursor, or Join.
+  membership: {
+    // Linear's Joined tag on Teams: 18px, a 0.5px border on the grouped-list grey, tertiary text.
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 2,
+    height: 18,
+    paddingTop: 1,
+    paddingRight: 3,
+    paddingBottom: 1,
+    paddingLeft: 3,
+    borderWidth: 0.5,
+    borderStyle: 'solid',
+    borderColor: colors['--preferences-search-border'],
+    borderRadius: 3,
+    backgroundColor: colors['--settings-list-group-bg'],
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': {
+        default: null,
+        [HOVER]: colors['--text-primary'],
+      },
+    },
+    fontSize: 12,
+    fontWeight: 500,
+    cursor: 'default',
+    opacity: {
+      default: null,
+      ':disabled': 0.6,
+    },
+  },
+  membershipJoinedPart: {
+    display: {
+      default: null,
+      [stylex.when.ancestor(':hover', membershipMarker)]: {
+        default: null,
+        [HOVER]: 'none',
+      },
+    },
+  },
+  membershipLeave: {
+    display: {
+      default: 'none',
+      [stylex.when.ancestor(':hover', membershipMarker)]: {
+        default: null,
+        [HOVER]: 'inline',
+      },
+    },
   },
   cell: {
     overflow: 'hidden',
@@ -216,7 +278,12 @@ export const WorkspaceTeamsView: React.FC<WorkspaceTeamsViewProps> = ({ navigati
   const renderFaces = (list: MemberItem[], noun: string) => (
     <div {...stylex.props(styles.faces)} aria-label={`${list.length} ${noun}`}>
       {list.slice(0, MAX_FACES).map((member, index) => (
-        <span key={member.user_id} className="team-face" style={{ zIndex: MAX_FACES - index }} title={memberName(member)}>
+        <span
+          key={member.user_id}
+          {...stylex.props(styles.face, index > 0 && styles.faceOverlap)}
+          style={{ zIndex: MAX_FACES - index }}
+          title={memberName(member)}
+        >
           <Initials label={memberName(member)} avatarUrl={member.avatar_url} />
         </span>
       ))}
@@ -270,7 +337,7 @@ export const WorkspaceTeamsView: React.FC<WorkspaceTeamsViewProps> = ({ navigati
               {properties.membership !== false && <div>
                 <button
                   type="button"
-                  className="team-membership"
+                  {...stylex.props(styles.membership, team.is_member && membershipMarker)}
                   data-joined={team.is_member ? 'true' : 'false'}
                   disabled={busyTeam === team.id}
                   onClick={(event) => {
@@ -278,9 +345,9 @@ export const WorkspaceTeamsView: React.FC<WorkspaceTeamsViewProps> = ({ navigati
                     void setMembership(team, !team.is_member);
                   }}
                 >
-                  {team.is_member && <BuyerlyIcon name="check" size={14} />}
-                  <span className="team-membership__label">{team.is_member ? 'Joined' : 'Join'}</span>
-                  {team.is_member && <span className="team-membership__leave">Leave</span>}
+                  {team.is_member && <BuyerlyIcon name="check" size={14} {...stylex.props(styles.membershipJoinedPart)} />}
+                  <span {...stylex.props(team.is_member && styles.membershipJoinedPart)}>{team.is_member ? 'Joined' : 'Join'}</span>
+                  {team.is_member && <span {...stylex.props(styles.membershipLeave)}>Leave</span>}
                 </button>
               </div>}
               {properties.owners && renderFaces(people(team.owner_user_ids), 'owners')}
