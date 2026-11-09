@@ -66,8 +66,10 @@ import { useScopeStore } from '@/models/scopeStore';
 import * as stylex from '@stylexjs/stylex';
 import { colors, radii } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
+import { iconButton } from '@/ui/iconButton.stylex';
 import { openSettings } from '@/lib/routing';
 import { BuyerlyDisplayOptionsButton, BuyerlyToolbarButton } from '@/ui/BuyerlyToolbarButton';
+import '@/ui/menu.css';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type ActionState = 'idle' | 'loading';
@@ -294,7 +296,7 @@ const styles = stylex.create({
   },
   back: {
     display: {
-      default: null,
+      default: 'inline-flex',
       [SPLIT]: 'none',
     },
   },
@@ -1160,7 +1162,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                 <button
                   type="button"
                   onClick={() => openItem(null)}
-                  {...withClassName(stylex.props(styles.back), 'buyerly-icon-btn buyerly-header-target')}
+                  {...stylex.props(iconButton.root, iconButton.hoverInstant, iconButton.headerTarget, styles.back)}
                   aria-label="Back to Inbox"
                 >
                   <BuyerlyIcon name="arrow-left" size={16} aria-hidden="true" />

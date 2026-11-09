@@ -11,8 +11,63 @@ import { openTab, useCurrentPage } from '@/lib/navigation';
 import type { TeamItem } from '@/lib/teams';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import type { AppTab } from '@/models/shellStore';
+import { colors } from '@/styles/tokens.stylex';
+import { sidebarNavItemMarker } from '@/ui/markers.stylex';
+import { withClassName } from '@/ui/withClassName';
+import css from './SidebarSections.module.css';
+
+const HOVER = '@media (any-hover: hover) and (any-pointer: fine)';
+
+const TOUCH = '@media (hover: none) and (pointer: coarse)';
 
 const styles = stylex.create({
+  navItem: {
+    width: '100%',
+    height: { default: 28, [TOUCH]: 36 },
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 0,
+    paddingRight: 9,
+    paddingBottom: 0,
+    paddingLeft: 8,
+    borderRadius: 8,
+    backgroundColor: {
+      default: 'transparent',
+      [HOVER]: {
+        default: 'transparent',
+        ':hover': colors['--sidebar-item-hover-bg'],
+      },
+      ':active': colors['--sidebar-item-hover-bg'],
+    },
+    color: {
+      default: colors['--sidebar-item-fg'],
+      [HOVER]: {
+        default: colors['--sidebar-item-fg'],
+        ':hover': colors['--sidebar-item-fg-strong'],
+      },
+      ':active': colors['--sidebar-item-fg-strong'],
+    },
+    fontSize: 13,
+    fontWeight: 500,
+    lineHeight: 'normal',
+    letterSpacing: 'normal',
+    userSelect: 'none',
+    cursor: 'default',
+    outlineWidth: { default: 0, ':focus-visible': 1 },
+    outlineStyle: { default: 'none', ':focus-visible': 'solid' },
+    outlineColor: { default: 'currentColor', ':focus-visible': colors['--focus-ring-color'] },
+    outlineOffset: { default: 0, ':focus-visible': -1 },
+  },
+  navItemActive: {
+    backgroundColor: colors['--item-active-bg'],
+    color: colors['--sidebar-item-fg-strong'],
+  },
+  navItemNested: {
+    marginLeft: 19,
+    width: 'calc(100% - 19px)',
+    paddingLeft: 6,
+  },
   linkBody: {
     display: 'flex',
     minWidth: 0,
@@ -33,6 +88,158 @@ const styles = stylex.create({
     whiteSpace: 'nowrap',
     fontSize: 13,
     fontWeight: 500,
+  },
+  section: {
+    paddingTop: 15,
+  },
+  sectionHeaderRow: {
+    display: 'flex',
+    alignItems: 'center',
+    height: 28,
+    marginBottom: 2,
+    paddingLeft: 5,
+  },
+  sectionHeader: {
+    display: 'flex',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    minWidth: 0,
+    alignItems: 'center',
+    height: 28,
+    paddingTop: 0,
+    paddingRight: 4,
+    paddingBottom: 0,
+    paddingLeft: 4,
+    borderRadius: 8,
+    color: {
+      default: colors['--sidebar-item-fg'],
+      [HOVER]: {
+        default: colors['--sidebar-item-fg'],
+        ':hover': colors['--sidebar-item-fg-strong'],
+      },
+    },
+    fontSize: 12,
+    fontWeight: 500,
+    lineHeight: 'normal',
+    cursor: 'default',
+    userSelect: 'none',
+    outlineWidth: { default: 0, ':focus-visible': 1 },
+    outlineStyle: { default: 'none', ':focus-visible': 'solid' },
+    outlineColor: { default: 'currentColor', ':focus-visible': colors['--focus-ring-color'] },
+    outlineOffset: { default: 0, ':focus-visible': -1 },
+  },
+  disclosure: {
+    flexShrink: 0,
+    marginTop: 1,
+    marginLeft: 2,
+    transform: 'rotate(0deg)',
+  },
+  disclosureOpen: {
+    transform: 'rotate(90deg)',
+  },
+  sectionBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 1,
+    paddingBottom: 8,
+  },
+  teamSectionBody: {
+    marginTop: 1,
+    paddingBottom: 0,
+  },
+  sectionAction: {
+    display: 'inline-flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 24,
+    height: 24,
+    marginRight: 2,
+    paddingTop: 0,
+    paddingRight: 2,
+    paddingBottom: 0,
+    paddingLeft: 2,
+    borderRadius: 6,
+    color: colors['--text-secondary'],
+    backgroundColor: 'transparent',
+    opacity: {
+      default: 0,
+      ':focus-visible': 1,
+      ':is([data-state="open"])': 1,
+    },
+    cursor: 'default',
+    transition: 'opacity 0.15s',
+    outline: 'none',
+  },
+  sectionActionOpen: {
+    backgroundColor: colors['--sidebar-icon-button-hover-bg'],
+    color: colors['--sidebar-item-fg-strong'],
+  },
+  teamRow: {
+    display: 'flex',
+    alignItems: 'center',
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+  },
+  teamRowMenuOpen: {
+    backgroundColor: colors['--sidebar-item-hover-bg'],
+  },
+  teamToggle: {
+    display: 'flex',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    minWidth: 0,
+    alignItems: 'center',
+    height: 28,
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 9,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+    cursor: 'default',
+    userSelect: 'none',
+    outlineWidth: { default: 0, ':focus-visible': 1 },
+    outlineStyle: { default: 'none', ':focus-visible': 'solid' },
+    outlineColor: { default: 'currentColor', ':focus-visible': colors['--focus-ring-color'] },
+    outlineOffset: { default: 0, ':focus-visible': -1 },
+  },
+  teamName: {
+    minWidth: 0,
+    marginLeft: 7,
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
+    color: colors['--sidebar-item-fg'],
+    fontSize: 13,
+    fontWeight: 500,
+    lineHeight: 'normal',
+  },
+  teamLock: {
+    flexShrink: 0,
+    marginLeft: 4,
+    color: colors['--sidebar-disclosure-fg'],
+  },
+  teamDisclosure: {
+    display: 'inline-flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 24,
+    height: 24,
+    color: colors['--sidebar-disclosure-fg'],
+  },
+  teamMenu: {
+    display: 'flex',
+    flexShrink: 0,
+    width: 0,
+    overflow: 'hidden',
+  },
+  teamMenuOpen: {
+    width: 26,
   },
 });
 
@@ -84,7 +291,11 @@ export const SidebarLink: React.FC<SidebarLinkProps> = ({ icon, label, active, o
       onClick={onClick}
       data-active={active ? 'true' : 'false'}
       aria-current={active ? 'page' : undefined}
-      className={`buyerly-sidebar-nav-item${nested ? ' buyerly-sidebar-nav-item--nested' : ''}`}
+      {...withClassName(
+        stylex.props(sidebarNavItemMarker, styles.navItem, active && styles.navItemActive, nested && styles.navItemNested),
+        css.navItem,
+        'buyerly-sidebar-nav-item',
+      )}
     >
       <div {...stylex.props(styles.linkBody)}>
         <span {...stylex.props(styles.linkIcon)}>{icon}</span>
@@ -114,28 +325,28 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({ id, title, actio
   const [collapsed, toggle] = useSidebarCollapsed(`section:${id}`);
   const bodyId = `sidebar-section-${id}`;
   return (
-    <div className="sidebar-section">
-      <div className="sidebar-section-header-row">
+    <div {...withClassName(stylex.props(styles.section), css.section)}>
+      <div {...withClassName(stylex.props(styles.sectionHeaderRow), css.sectionHeaderRow)}>
         <button
           type="button"
-          className="sidebar-section-header"
+          {...withClassName(stylex.props(styles.sectionHeader), css.sectionHeader)}
           aria-expanded={!collapsed}
           aria-controls={bodyId}
           onClick={toggle}
         >
           <span>{title}</span>
-          <BuyerlyDisclosureGlyph className="sidebar-disclosure" data-open={collapsed ? 'false' : 'true'} />
+          <BuyerlyDisclosureGlyph {...stylex.props(styles.disclosure, !collapsed && styles.disclosureOpen)} data-open={collapsed ? 'false' : 'true'} />
         </button>
         {action && (
           <Tooltip content={action.label} side="bottom" sideOffset={6}>
-            <button type="button" aria-label={action.label} className="sidebar-section-action" onClick={action.onClick}>
+            <button type="button" aria-label={action.label} {...withClassName(stylex.props(styles.sectionAction), css.sectionAction)} onClick={action.onClick}>
               {action.icon}
             </button>
           </Tooltip>
         )}
       </div>
       {!collapsed && (
-        <div id={bodyId} className="sidebar-section-body">
+        <div id={bodyId} {...stylex.props(styles.sectionBody)}>
           {children}
         </div>
       )}
@@ -168,19 +379,26 @@ export const SidebarTeam: React.FC<SidebarTeamProps> = ({ team, workspaceSlug, p
 
   return (
     <div className="sidebar-team">
-      <div className="sidebar-team-row" data-menu-open={menuOpen ? 'true' : undefined}>
-        <button type="button" className="sidebar-team-toggle" aria-expanded={!collapsed} onClick={toggle}>
+      <div
+        {...withClassName(stylex.props(styles.teamRow, menuOpen && styles.teamRowMenuOpen), css.teamRow)}
+        data-menu-open={menuOpen ? 'true' : undefined}
+      >
+        <button type="button" {...withClassName(stylex.props(styles.teamToggle), css.teamToggle)} aria-expanded={!collapsed} onClick={toggle}>
           <TeamIcon size={14} />
-          <span className="sidebar-team-name">{team.name}</span>
-          {team.private && <BuyerlyIcon name="lock" size={12} className="sidebar-team-lock" aria-label="Private team" />}
-          <span className="sidebar-team-disclosure">
-            <BuyerlyDisclosureGlyph className="sidebar-disclosure" data-open={collapsed ? 'false' : 'true'} />
+          <span {...withClassName(stylex.props(styles.teamName), css.teamName, 'sidebar-team-name')}>{team.name}</span>
+          {team.private && <BuyerlyIcon name="lock" size={12} {...stylex.props(styles.teamLock)} aria-label="Private team" />}
+          <span {...withClassName(stylex.props(styles.teamDisclosure), css.teamDisclosure)}>
+            <BuyerlyDisclosureGlyph {...withClassName(stylex.props(styles.disclosure, !collapsed && styles.disclosureOpen), css.disclosure)} data-open={collapsed ? 'false' : 'true'} />
           </span>
         </button>
-        <div className="sidebar-team-menu">
+        <div {...withClassName(stylex.props(styles.teamMenu, menuOpen && styles.teamMenuOpen), css.teamMenu)}>
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenuTrigger asChild>
-              <button type="button" aria-label="Team menu" className="sidebar-section-action sidebar-team-menu-button">
+              <button
+                type="button"
+                aria-label="Team menu"
+                {...withClassName(stylex.props(styles.sectionAction, menuOpen && styles.sectionActionOpen), css.sectionAction)}
+              >
                 <BuyerlyIcon name="more" size={14} />
               </button>
             </DropdownMenuTrigger>
@@ -207,7 +425,7 @@ export const SidebarTeam: React.FC<SidebarTeamProps> = ({ team, workspaceSlug, p
         </div>
       </div>
       {!collapsed && (
-        <div className="sidebar-section-body">
+        <div {...stylex.props(styles.sectionBody, styles.teamSectionBody)}>
           {pages.map((page) => (
             <SidebarLink
               key={page.tab}

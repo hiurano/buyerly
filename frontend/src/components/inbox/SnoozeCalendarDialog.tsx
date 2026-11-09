@@ -5,6 +5,7 @@ import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { Button } from '@/ui/Button';
 import { withClassName } from '@/ui/withClassName';
 import { colors } from '@/styles/tokens.stylex';
+import '@/ui/animations.css';
 
 const styles = stylex.create({
   month: {

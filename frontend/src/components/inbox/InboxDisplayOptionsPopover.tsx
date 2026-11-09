@@ -14,6 +14,7 @@ import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { useMenuExit } from '@/ui/useMenuExit';
 import { useInboxStore } from '@/models/inboxStore';
 import { openSettings } from '@/lib/routing';
+import '@/ui/menu.css';
 
 interface InboxDisplayOptionsPopoverProps {
   isOpen: boolean;

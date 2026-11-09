@@ -1,4 +1,5 @@
 import React, { Suspense, createContext, use, useEffect, useMemo } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { Outlet, useLocation, useOutlet, useOutletContext } from 'react-router';
 import { Sidebar } from '@/components/sidebar/Sidebar';
 import { BuyerlyPageGate, BuyerlyPageSkeleton, useHeldPage } from '@/components/layout/BuyerlyPageSwitch';
@@ -8,6 +9,8 @@ import { pathForTab, useAppNavigate, useNavigationKey, useRoute, type BuyerlyRou
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import type { SessionUser } from '@/lib/types';
 import { useViewStore } from '@/models/viewStore';
+import { colors, radii } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
 
 /** What the workspace's routes get from the App above them. */
 export interface BuyerlyWorkspaceOutlet {
@@ -74,7 +77,7 @@ export const BuyerlyAppPages: React.FC = () => {
   return (
     <>
       <Sidebar />
-      <main className="buyerly-floating-canvas">
+      <main {...withClassName(stylex.props(styles.canvas), 'buyerly-floating-canvas')}>
         <BuyerlyPageScopeContext value={pageScope}>
           <BuyerlyHeldPageContext value={held}>
             <Suspense fallback={<BuyerlyPageSkeleton />}>
@@ -202,3 +205,36 @@ export function pageComponentFor(opened: Extract<BuyerlyRouteHandle, { page: unk
     default: return undefined;
   }
 }
+
+const styles = stylex.create({
+  canvas: {
+    marginTop: 8,
+    marginRight: 8,
+    marginBottom: 36,
+    marginLeft: 0,
+    borderRadius: radii['--canvas-border-radius'],
+    backgroundColor: colors['--bg-canvas'],
+    borderWidth: 0.5,
+    borderStyle: 'solid',
+    borderColor: colors['--search-header-border'],
+    boxShadow: colors['--canvas-shadow'],
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    '@media (max-width: 880px)': {
+      minWidth: 0,
+      marginTop: 0,
+      marginRight: 0,
+      marginBottom: 0,
+      marginLeft: 0,
+      borderWidth: 0,
+      borderStyle: 'none',
+      borderColor: 'currentColor',
+      borderRadius: 0,
+      boxShadow: 'none',
+    },
+  },
+});

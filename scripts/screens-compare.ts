@@ -448,7 +448,11 @@ function dumpStyles() {
       keys.push([key + pseudo, hash(text)]);
     }
     let index = 0;
-    for (const child of element.children) walk(child, `${key}>${child.tagName.toLowerCase()}:${index++}`);
+    for (const child of element.children) {
+      // Head links (modulepreload, stylesheets) depend on how the build splits chunks, not on the page: skip them.
+      if (child.tagName === 'HEAD') continue;
+      walk(child, `${key}>${child.tagName.toLowerCase()}:${index++}`);
+    }
   };
   walk(document.documentElement, 'html');
   return keys;

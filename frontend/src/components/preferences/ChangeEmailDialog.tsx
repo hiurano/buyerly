@@ -7,6 +7,7 @@ import { Input } from '@/ui/Input';
 import { withClassName } from '@/ui/withClassName';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { colors } from '@/styles/tokens.stylex';
+import '@/ui/animations.css';
 
 const styles = stylex.create({
   overlay: {

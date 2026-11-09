@@ -8,6 +8,7 @@ import { parseSnoozeQuery } from '@/lib/snoozeQuery';
 import { colors } from '@/styles/tokens.stylex';
 import { commandItemMarker } from '@/ui/markers.stylex';
 import { withClassName } from '@/ui/withClassName';
+import '@/ui/animations.css';
 
 const truncate = {
   overflow: 'hidden',

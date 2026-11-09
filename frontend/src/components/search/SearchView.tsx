@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from 'react-dom';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
-import { withClassName } from '@/ui/withClassName';
+import { iconButton } from '@/ui/iconButton.stylex';
 import { fetchAccounts } from '@/models/queries';
 import { pathForTab } from '@/lib/routing';
 import {
@@ -45,6 +45,7 @@ import { scopeStore, useScopeStore } from '@/models/scopeStore';
 import { useShellStore } from '@/models/shellStore';
 import { useViewStore } from '@/models/viewStore';
 import { BuyerlyDisplayOptionsButton, BuyerlyToolbarButton } from '@/ui/BuyerlyToolbarButton';
+import '@/ui/menu.css';
 
 const styles = stylex.create({
   tertiary: {
@@ -485,7 +486,7 @@ const styles = stylex.create({
   /** Back to the results, on a phone, where the preview takes the page. */
   back: {
     display: {
-      default: null,
+      default: 'inline-flex',
       '@media (min-width: 768px)': 'none',
     },
   },
@@ -1224,7 +1225,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addres
         <section aria-label="Preview" {...stylex.props(styles.preview)}>
           <header {...stylex.props(styles.header, styles.previewHeader)}>
             <div {...stylex.props(styles.previewTitle)}>
-              <button type="button" onClick={() => setPreviewOpen(false)} {...withClassName(stylex.props(styles.back), 'buyerly-icon-btn')} aria-label="Back to results">
+              <button type="button" onClick={() => setPreviewOpen(false)} {...stylex.props(iconButton.root, iconButton.hoverInstant, styles.back)} aria-label="Back to results">
                 <BuyerlyIcon name="arrow-left" size={16} aria-hidden="true" />
               </button>
               <span {...stylex.props(styles.mark)} aria-hidden="true"><StatusMark result={preview} /></span>

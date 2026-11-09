@@ -7,7 +7,8 @@ type StylexProps = { className?: string; style?: React.CSSProperties };
  * caller passes. StyleX's rules outrank index.css's, so a caller's class only
  * adds properties the primitive leaves unset.
  */
-export function withClassName(props: StylexProps, className?: string): StylexProps {
-  if (!className) return props;
-  return { ...props, className: props.className ? `${props.className} ${className}` : className };
+export function withClassName(props: StylexProps, ...classNames: Array<string | undefined | false>): StylexProps {
+  const added = classNames.filter(Boolean).join(' ');
+  if (!added) return props;
+  return { ...props, className: props.className ? `${props.className} ${added}` : added };
 }

@@ -18,8 +18,59 @@ import { SidebarBackdrop, useSidebarDrawer, useSidebarPeek } from './SidebarDraw
 import { useInboxStore } from '@/models/inboxStore';
 import { useShellStore, type AppTab } from '@/models/shellStore';
 import { useScopeStore } from '@/models/scopeStore';
+import { colors, layout, motion } from '@/styles/tokens.stylex';
 
 const styles = stylex.create({
+  slotWrapper: {
+    position: 'relative',
+    height: '100vh',
+    flexShrink: 0,
+    overflow: 'visible',
+    transition: `width ${motion['--sidebar-spring-duration']} ${motion['--sidebar-spring']}`,
+  },
+  resizing: {
+    transition: 'none',
+  },
+  surface: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    height: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    userSelect: 'none',
+    overflow: 'visible',
+    zIndex: 96,
+    transition: `transform ${motion['--sidebar-spring-duration']} ${motion['--sidebar-spring']}`,
+    willChange: 'transform',
+  },
+  surfaceSmall: {
+    position: 'fixed',
+    height: '100%',
+    width: 'min(calc(100vw - 40px), 330px)',
+    zIndex: 99,
+    backgroundColor: colors['--bg-window'],
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
+    boxShadow: `0 0 0 1px ${colors['--color-border-primary']}, ${colors['--canvas-shadow']}`,
+  },
+  surfacePeek: {
+    backgroundColor: colors['--bg-canvas'],
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
+    boxShadow: `0 0 0 1px ${colors['--color-border-secondary']}, ${colors['--command-menu-shadow']}`,
+  },
+  surfacePeekClosed: {
+    boxShadow: 'none',
+  },
+  peekEdge: {
+    position: 'fixed',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: 8,
+  },
   /** Inbox, then the sections; Sidebar.module.css sets each row 1px below the one before. */
   navigation: {
     flexGrow: 1,
@@ -30,6 +81,55 @@ const styles = stylex.create({
     paddingRight: 12,
     paddingBottom: 16,
     paddingTop: 0.5,
+  },
+  count: {
+    fontSize: 12,
+    fontWeight: 450,
+    lineHeight: '15px',
+    color: colors['--text-tertiary'],
+    fontVariantNumeric: 'tabular-nums',
+    flexShrink: 0,
+  },
+  resizerHitTarget: {
+    position: 'absolute',
+    top: 14,
+    bottom: 40,
+    right: -3.5,
+    width: 7,
+    cursor: 'col-resize',
+    zIndex: 97,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    userSelect: 'none',
+    background: 'transparent',
+    backgroundPosition: '0 0',
+  },
+  resizerTrack: {
+    position: 'absolute',
+    top: 12,
+    bottom: 12,
+    left: '50%',
+    width: 0.5,
+    overflow: 'hidden',
+    pointerEvents: 'none',
+    backgroundColor: colors['--sidebar-resizer-track'],
+    opacity: 0,
+    transition: 'opacity 0.25s 0s',
+    maskImage: 'linear-gradient(rgba(0, 0, 0, 0), rgb(0, 0, 0) 10%, rgb(0, 0, 0) 90%, rgba(0, 0, 0, 0))',
+  },
+  resizerTrackDragging: {
+    opacity: 1,
+  },
+  resizerIndicator: {
+    position: 'absolute',
+    top: '-50%',
+    left: 0,
+    right: 0,
+    height: '200%',
+    backgroundColor: colors['--resizer-line-color'],
+    willChange: 'transform',
+    maskImage: layout['--resizer-spot-mask'],
   },
 });
 
@@ -148,7 +248,7 @@ const SidebarContent: React.FC = () => {
 
   return (
     <div
-      className="sidebar-slot-wrapper"
+      {...withClassName(stylex.props(styles.slotWrapper, isDragging && styles.resizing), 'sidebar-slot-wrapper')}
       data-resizing={isDragging ? 'true' : 'false'}
       style={{
         width: drawer.isSmall ? '0px' : isSidebarCollapsed ? '8px' : `${sidebarWidth}px`,
@@ -159,7 +259,7 @@ const SidebarContent: React.FC = () => {
         open={drawer.isSmall ? drawer.isOpen : peek.isOpen}
         onClose={drawer.isSmall ? drawer.close : peek.close}
       />
-      {isPeekSurface && <div className="sidebar-peek-edge" aria-hidden="true" {...peek.edgeHandlers} />}
+      {isPeekSurface && <div {...stylex.props(styles.peekEdge)} aria-hidden="true" {...peek.edgeHandlers} />}
       <aside
         ref={surfaceRef}
         data-sidebar-surface="true"
@@ -171,7 +271,16 @@ const SidebarContent: React.FC = () => {
           transform: surfaceTransform,
           transition: isDragging ? 'none' : undefined,
         }}
-        className="sidebar-surface app-sidebar"
+        {...withClassName(
+          stylex.props(
+            styles.surface,
+            drawer.isSmall && styles.surfaceSmall,
+            isPeekSurface && styles.surfacePeek,
+            isPeekSurface && !peek.isOpen && styles.surfacePeekClosed,
+            isDragging && styles.resizing,
+          ),
+          'sidebar-surface app-sidebar',
+        )}
         {...drawer.swipeHandlers}
       >
         {/* 1. Header (Workspace + Search + Create) */}
@@ -187,7 +296,7 @@ const SidebarContent: React.FC = () => {
             active={activeTab === 'inbox'}
             onClick={() => openWorkspacePage('inbox')}
             trailing={inboxUnreadCount > 0 && (
-              <span className="buyerly-sidebar-count" aria-label={`${inboxUnreadCount} unread`}>
+              <span {...withClassName(stylex.props(styles.count), 'buyerly-sidebar-count')} aria-label={`${inboxUnreadCount} unread`}>
                 {inboxUnreadCount}
               </span>
             )}
@@ -252,15 +361,15 @@ const SidebarContent: React.FC = () => {
 
         {/* 3. Linear Exact 3-Layer Spotlight Resizer with Double-Click Reset */}
         {!drawer.isSmall && <div
-          className="buyerly-resizer-hit-target"
+          {...withClassName(stylex.props(styles.resizerHitTarget), css.resizerHitTarget)}
           data-dragging={isDragging ? 'true' : 'false'}
           onMouseMove={handleMouseMove}
           onMouseDown={startResizing}
           onDoubleClick={resetSidebarWidth}
           title="Drag to resize, double-click to reset"
         >
-          <div ref={trackRef} className="buyerly-resizer-track" aria-hidden="true">
-            <div ref={indicatorRef} className="buyerly-resizer-indicator" />
+          <div ref={trackRef} {...withClassName(stylex.props(styles.resizerTrack, isDragging && styles.resizerTrackDragging), css.resizerTrack)} aria-hidden="true">
+            <div ref={indicatorRef} {...stylex.props(styles.resizerIndicator)} />
           </div>
         </div>}
       </aside>

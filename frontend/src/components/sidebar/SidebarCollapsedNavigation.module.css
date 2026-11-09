@@ -1,0 +1,60 @@
+/* Linear's header icon button (the sidebar toggle): `.buyerly-icon-btn` and
+   `.buyerly-sidebar-toggle`, with `.buyerly-header-target`'s touch size. */
+.button {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 2px;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+  transition: background-color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.button:hover {
+  background-color: var(--item-hover-bg);
+  color: var(--text-primary);
+  transition-duration: 0s;
+}
+
+.button:active {
+  background-color: var(--item-active-bg);
+  transition-duration: 0s;
+}
+
+.button svg {
+  fill: currentColor;
+}
+
+/* `.buyerly-sidebar-toggle` */
+.button {
+  border-width: 0.5px;
+  color: var(--header-button-fg);
+  cursor: default;
+  transition: border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
+}
+
+.button:hover,
+.button:active {
+  background-color: transparent;
+  color: var(--text-primary);
+  transition-duration: 0s;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .button {
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+  }
+}
