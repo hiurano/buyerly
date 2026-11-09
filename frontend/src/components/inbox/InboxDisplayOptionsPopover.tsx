@@ -14,8 +14,7 @@ import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { useMenuExit } from '@/ui/useMenuExit';
 import { useInboxStore } from '@/models/inboxStore';
 import { openSettings } from '@/lib/routing';
-import { exit as menuExit } from '@/ui/menuAnimations.stylex';
-import * as stylex from '@stylexjs/stylex';
+import '@/ui/menu.css';
 
 interface InboxDisplayOptionsPopoverProps {
   isOpen: boolean;
@@ -84,7 +83,7 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
       ref={popoverRef}
       role="dialog"
       aria-label="Display options"
-      className={`buyerly-display-options-popover${isClosing ? ` ${stylex.props(menuExit.root).className}` : ''}`}
+      className={isClosing ? 'buyerly-display-options-popover buyerly-menu-exit' : 'buyerly-display-options-popover'}
       style={{ top: coords.top, left: coords.left }}
       data-wide={inboxDisplay.priorityInbox || undefined}
     >

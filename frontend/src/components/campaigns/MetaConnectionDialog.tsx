@@ -7,7 +7,7 @@ import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { BuyerlyCheckbox } from '@/ui/BuyerlyCheckbox';
 import { withClassName } from '@/ui/withClassName';
 import { colors } from '@/styles/tokens.stylex';
-import animations from '@/ui/animations.module.css';
+import '@/ui/animations.css';
 
 const WIDE = '@media (min-width: 640px)';
 
@@ -437,7 +437,7 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
       <Dialog.Portal>
         <Dialog.Overlay {...stylex.props(styles.overlay)} />
         <div {...stylex.props(styles.frame)}>
-          <Dialog.Content {...withClassName(stylex.props(styles.content), `ui-dialog ${animations.scaleIn}`)}>
+          <Dialog.Content {...withClassName(stylex.props(styles.content), 'ui-dialog animate-scale-in')}>
             <header {...stylex.props(styles.header)}>
               <div {...stylex.props(styles.heading)}>
                 <BuyerlyIcon name="meta" size={16} className={stylex.props(styles.metaIcon).className} />

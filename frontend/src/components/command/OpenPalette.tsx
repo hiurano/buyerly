@@ -26,12 +26,11 @@ import { SettingsPageIcon } from '@/components/preferences/SettingsPageIcon';
 import { commandMenuStore, useCommandMenuStore, type OpenPaletteKind } from '@/models/commandMenuStore';
 import { useScopeStore } from '@/models/scopeStore';
 import { openSettings as openSettingsPage } from '@/lib/routing';
-import { exit as menuExit } from '@/ui/menuAnimations.stylex';
 import '@/ui/favorites.css';
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, another palette. */
 const OPEN_LAYER_SELECTOR = [
-  `[role="dialog"]:not(.${stylex.props(menuExit.root).className}):not([data-state="closed"])`,
+  '[role="dialog"]:not(.buyerly-menu-exit):not([data-state="closed"])',
   '[role="alertdialog"]:not([data-state="closed"])',
   '[role="menu"]:not([data-state="closed"])',
   '[cmdk-root]:not([data-state="closed"] *)',

@@ -57,7 +57,7 @@ import {
 import { useScopeStore, scopeStore } from '@/models/scopeStore';
 import { useDialogStore } from '@/models/dialogStore';
 import { useRulesStore } from '@/models/rulesStore';
-import animations from '@/ui/animations.module.css';
+import '@/ui/animations.css';
 
 const LEVEL_HINTS = {
   adset: 'Each ad set on its own',
@@ -658,7 +658,7 @@ export const CreateRuleModal: React.FC = () => {
             }}
             {...withClassName(
               stylex.props(styles.content, expanded && styles.contentExpanded, phone && styles.contentPhone),
-              phone ? undefined : animations.scaleIn,
+              phone ? undefined : 'animate-scale-in',
             )}
           >
             <Dialog.Title {...stylex.props(styles.srOnly)}>{title}</Dialog.Title>

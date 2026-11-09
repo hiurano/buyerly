@@ -13,9 +13,8 @@ import { toast } from '@/ui/toast';
 import { Tooltip } from '@/ui/Tooltip';
 import { useMenuExit } from '@/ui/useMenuExit';
 import { BuyerlyToolbarButton } from '@/ui/BuyerlyToolbarButton';
-import { exit as menuExit } from '@/ui/menuAnimations.stylex';
-import * as stylex from '@stylexjs/stylex';
 import './BuyerlyAccountBell.css';
+import '@/ui/menu.css';
 
 const POPOVER_WIDTH = 334;
 
@@ -106,7 +105,7 @@ export const BuyerlyAccountBell: React.FC<{ accountId: string; accountName: stri
           ref={popoverRef}
           role="dialog"
           aria-label="Ad account notifications"
-          className={`buyerly-bell-popover${isClosing ? ` ${stylex.props(menuExit.root).className}` : ''}`}
+          className={`buyerly-bell-popover${isClosing ? ' buyerly-menu-exit' : ''}`}
           style={{ top: coords.top, left: coords.left }}
         >
           <section className="buyerly-bell-section">

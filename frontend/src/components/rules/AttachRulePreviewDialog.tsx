@@ -7,7 +7,7 @@ import { withClassName } from '@/ui/withClassName';
 import { ApiError } from '@/lib/api';
 import { fetchRuleAccountPreview, formatRelativeTime } from '@/lib/rules';
 import type { RuleAccountPreview, RuleExecutionLevel } from '@/lib/rules';
-import animations from '@/ui/animations.module.css';
+import '@/ui/animations.css';
 
 function requestErrorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -248,7 +248,7 @@ export const AttachRulePreviewDialog: React.FC<AttachRulePreviewDialogProps> = (
               event.preventDefault();
               confirmRef.current?.focus();
             }}
-            {...withClassName(stylex.props(styles.content), `ui-dialog ${animations.scaleIn}`)}
+            {...withClassName(stylex.props(styles.content), 'ui-dialog animate-scale-in')}
           >
             <div {...stylex.props(styles.header)}>
               <Dialog.Title {...stylex.props(styles.title)}>

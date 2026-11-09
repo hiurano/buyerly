@@ -45,7 +45,7 @@ import { scopeStore, useScopeStore } from '@/models/scopeStore';
 import { useShellStore } from '@/models/shellStore';
 import { useViewStore } from '@/models/viewStore';
 import { BuyerlyDisplayOptionsButton, BuyerlyToolbarButton } from '@/ui/BuyerlyToolbarButton';
-import { exit as menuExit } from '@/ui/menuAnimations.stylex';
+import '@/ui/menu.css';
 
 const styles = stylex.create({
   tertiary: {
@@ -570,7 +570,7 @@ const styles = stylex.create({
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, a select. */
 const OPEN_LAYER_SELECTOR = [
-  `[role="dialog"]:not(.${stylex.props(menuExit.root).className}):not([data-state="closed"])`,
+  '[role="dialog"]:not(.buyerly-menu-exit):not([data-state="closed"])',
   '[role="alertdialog"]:not([data-state="closed"])',
   '[role="menu"]:not([data-state="closed"])',
   '.buyerly-display-select-menu',
@@ -721,7 +721,7 @@ const SearchDisplayOptions: React.FC<SearchDisplayOptionsProps> = ({
       ref={popoverRef}
       role="dialog"
       aria-label="Display options"
-      className={`buyerly-display-options-popover${isClosing ? ` ${stylex.props(menuExit.root).className}` : ''}`}
+      className={isClosing ? 'buyerly-display-options-popover buyerly-menu-exit' : 'buyerly-display-options-popover'}
       style={{ top: coords.top, left: coords.left }}
     >
       <section className="buyerly-display-main-section">

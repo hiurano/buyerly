@@ -5,7 +5,7 @@ import { colors, radii } from '@/styles/tokens.stylex';
 import { Button } from '@/ui/Button';
 import { withClassName } from '@/ui/withClassName';
 import { useApprovalQueue } from './approval';
-import animations from '@/ui/animations.module.css';
+import '@/ui/animations.css';
 
 /**
  * A request can appear while the person is clicking or typing elsewhere. The
@@ -141,7 +141,7 @@ export const ApprovalDialog: React.FC = () => {
               event.preventDefault();
               declineRef.current?.focus();
             }}
-            {...withClassName(stylex.props(styles.content), `ui-dialog ${animations.scaleIn}`)}
+            {...withClassName(stylex.props(styles.content), 'ui-dialog animate-scale-in')}
           >
             <p {...stylex.props(styles.eyebrow)}>Your AI assistant asks</p>
             <Dialog.Title {...stylex.props(styles.title)}>

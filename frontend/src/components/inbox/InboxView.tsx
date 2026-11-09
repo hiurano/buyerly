@@ -69,7 +69,7 @@ import { withClassName } from '@/ui/withClassName';
 import { iconButton } from '@/ui/iconButton.stylex';
 import { openSettings } from '@/lib/routing';
 import { BuyerlyDisplayOptionsButton, BuyerlyToolbarButton } from '@/ui/BuyerlyToolbarButton';
-import { exit as menuExit } from '@/ui/menuAnimations.stylex';
+import '@/ui/menu.css';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type ActionState = 'idle' | 'loading';
@@ -480,7 +480,7 @@ const MenuKey: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 const OPEN_LAYER_SELECTOR = [
   '[role="menu"]:not([data-state="closed"])',
-  `[role="dialog"]:not(.${stylex.props(menuExit.root).className})`,
+  '[role="dialog"]:not(.buyerly-menu-exit)',
   '.buyerly-display-select-menu',
 ].join(', ');
 

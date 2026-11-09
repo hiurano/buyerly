@@ -1,4 +1,0 @@
-/* The dialogs' entrance, Linear's fade and 0.96→1 scale (#694). */
-.scaleIn {
-  animation: fadeIn 0.12s cubic-bezier(0.16, 1, 0.3, 1);
-}

@@ -5,7 +5,7 @@ import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { Button } from '@/ui/Button';
 import { withClassName } from '@/ui/withClassName';
 import { colors } from '@/styles/tokens.stylex';
-import animations from '@/ui/animations.module.css';
+import '@/ui/animations.css';
 
 const styles = stylex.create({
   month: {
@@ -326,7 +326,7 @@ export const SnoozeCalendarDialog: React.FC<SnoozeCalendarDialogProps> = ({ open
           <Dialog.Content
             aria-describedby={undefined}
             onCloseAutoFocus={(event) => event.preventDefault()}
-            {...withClassName(stylex.props(styles.content), animations.scaleIn)}
+            {...withClassName(stylex.props(styles.content), 'animate-scale-in')}
           >
             <Dialog.Title {...stylex.props(styles.title)}>
               <BuyerlyIcon name="snooze" size={16} />

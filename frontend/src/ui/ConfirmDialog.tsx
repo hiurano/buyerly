@@ -4,7 +4,7 @@ import * as stylex from '@stylexjs/stylex';
 import { colors, radii } from '@/styles/tokens.stylex';
 import { Button } from '@/ui/Button';
 import { withClassName } from '@/ui/withClassName';
-import animations from '@/ui/animations.module.css';
+import '@/ui/animations.css';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -131,7 +131,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               event.preventDefault();
               confirmRef.current?.focus();
             }}
-            {...withClassName(stylex.props(styles.content), `ui-dialog ${animations.scaleIn}`)}
+            {...withClassName(stylex.props(styles.content), 'ui-dialog animate-scale-in')}
           >
             <Dialog.Title {...stylex.props(styles.title)}>
               {title}

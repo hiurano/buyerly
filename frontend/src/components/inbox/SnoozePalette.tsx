@@ -8,7 +8,7 @@ import { parseSnoozeQuery } from '@/lib/snoozeQuery';
 import { colors } from '@/styles/tokens.stylex';
 import { commandItemMarker } from '@/ui/markers.stylex';
 import { withClassName } from '@/ui/withClassName';
-import animations from '@/ui/animations.module.css';
+import '@/ui/animations.css';
 
 const truncate = {
   overflow: 'hidden',
@@ -254,7 +254,7 @@ export const SnoozePalette: React.FC<SnoozePaletteProps> = ({
         <Dialog.Content
           aria-describedby={undefined}
           onCloseAutoFocus={(event) => event.preventDefault()}
-          {...withClassName(stylex.props(styles.dialog), animations.scaleIn)}
+          {...withClassName(stylex.props(styles.dialog), 'animate-scale-in')}
         >
           <Dialog.Title {...stylex.props(styles.srOnly)}>Snooze notification</Dialog.Title>
           <Command label="Snooze notification" shouldFilter={false} loop value={active} onValueChange={setActive}>
