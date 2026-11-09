@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { useIsSmallScreen } from '@/lib/useMediaQuery';
 import { shellStore, useShellStore } from '@/models/shellStore';
-import { colors, motion } from '@/styles/tokens.stylex';
-import { withClassName } from '@/ui/stylex';
+import { colors } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
 
 /** Linear's swipe: 50px within 300ms, abandoned once the finger drifts 50px vertically. */
 const SWIPE_DISTANCE = 50;
@@ -184,7 +184,7 @@ const styles = stylex.create({
     backgroundColor: colors['--modal-overlay-bg'],
     opacity: 0,
     pointerEvents: 'none',
-    transition: `opacity 0.25s ${motion['--ease-out-cubic']}`,
+    transition: 'opacity 0.2s ease-out',
   },
   backdropOpen: {
     opacity: 1,

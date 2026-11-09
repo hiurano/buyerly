@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { colors, fonts } from '@/styles/tokens.stylex';
+import { colors, type as fontTokens } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
 import { logOut } from '@/lib/sessions';
 import { accountBlocks } from '@/lib/accounts';
@@ -45,40 +45,37 @@ const styles = stylex.create({
   },
   /** Fluid, and leaves Search its 36px. */
   workspace: {
+    boxSizing: 'border-box',
+    fontFamily: fontTokens['--font-regular'],
+    margin: 0,
+    borderRadius: 10,
+    borderStyle: 'none',
+    borderColor: 'currentColor',
+    gap: 6,
+    overflow: 'hidden',
+    paddingTop: 0,
+    paddingRight: 9,
+    paddingBottom: 0,
+    paddingLeft: 5,
+    height: 28,
     display: 'inline-flex',
     alignItems: 'center',
-    gap: 8,
-    height: 28,
-    paddingTop: 0,
-    paddingRight: 6,
-    paddingBottom: 0,
-    paddingLeft: 6,
-    borderRadius: 5,
     backgroundColor: {
       default: 'transparent',
       [HOVER]: {
         default: 'transparent',
         ':hover': colors['--sidebar-item-hover-bg'],
       },
-      ':active': colors['--item-active-bg'],
-      ':is([data-state="open"])': colors['--item-active-bg'],
+      ':active': colors['--sidebar-item-hover-bg'],
     },
-    borderStyle: 'none',
-    cursor: 'default',
     color: colors['--sidebar-workspace-fg'],
-    fontFamily: fonts['--font-regular'],
-    fontSize: 13,
-    fontWeight: 500,
-    lineHeight: '28px',
-    textAlign: 'left',
+    cursor: 'default',
+    userSelect: 'none',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
     outline: 'none',
-    transition: 'background-color 0.08s ease',
     minWidth: 0,
     maxWidth: 'calc(100% - 36px)',
-    boxShadow: {
-      default: null,
-      ':focus-visible': `inset 0 0 0 1px ${colors['--sidebar-focus-ring']}`,
-    },
   },
   chevron: {
     flexShrink: 0,
@@ -86,24 +83,30 @@ const styles = stylex.create({
     fill: 'currentColor',
   },
   searchButton: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    boxSizing: 'border-box',
+    margin: 0,
+    paddingTop: 0,
+    paddingRight: 2,
+    paddingBottom: 0,
+    paddingLeft: 2,
+    borderWidth: 0.5,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    borderRadius: 9999,
     width: 28,
     minWidth: 28,
     height: 28,
-    borderRadius: 5,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: {
       default: 'transparent',
       [HOVER]: {
         default: 'transparent',
         ':hover': colors['--sidebar-icon-button-hover-bg'],
       },
-      ':active': colors['--sidebar-icon-button-active-bg'],
-      ':is([data-state="open"])': colors['--sidebar-icon-button-active-bg'],
+      ':active': colors['--sidebar-icon-button-hover-bg'],
     },
-    borderStyle: 'none',
-    cursor: 'default',
     color: {
       default: colors['--sidebar-item-fg'],
       [HOVER]: {
@@ -111,19 +114,14 @@ const styles = stylex.create({
         ':hover': colors['--sidebar-item-fg-strong'],
       },
       ':active': colors['--sidebar-item-fg-strong'],
-      ':is([data-state="open"])': colors['--sidebar-item-fg-strong'],
     },
+    cursor: 'default',
+    userSelect: 'none',
     outline: 'none',
-    transition: 'background-color 0.08s ease, color 0.08s ease',
-    flexShrink: 0,
-    boxShadow: {
-      default: null,
-      ':focus-visible': `inset 0 0 0 1px ${colors['--sidebar-focus-ring']}`,
-    },
+    transition: 'border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s',
   },
   searchButtonActive: {
     backgroundColor: colors['--sidebar-icon-button-active-bg'],
-    color: colors['--sidebar-item-fg-strong'],
   },
   truncate: {
     overflow: 'hidden',
@@ -268,7 +266,6 @@ export const SidebarHeader: React.FC = () => {
               aria-expanded="false"
               aria-label={`${workspaceName} Workspace Menu`}
               {...withClassName(stylex.props(styles.workspace), 'buyerly-workspace-btn')}
-              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
             >
               {/* Linear: the workspace's own mark, its regular avatar in a 20px box. */}
               <WorkspaceAvatar workspace={workspace} size="regular" px={20} />
@@ -447,7 +444,6 @@ export const SidebarHeader: React.FC = () => {
               // Linear's Search stays pressed while its page is open.
               data-active={isSearchOpen ? 'true' : undefined}
               {...stylex.props(styles.searchButton, isSearchOpen && styles.searchButtonActive)}
-              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
             >
               <span {...stylex.props(styles.searchIcon)}>
                 <BuyerlySearchGlyph size={14} />

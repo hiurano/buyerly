@@ -4,6 +4,49 @@ import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
 
 const styles = stylex.create({
+  content: {
+    boxSizing: 'border-box',
+    backgroundColor: colors['--tooltip-bg'],
+    borderWidth: 0.5,
+    borderStyle: 'solid',
+    borderColor: colors['--tooltip-border'],
+    boxShadow: colors['--tooltip-shadow'],
+    borderRadius: 8,
+    paddingTop: 5,
+    paddingRight: 8,
+    paddingBottom: 5,
+    paddingLeft: 8,
+    gap: 8,
+    zIndex: 1100,
+    display: 'flex',
+    alignItems: 'center',
+    userSelect: 'none',
+    pointerEvents: 'none',
+    willChange: 'transform, opacity',
+    transformOrigin: {
+      default: null,
+      ':is([data-side="right"])': '0px 50%',
+      ':is([data-side="left"])': '100% 50%',
+      ':is([data-side="top"])': '50% 100%',
+      ':is([data-side="bottom"])': '50% 0px',
+      ':is([data-side="bottom"][data-align="end"])': '100% 0px',
+      ':is([data-side="bottom"][data-align="start"])': '0px 0px',
+    },
+    animationName: {
+      default: null,
+      ':is([data-state="delayed-open"])': 'buyerlyTooltipScaleIn',
+      ':is([data-state="instant-open"])': 'buyerlyTooltipScaleIn',
+      ':is([data-state="closed"])': 'buyerlyTooltipScaleOut',
+    },
+    animationDuration: {
+      default: null,
+      ':is([data-state="delayed-open"])': '0.12s',
+      ':is([data-state="instant-open"])': '0.12s',
+      ':is([data-state="closed"])': '0.1s',
+    },
+    animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+    animationFillMode: 'forwards',
+  },
   keys: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -143,7 +186,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
           align={align}
           sideOffset={sideOffset}
           alignOffset={alignOffset}
-          className="buyerly-tooltip-content"
+          {...stylex.props(styles.content)}
         >
           {/* Tooltip Content */}
           {typeof content === 'string' ? (

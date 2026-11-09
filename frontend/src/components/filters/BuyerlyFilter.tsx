@@ -27,6 +27,7 @@ import { SubmenuArrow } from '@/ui/SubmenuArrow';
 import { setRef } from '@/ui/setRef';
 import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlyToolbarButton, type BuyerlyToolbarButtonPlacement } from '@/ui/BuyerlyToolbarButton';
+import { enter as menuEnter, exit as menuExit } from '@/ui/menuAnimations.stylex';
 
 const MENU_SURFACE = 'var(--card-bg)';
 const MENU_BORDER = 'var(--filter-menu-border)';
@@ -192,7 +193,7 @@ const MenuSurface = React.forwardRef<
     ref={ref}
     role="dialog"
     aria-label={label}
-    className={motion === 'enter' ? 'buyerly-menu-enter' : motion === 'exit' ? 'buyerly-menu-exit' : undefined}
+    className={stylex.props(motion === 'enter' ? menuEnter.root : motion === 'exit' ? menuExit.root : null).className}
     style={{
       position: 'fixed',
       left: position.left,

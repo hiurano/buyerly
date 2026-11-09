@@ -11,6 +11,7 @@ import {
   ContextMenuTrigger,
 } from '@/ui/ContextMenu';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/ui/DropdownMenu';
+import '@/ui/rowMenu.css';
 
 const styles = stylex.create({
   trigger: {

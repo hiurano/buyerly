@@ -9,8 +9,8 @@ import { pathForTab, useAppNavigate, useNavigationKey, useRoute, type BuyerlyRou
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import type { SessionUser } from '@/lib/types';
 import { useViewStore } from '@/models/viewStore';
-import { colors } from '@/styles/tokens.stylex';
-import { withClassName } from '@/ui/stylex';
+import { colors, radii } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
 
 /** What the workspace's routes get from the App above them. */
 export interface BuyerlyWorkspaceOutlet {
@@ -208,24 +208,33 @@ export function pageComponentFor(opened: Extract<BuyerlyRouteHandle, { page: unk
 
 const styles = stylex.create({
   canvas: {
+    marginTop: 8,
+    marginRight: 8,
+    marginBottom: 36,
+    marginLeft: 0,
+    borderRadius: radii['--canvas-border-radius'],
+    backgroundColor: colors['--bg-canvas'],
+    borderWidth: 0.5,
+    borderStyle: 'solid',
+    borderColor: colors['--search-header-border'],
+    boxShadow: colors['--canvas-shadow'],
+    overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: '0%',
-    backgroundColor: colors['--bg-canvas'],
-    marginTop: { default: 8, '@media (max-width: 880px)': 0 },
-    marginRight: { default: 8, '@media (max-width: 880px)': 0 },
-    marginBottom: { default: 8, '@media (max-width: 880px)': 0 },
-    marginLeft: 0,
-    borderRadius: { default: 6, '@media (max-width: 880px)': 0 },
-    borderWidth: { default: 0.5, '@media (max-width: 880px)': 0 },
-    borderStyle: { default: 'solid', '@media (max-width: 880px)': 'none' },
-    borderColor: { default: colors['--search-header-border'], '@media (max-width: 880px)': 'currentColor' },
-    boxShadow: { default: colors['--canvas-shadow'], '@media (max-width: 880px)': 'none' },
-    overflow: 'hidden',
-    position: 'relative',
-    minWidth: 0,
-    zIndex: 1,
+    '@media (max-width: 880px)': {
+      minWidth: 0,
+      marginTop: 0,
+      marginRight: 0,
+      marginBottom: 0,
+      marginLeft: 0,
+      borderWidth: 0,
+      borderStyle: 'none',
+      borderColor: 'currentColor',
+      borderRadius: 0,
+      boxShadow: 'none',
+    },
   },
 });

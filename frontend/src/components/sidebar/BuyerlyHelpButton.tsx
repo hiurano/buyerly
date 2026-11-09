@@ -9,6 +9,7 @@ import changelogLatest from '@/lib/changelogLatest.json';
 import { useCommandMenuStore } from '@/models/commandMenuStore';
 import { openSettings } from '@/lib/routing';
 import { colors } from '@/styles/tokens.stylex';
+import css from './BuyerlyHelpButton.module.css';
 
 const styles = stylex.create({
   // Linear keeps the field off-screen until something is typed, then shows it as the first row.
@@ -150,23 +151,24 @@ const styles = stylex.create({
     whiteSpace: 'nowrap',
   },
   button: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     width: 24,
     height: 24,
+    flexShrink: 0,
     paddingTop: 0,
     paddingRight: 0,
     paddingBottom: 0,
     paddingLeft: 0,
-    borderRadius: 9999,
     borderWidth: 0.5,
     borderStyle: 'solid',
-    borderColor: {
-      default: colors['--color-border-tertiary'],
-      ':hover': 'transparent',
-      ':is([data-state="open"])': 'transparent',
-    },
+    borderColor: 'transparent',
+    borderRadius: '50%',
     backgroundColor: {
       default: 'transparent',
       ':hover': colors['--help-button-hover-bg'],
+      ':active': 'transparent',
       ':is([data-state="open"])': colors['--help-button-hover-bg'],
     },
     color: {
@@ -174,30 +176,22 @@ const styles = stylex.create({
       ':hover': colors['--help-button-hover-fg'],
       ':is([data-state="open"])': colors['--help-button-hover-fg'],
     },
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
     cursor: 'default',
-    flexShrink: 0,
     outline: 'none',
-    transition: 'background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease',
-    boxShadow: {
-      default: null,
-      ':focus-visible': `0 0 0 1px ${colors['--help-focus-ring']}`,
+    transition: 'border 0.15s, background-color 0.15s, color 0.15s',
+    ':focus-visible': {
+      outline: `1px solid ${colors['--help-focus-ring']}`,
+      outlineOffset: 0,
+    },
+    '@media (any-hover: hover) and (any-pointer: fine)': {
+      ':hover': { transitionDuration: '0s' },
     },
   },
-  menu: {
-    backgroundColor: colors['--help-menu-bg'],
-    borderColor: colors['--help-menu-border'],
-    color: colors['--help-menu-fg'],
-  },
   icon: {
+    display: 'flex',
+    flexShrink: 0,
     width: 16,
     height: 16,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
     color: colors['--help-menu-secondary'],
   },
   timeline: {
@@ -207,8 +201,7 @@ const styles = stylex.create({
     marginRight: 0,
     marginBottom: -8,
     marginLeft: 0,
-    display: 'block',
-    flexShrink: 0,
+    overflow: 'visible',
   },
   timelineLine: {
     stroke: colors['--help-menu-timeline'],
@@ -217,35 +210,27 @@ const styles = stylex.create({
     fill: colors['--help-menu-secondary'],
   },
   group: {
-    height: 24,
-    paddingTop: 6,
+    paddingTop: 8,
     paddingRight: 14,
-    paddingBottom: 2,
+    paddingBottom: 8,
     paddingLeft: 14,
-    display: 'flex',
-    alignItems: 'center',
     fontSize: 12,
-    fontWeight: 500,
     lineHeight: '14px',
+    fontWeight: 500,
     color: colors['--help-menu-secondary'],
-    userSelect: 'none',
   },
   shortcut: {
-    marginLeft: 'auto',
-    paddingLeft: 16,
-    display: 'inline-flex',
+    display: 'flex',
     alignItems: 'center',
-    gap: 4,
-    fontSize: 12,
+    gap: 3,
+    fontSize: 11,
+    lineHeight: '12.1px',
     fontWeight: 450,
     color: colors['--help-menu-secondary'],
   },
   shortcutKbd: {
     fontFamily: 'inherit',
-    fontSize: 12,
     fontWeight: 500,
-    lineHeight: '13.2px',
-    color: colors['--help-menu-secondary'],
   },
 });
 
@@ -471,16 +456,8 @@ export function BuyerlyHelpButton() {
         alignOffset={2}
         role="dialog"
         aria-label="Help"
-        xstyle={styles.menu}
-        style={{
-          width: 270,
-          '--menu-item-fg': 'var(--help-menu-fg)',
-          '--menu-item-fg-highlighted': 'var(--help-menu-fg-highlighted)',
-          '--menu-item-highlight': 'var(--help-menu-highlight)',
-          '--menu-icon-fg': 'var(--help-menu-secondary)',
-          '--menu-icon-fg-highlighted': 'var(--help-menu-fg-highlighted)',
-          '--menu-shortcut-fg': 'var(--help-menu-secondary)',
-        } as React.CSSProperties}
+        className={css.menu}
+        style={{ width: 270 }}
         // Radix focuses the menu itself on opening; typing goes to the field from the start.
         onFocus={(event) => {
           if (event.target === event.currentTarget) inputRef.current?.focus({ preventScroll: true });

@@ -7,6 +7,11 @@
 @media (any-hover: hover) and (any-pointer: fine) {
   .resizerHitTarget:hover .resizerTrack {
     opacity: 1;
-    transition-delay: 0.05s;
+    transition-delay: 0.1s;
   }
+}
+
+.workspace svg,
+.iconBtn svg {
+  fill: currentColor;
 }

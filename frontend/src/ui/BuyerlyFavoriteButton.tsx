@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { favoritesStore, toggleFavorite, useFavorites, type FavoriteInput } from '@/lib/favorites';
 import { Tooltip } from '@/ui/Tooltip';
+import '@/ui/favorites.css';
 
 function isTyping(): boolean {
   const element = document.activeElement as HTMLElement | null;

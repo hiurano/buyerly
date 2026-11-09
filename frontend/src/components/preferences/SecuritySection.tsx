@@ -24,6 +24,7 @@ import { toast } from '@/ui/toast';
 import { useLastPresent } from '@/ui/useLastPresent';
 import { withClassName } from '@/ui/withClassName';
 import { colors, radii } from '@/styles/tokens.stylex';
+import animations from '@/ui/animations.module.css';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -251,7 +252,7 @@ const SessionDetailsDialog: React.FC<SessionDetailsDialogProps> = ({ session, bu
               event.preventDefault();
               actionRef.current?.focus();
             }}
-            {...withClassName(stylex.props(styles.content), 'ui-dialog preferences-session-dialog animate-scale-in')}
+            {...withClassName(stylex.props(styles.content), `ui-dialog preferences-session-dialog ${animations.scaleIn}`)}
           >
             <Dialog.Close asChild>
               <button

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from 'react-dom';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
-import { withClassName } from '@/ui/withClassName';
+import { iconButton } from '@/ui/iconButton.stylex';
 import { fetchAccounts } from '@/models/queries';
 import { pathForTab } from '@/lib/routing';
 import {
@@ -45,6 +45,7 @@ import { scopeStore, useScopeStore } from '@/models/scopeStore';
 import { useShellStore } from '@/models/shellStore';
 import { useViewStore } from '@/models/viewStore';
 import { BuyerlyDisplayOptionsButton, BuyerlyToolbarButton } from '@/ui/BuyerlyToolbarButton';
+import { exit as menuExit } from '@/ui/menuAnimations.stylex';
 
 const styles = stylex.create({
   tertiary: {
@@ -485,7 +486,7 @@ const styles = stylex.create({
   /** Back to the results, on a phone, where the preview takes the page. */
   back: {
     display: {
-      default: null,
+      default: 'inline-flex',
       '@media (min-width: 768px)': 'none',
     },
   },
@@ -569,7 +570,7 @@ const styles = stylex.create({
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, a select. */
 const OPEN_LAYER_SELECTOR = [
-  '[role="dialog"]:not(.buyerly-menu-exit):not([data-state="closed"])',
+  `[role="dialog"]:not(.${stylex.props(menuExit.root).className}):not([data-state="closed"])`,
   '[role="alertdialog"]:not([data-state="closed"])',
   '[role="menu"]:not([data-state="closed"])',
   '.buyerly-display-select-menu',
@@ -720,7 +721,7 @@ const SearchDisplayOptions: React.FC<SearchDisplayOptionsProps> = ({
       ref={popoverRef}
       role="dialog"
       aria-label="Display options"
-      className={isClosing ? 'buyerly-display-options-popover buyerly-menu-exit' : 'buyerly-display-options-popover'}
+      className={`buyerly-display-options-popover${isClosing ? ` ${stylex.props(menuExit.root).className}` : ''}`}
       style={{ top: coords.top, left: coords.left }}
     >
       <section className="buyerly-display-main-section">
@@ -1224,7 +1225,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addres
         <section aria-label="Preview" {...stylex.props(styles.preview)}>
           <header {...stylex.props(styles.header, styles.previewHeader)}>
             <div {...stylex.props(styles.previewTitle)}>
-              <button type="button" onClick={() => setPreviewOpen(false)} {...withClassName(stylex.props(styles.back), 'buyerly-icon-btn')} aria-label="Back to results">
+              <button type="button" onClick={() => setPreviewOpen(false)} {...stylex.props(iconButton.root, iconButton.hoverInstant, styles.back)} aria-label="Back to results">
                 <BuyerlyIcon name="arrow-left" size={16} aria-hidden="true" />
               </button>
               <span {...stylex.props(styles.mark)} aria-hidden="true"><StatusMark result={preview} /></span>

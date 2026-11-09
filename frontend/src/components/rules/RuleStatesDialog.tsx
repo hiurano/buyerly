@@ -9,6 +9,7 @@ import type { RuleEntityStatePayload, RuleEntityStateName } from '@/lib/rules';
 import { RuleStateLine } from './RuleStateLine';
 import { useRulesStore, type RuleItem } from '@/models/rulesStore';
 import { useDialogStore } from '@/models/dialogStore';
+import animations from '@/ui/animations.module.css';
 
 /** What needs the buyer's eye first: actions and holds, then quiet checks. */
 const STATE_ORDER: Record<RuleEntityStateName, number> = {
@@ -308,7 +309,7 @@ export const RuleStatesDialog: React.FC<RuleStatesDialogProps> = ({ rule, open, 
         <div {...stylex.props(styles.frame)}>
           <Dialog.Content
             data-rule-states-dialog="true"
-            {...withClassName(stylex.props(styles.content), 'ui-dialog animate-scale-in')}
+            {...withClassName(stylex.props(styles.content), `ui-dialog ${animations.scaleIn}`)}
           >
             <div {...stylex.props(styles.header)}>
               <Dialog.Title {...stylex.props(styles.title)}>

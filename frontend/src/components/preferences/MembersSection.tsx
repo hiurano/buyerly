@@ -35,6 +35,7 @@ import {
   roleLabel,
   type MemberItem,
 } from './MemberDialogs';
+import animations from '@/ui/animations.module.css';
 
 const styles = stylex.create({
   roleBadge: {
@@ -486,7 +487,7 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onC
               event.preventDefault();
               fieldRef.current?.focus();
             }}
-            {...withClassName(stylex.props(styles.dialog), 'ui-dialog animate-scale-in')}
+            {...withClassName(stylex.props(styles.dialog), `ui-dialog ${animations.scaleIn}`)}
           >
             <div {...stylex.props(styles.dialogHeader)}>
               <WorkspaceAvatar workspace={workspace} size="tiny" />

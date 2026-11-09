@@ -17,6 +17,7 @@ import {
 import { withClassName } from '@/ui/withClassName';
 import { colors, radii } from '@/styles/tokens.stylex';
 import { accountName, accountStatus, connectionProblem } from './accountsModel';
+import animations from '@/ui/animations.module.css';
 
 const TOUCH = '@media (hover: none) and (pointer: coarse)';
 
@@ -281,7 +282,7 @@ export const RenameAccountDialog: React.FC<RenameAccountDialogProps> = ({ accoun
               inputRef.current?.focus();
               inputRef.current?.select();
             }}
-            {...withClassName(stylex.props(styles.dialog), 'ui-dialog animate-scale-in')}
+            {...withClassName(stylex.props(styles.dialog), `ui-dialog ${animations.scaleIn}`)}
           >
             <Dialog.Title {...stylex.props(styles.dialogTitle)}>Rename ad account</Dialog.Title>
             <Dialog.Description {...stylex.props(styles.dialogDescription)}>

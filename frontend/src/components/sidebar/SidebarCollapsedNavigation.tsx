@@ -4,53 +4,14 @@ import { BuyerlySidebarLeftToggleIcon } from '@/icons/BuyerlyIcons';
 import { Tooltip } from '@/ui/Tooltip';
 import { useShellStore } from '@/models/shellStore';
 import { currentTab } from '@/lib/routing';
-import { colors } from '@/styles/tokens.stylex';
 import * as stylex from '@stylexjs/stylex';
-
-const HOVER = '@media (any-hover: hover) and (any-pointer: fine)';
-const TOUCH = '@media (hover: none) and (pointer: coarse)';
+import css from './SidebarCollapsedNavigation.module.css';
 
 const styles = stylex.create({
   slot: {
     display: 'flex',
     flexShrink: 0,
     alignItems: 'center',
-  },
-  button: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: { default: 28, [TOUCH]: 32 },
-    minWidth: { default: 28, [TOUCH]: 32 },
-    height: { default: 28, [TOUCH]: 32 },
-    borderRadius: 5,
-    backgroundColor: {
-      default: 'transparent',
-      [HOVER]: {
-        default: 'transparent',
-        ':hover': colors['--item-hover-bg'],
-      },
-      ':active': colors['--item-active-bg'],
-      ':is([data-state="open"])': colors['--item-active-bg'],
-    },
-    borderStyle: 'none',
-    cursor: 'default',
-    color: {
-      default: colors['--sidebar-item-fg'],
-      [HOVER]: {
-        default: colors['--sidebar-item-fg'],
-        ':hover': colors['--text-primary'],
-      },
-      ':active': colors['--text-primary'],
-      ':is([data-state="open"])': colors['--text-primary'],
-    },
-    outline: 'none',
-    transition: 'background-color 0.08s ease, color 0.08s ease',
-    flexShrink: 0,
-    boxShadow: {
-      default: null,
-      ':focus-visible': `inset 0 0 0 1px ${colors['--sidebar-focus-ring']}`,
-    },
   },
 });
 
@@ -98,8 +59,7 @@ export const SidebarCollapsedNavigation: React.FC = () => {
     <button
       type="button"
       onClick={toggleSidebarOpen}
-      {...stylex.props(styles.button)}
-      style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      className={css.button}
       aria-label="Menu"
       aria-expanded={isSidebarOpen}
     >
@@ -117,8 +77,7 @@ export const SidebarCollapsedNavigation: React.FC = () => {
           if (!isSidebarCollapsed || currentTab() === 'preferences') return;
           setSidebarPeekOpen(true);
         }}
-        {...stylex.props(styles.button)}
-        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        className={css.button}
         aria-label="Open sidebar"
         tabIndex={visible ? undefined : -1}
       >

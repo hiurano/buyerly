@@ -4,6 +4,7 @@ import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
 import { menuItemMarker } from '@/ui/markers.stylex';
 import { withClassName } from '@/ui/withClassName';
+import './menu.css';
 
 export const ContextMenu = ContextMenuPrimitive.Root;
 export const ContextMenuTrigger = ContextMenuPrimitive.Trigger;
@@ -149,7 +150,7 @@ export const ContextMenuSubContent: React.FC<ContextMenuPrimitive.ContextMenuSub
     <ContextMenuPrimitive.SubContent
       sideOffset={sideOffset}
       alignOffset={alignOffset}
-      {...withClassName(stylex.props(styles.content, styles.submenu), className)}
+      {...withClassName(stylex.props(styles.content, styles.submenu), `buyerly-menu ${className}`.trim())}
       {...props}
     />
   </ContextMenuPrimitive.Portal>

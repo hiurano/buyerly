@@ -36,10 +36,12 @@ import { useScopeStore } from '@/models/scopeStore';
 import { shellStore, useShellStore, type InterfaceTheme } from '@/models/shellStore';
 import { toast } from '@/ui/toast';
 import { useViewStore } from '@/models/viewStore';
+import { exit as menuExit } from '@/ui/menuAnimations.stylex';
+import './commandExtras.css';
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, another palette. */
 const OPEN_LAYER_SELECTOR = [
-  '[role="dialog"]:not(.buyerly-menu-exit):not([data-state="closed"])',
+  `[role="dialog"]:not(.${stylex.props(menuExit.root).className}):not([data-state="closed"])`,
   '[role="alertdialog"]:not([data-state="closed"])',
   '[role="menu"]:not([data-state="closed"])',
   '[cmdk-root]:not([data-state="closed"] *)',

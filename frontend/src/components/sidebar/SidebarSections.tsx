@@ -11,12 +11,13 @@ import { openTab, useCurrentPage } from '@/lib/navigation';
 import type { TeamItem } from '@/lib/teams';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import type { AppTab } from '@/models/shellStore';
-import { colors, fonts, motion } from '@/styles/tokens.stylex';
+import { colors } from '@/styles/tokens.stylex';
 import { sidebarNavItemMarker } from '@/ui/markers.stylex';
-import { withClassName } from '@/ui/stylex';
+import { withClassName } from '@/ui/withClassName';
 import css from './SidebarSections.module.css';
 
 const HOVER = '@media (any-hover: hover) and (any-pointer: fine)';
+
 const TOUCH = '@media (hover: none) and (pointer: coarse)';
 
 const styles = stylex.create({
@@ -27,14 +28,18 @@ const styles = stylex.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: 0,
-    paddingRight: 4,
+    paddingRight: 9,
     paddingBottom: 0,
-    paddingLeft: 6,
-    borderRadius: 5,
-    fontFamily: fonts['--font-regular'],
-    fontSize: 13,
-    fontWeight: 500,
-    lineHeight: { default: '28px', [TOUCH]: '36px' },
+    paddingLeft: 8,
+    borderRadius: 8,
+    backgroundColor: {
+      default: 'transparent',
+      [HOVER]: {
+        default: 'transparent',
+        ':hover': colors['--sidebar-item-hover-bg'],
+      },
+      ':active': colors['--sidebar-item-hover-bg'],
+    },
     color: {
       default: colors['--sidebar-item-fg'],
       [HOVER]: {
@@ -43,31 +48,25 @@ const styles = stylex.create({
       },
       ':active': colors['--sidebar-item-fg-strong'],
     },
-    backgroundColor: {
-      default: 'transparent',
-      [HOVER]: {
-        default: 'transparent',
-        ':hover': colors['--sidebar-item-hover-bg'],
-      },
-      ':active': colors['--item-active-bg'],
-    },
-    borderStyle: 'none',
+    fontSize: 13,
+    fontWeight: 500,
+    lineHeight: 'normal',
+    letterSpacing: 'normal',
+    userSelect: 'none',
     cursor: 'default',
-    transition: 'background-color 0.08s ease, color 0.08s ease',
-    textAlign: 'left',
-    outline: 'none',
-    position: 'relative',
-    boxShadow: {
-      default: null,
-      ':focus-visible': `inset 0 0 0 1px ${colors['--sidebar-focus-ring']}`,
-    },
+    outlineWidth: { default: 0, ':focus-visible': 1 },
+    outlineStyle: { default: 'none', ':focus-visible': 'solid' },
+    outlineColor: { default: 'currentColor', ':focus-visible': colors['--focus-ring-color'] },
+    outlineOffset: { default: 0, ':focus-visible': -1 },
   },
   navItemActive: {
     backgroundColor: colors['--item-active-bg'],
     color: colors['--sidebar-item-fg-strong'],
   },
   navItemNested: {
-    paddingLeft: 19,
+    marginLeft: 19,
+    width: 'calc(100% - 19px)',
+    paddingLeft: 6,
   },
   linkBody: {
     display: 'flex',
@@ -91,180 +90,156 @@ const styles = stylex.create({
     fontWeight: 500,
   },
   section: {
-    paddingTop: 16,
+    paddingTop: 15,
   },
   sectionHeaderRow: {
     display: 'flex',
     alignItems: 'center',
-    height: 24,
+    height: 28,
+    marginBottom: 2,
+    paddingLeft: 5,
   },
   sectionHeader: {
-    display: 'inline-flex',
+    display: 'flex',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    minWidth: 0,
     alignItems: 'center',
-    gap: 1,
-    height: 24,
+    height: 28,
     paddingTop: 0,
-    paddingRight: 2,
+    paddingRight: 4,
     paddingBottom: 0,
-    paddingLeft: 6,
-    borderStyle: 'none',
-    borderRadius: 4,
-    backgroundColor: 'transparent',
-    fontFamily: fonts['--font-regular'],
-    fontSize: 12,
-    fontWeight: 500,
-    lineHeight: 'normal',
+    paddingLeft: 4,
+    borderRadius: 8,
     color: {
       default: colors['--sidebar-item-fg'],
       [HOVER]: {
         default: colors['--sidebar-item-fg'],
         ':hover': colors['--sidebar-item-fg-strong'],
       },
-      ':active': colors['--sidebar-item-fg-strong'],
     },
+    fontSize: 12,
+    fontWeight: 500,
+    lineHeight: 'normal',
     cursor: 'default',
-    outline: 'none',
-    transition: 'color 0.08s ease, background-color 0.08s ease',
-    boxShadow: {
-      default: null,
-      ':focus-visible': `inset 0 0 0 1px ${colors['--sidebar-focus-ring']}`,
-    },
+    userSelect: 'none',
+    outlineWidth: { default: 0, ':focus-visible': 1 },
+    outlineStyle: { default: 'none', ':focus-visible': 'solid' },
+    outlineColor: { default: 'currentColor', ':focus-visible': colors['--focus-ring-color'] },
+    outlineOffset: { default: 0, ':focus-visible': -1 },
   },
   disclosure: {
-    color: colors['--sidebar-disclosure-fg'],
     flexShrink: 0,
-    transform: 'rotate(-90deg)',
-    transition: `transform 0.12s ${motion['--ease-out-quad']}, color 0.08s ease`,
+    marginTop: 1,
+    marginLeft: 2,
+    transform: 'rotate(0deg)',
   },
   disclosureOpen: {
-    transform: 'rotate(0deg)',
+    transform: 'rotate(90deg)',
   },
   sectionBody: {
     display: 'flex',
     flexDirection: 'column',
     gap: 1,
-    paddingBottom: 10,
+    paddingBottom: 8,
   },
   teamSectionBody: {
-    paddingTop: 1,
-    paddingBottom: 4,
+    marginTop: 1,
+    paddingBottom: 0,
   },
   sectionAction: {
-    marginLeft: 'auto',
-    width: 24,
-    height: 24,
     display: 'inline-flex',
+    flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    borderStyle: 'none',
-    borderRadius: 5,
-    backgroundColor: {
-      default: 'transparent',
-      [HOVER]: {
-        default: 'transparent',
-        ':hover': colors['--sidebar-item-hover-bg'],
-      },
-      ':active': colors['--item-active-bg'],
-    },
-    color: {
-      default: colors['--sidebar-item-fg'],
-      [HOVER]: {
-        default: colors['--sidebar-item-fg'],
-        ':hover': colors['--sidebar-item-fg-strong'],
-      },
-      ':active': colors['--sidebar-item-fg-strong'],
-    },
-    cursor: 'default',
+    width: 24,
+    height: 24,
+    marginRight: 2,
+    paddingTop: 0,
+    paddingRight: 2,
+    paddingBottom: 0,
+    paddingLeft: 2,
+    borderRadius: 6,
+    color: colors['--text-secondary'],
+    backgroundColor: 'transparent',
     opacity: {
       default: 0,
       ':focus-visible': 1,
       ':is([data-state="open"])': 1,
     },
+    cursor: 'default',
+    transition: 'opacity 0.15s',
     outline: 'none',
-    transition: 'opacity 0.08s ease, background-color 0.08s ease, color 0.08s ease',
-    boxShadow: {
-      default: null,
-      ':focus-visible': `inset 0 0 0 1px ${colors['--sidebar-focus-ring']}`,
-    },
   },
   sectionActionOpen: {
-    opacity: 1,
+    backgroundColor: colors['--sidebar-icon-button-hover-bg'],
+    color: colors['--sidebar-item-fg-strong'],
   },
   teamRow: {
-    position: 'relative',
     display: 'flex',
     alignItems: 'center',
     height: 28,
-    borderRadius: 5,
-    transition: 'background-color 0.08s ease',
-    backgroundColor: {
-      default: null,
-      [HOVER]: {
-        default: null,
-        ':hover': colors['--sidebar-item-hover-bg'],
-      },
-    },
+    borderRadius: 8,
+    backgroundColor: 'transparent',
   },
   teamRowMenuOpen: {
     backgroundColor: colors['--sidebar-item-hover-bg'],
   },
   teamToggle: {
+    display: 'flex',
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: '0%',
     minWidth: 0,
-    height: 28,
-    display: 'flex',
     alignItems: 'center',
-    gap: 6,
+    height: 28,
     paddingTop: 0,
-    paddingRight: 28,
+    paddingRight: 0,
     paddingBottom: 0,
-    paddingLeft: 6,
-    borderStyle: 'none',
-    borderRadius: 5,
+    paddingLeft: 9,
+    borderRadius: 8,
     backgroundColor: 'transparent',
-    fontFamily: fonts['--font-regular'],
-    fontSize: 13,
-    fontWeight: 500,
-    lineHeight: '28px',
-    color: colors['--sidebar-item-fg'],
     cursor: 'default',
-    textAlign: 'left',
-    outline: 'none',
-    boxShadow: {
-      default: null,
-      ':focus-visible': `inset 0 0 0 1px ${colors['--sidebar-focus-ring']}`,
-    },
+    userSelect: 'none',
+    outlineWidth: { default: 0, ':focus-visible': 1 },
+    outlineStyle: { default: 'none', ':focus-visible': 'solid' },
+    outlineColor: { default: 'currentColor', ':focus-visible': colors['--focus-ring-color'] },
+    outlineOffset: { default: 0, ':focus-visible': -1 },
   },
   teamName: {
     minWidth: 0,
+    marginLeft: 7,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
-    transition: 'color 0.08s ease',
+    textOverflow: 'ellipsis',
+    color: colors['--sidebar-item-fg'],
+    fontSize: 13,
+    fontWeight: 500,
+    lineHeight: 'normal',
   },
   teamLock: {
     flexShrink: 0,
+    marginLeft: 4,
     color: colors['--sidebar-disclosure-fg'],
   },
   teamDisclosure: {
     display: 'inline-flex',
-    alignItems: 'center',
     flexShrink: 0,
-    marginLeft: -3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 24,
+    height: 24,
+    color: colors['--sidebar-disclosure-fg'],
   },
   teamMenu: {
-    position: 'absolute',
-    right: 2,
-    top: 2,
-    opacity: 0,
-    pointerEvents: 'none',
-    transition: 'opacity 0.08s ease',
+    display: 'flex',
+    flexShrink: 0,
+    width: 0,
+    overflow: 'hidden',
   },
   teamMenuOpen: {
-    opacity: 1,
-    pointerEvents: 'auto',
+    width: 26,
   },
 });
 
@@ -354,7 +329,7 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({ id, title, actio
       <div {...withClassName(stylex.props(styles.sectionHeaderRow), css.sectionHeaderRow)}>
         <button
           type="button"
-          {...stylex.props(styles.sectionHeader)}
+          {...withClassName(stylex.props(styles.sectionHeader), css.sectionHeader)}
           aria-expanded={!collapsed}
           aria-controls={bodyId}
           onClick={toggle}
@@ -408,7 +383,7 @@ export const SidebarTeam: React.FC<SidebarTeamProps> = ({ team, workspaceSlug, p
         {...withClassName(stylex.props(styles.teamRow, menuOpen && styles.teamRowMenuOpen), css.teamRow)}
         data-menu-open={menuOpen ? 'true' : undefined}
       >
-        <button type="button" {...stylex.props(styles.teamToggle)} aria-expanded={!collapsed} onClick={toggle}>
+        <button type="button" {...withClassName(stylex.props(styles.teamToggle), css.teamToggle)} aria-expanded={!collapsed} onClick={toggle}>
           <TeamIcon size={14} />
           <span {...withClassName(stylex.props(styles.teamName), css.teamName, 'sidebar-team-name')}>{team.name}</span>
           {team.private && <BuyerlyIcon name="lock" size={12} {...stylex.props(styles.teamLock)} aria-label="Private team" />}

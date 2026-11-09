@@ -13,6 +13,7 @@ import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { accountBlocks } from '@/lib/accounts';
+import './commandExtras.css';
 
 const styles = stylex.create({
   surface: {

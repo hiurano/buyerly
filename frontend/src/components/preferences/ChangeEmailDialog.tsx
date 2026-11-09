@@ -7,6 +7,7 @@ import { Input } from '@/ui/Input';
 import { withClassName } from '@/ui/withClassName';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { colors } from '@/styles/tokens.stylex';
+import animations from '@/ui/animations.module.css';
 
 const styles = stylex.create({
   overlay: {
@@ -200,7 +201,7 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
       <Dialog.Portal>
         <Dialog.Overlay {...stylex.props(styles.overlay)} />
         <div {...stylex.props(styles.frame)}>
-          <Dialog.Content {...withClassName(stylex.props(styles.content), 'ui-dialog animate-scale-in')}>
+          <Dialog.Content {...withClassName(stylex.props(styles.content), `ui-dialog ${animations.scaleIn}`)}>
             <header {...stylex.props(styles.header)}>
               <Dialog.Title {...stylex.props(styles.title)}>
                 Change email

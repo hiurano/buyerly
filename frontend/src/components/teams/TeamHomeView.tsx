@@ -1,4 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
+import { iconButton } from '@/ui/iconButton.stylex';
 import React, { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { pool } from '@/models/pool';
@@ -775,7 +776,7 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
           </div>
           {team && (
             <Tooltip content="Copy team URL" side="bottom" align="end">
-              <button type="button" aria-label="Copy team URL" onClick={copyLink} className="buyerly-icon-btn buyerly-header-target">
+              <button type="button" aria-label="Copy team URL" onClick={copyLink} {...stylex.props(iconButton.root, iconButton.hoverInstant, iconButton.headerTarget)}>
                 <BuyerlyIcon name="link" size={14} />
               </button>
             </Tooltip>
@@ -929,7 +930,7 @@ const TeamActionsMenu: React.FC<{ teamKey: string; canOpenSettings: boolean }> =
     <DropdownMenu>
       <Tooltip content="Team actions" side="bottom">
         <DropdownMenuTrigger asChild>
-          <button type="button" aria-label="Team actions" className="buyerly-icon-btn buyerly-header-target">
+          <button type="button" aria-label="Team actions" {...stylex.props(iconButton.root, iconButton.hoverInstant, iconButton.headerTarget)}>
             <BuyerlyIcon name="more" size={14} />
           </button>
         </DropdownMenuTrigger>

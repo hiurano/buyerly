@@ -1,12 +1,10 @@
 import React from 'react';
-import * as stylex from '@stylexjs/stylex';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { favoritePath, useFavorites, type Favorite } from '@/lib/favorites';
 import { openAppPath } from '@/lib/routing';
 import { SidebarLink, SidebarSection } from './SidebarSections';
 import { useAddress } from '@/lib/routing';
-import { colors } from '@/styles/tokens.stylex';
-import { sidebarNavItemMarker } from '@/ui/markers.stylex';
+import '@/ui/favorites.css';
 
 /** The sidebar icon of what a favorite opens: the page's own, or the record's kind. */
 export function favoriteIcon(favorite: Favorite): React.ReactNode {
@@ -51,7 +49,7 @@ export const SidebarFavorites: React.FC<{
               role="button"
               tabIndex={-1}
               aria-label="Remove favorite"
-              {...stylex.props(styles.remove)}
+              className="buyerly-favorite-remove"
               onClick={(event) => {
                 event.stopPropagation();
                 void remove(favorite.path);
@@ -66,21 +64,3 @@ export const SidebarFavorites: React.FC<{
   );
 };
 
-const styles = stylex.create({
-  remove: {
-    marginLeft: 'auto',
-    width: 18,
-    height: 18,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 4,
-    color: colors['--sidebar-item-fg'],
-    opacity: {
-      default: 0,
-      [stylex.when.ancestor(':hover', sidebarNavItemMarker)]: 1,
-      [stylex.when.ancestor(':focus-visible', sidebarNavItemMarker)]: 1,
-    },
-    flexShrink: 0,
-  },
-});
