@@ -4,6 +4,7 @@ import { favoritePath, useFavorites, type Favorite } from '@/lib/favorites';
 import { openAppPath } from '@/lib/routing';
 import { SidebarLink, SidebarSection } from './SidebarSections';
 import { useAddress } from '@/lib/routing';
+import '@/ui/favorites.css';
 
 /** The sidebar icon of what a favorite opens: the page's own, or the record's kind. */
 export function favoriteIcon(favorite: Favorite): React.ReactNode {
@@ -62,3 +63,4 @@ export const SidebarFavorites: React.FC<{
     </SidebarSection>
   );
 };
+

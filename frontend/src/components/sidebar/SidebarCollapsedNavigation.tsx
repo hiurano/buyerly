@@ -5,6 +5,7 @@ import { Tooltip } from '@/ui/Tooltip';
 import { useShellStore } from '@/models/shellStore';
 import { currentTab } from '@/lib/routing';
 import * as stylex from '@stylexjs/stylex';
+import css from './SidebarCollapsedNavigation.module.css';
 
 const styles = stylex.create({
   slot: {
@@ -58,7 +59,7 @@ export const SidebarCollapsedNavigation: React.FC = () => {
     <button
       type="button"
       onClick={toggleSidebarOpen}
-      className="buyerly-icon-btn buyerly-sidebar-toggle buyerly-header-target"
+      className={css.button}
       aria-label="Menu"
       aria-expanded={isSidebarOpen}
     >
@@ -76,7 +77,7 @@ export const SidebarCollapsedNavigation: React.FC = () => {
           if (!isSidebarCollapsed || currentTab() === 'preferences') return;
           setSidebarPeekOpen(true);
         }}
-        className="buyerly-icon-btn buyerly-sidebar-toggle buyerly-header-target"
+        className={css.button}
         aria-label="Open sidebar"
         tabIndex={visible ? undefined : -1}
       >

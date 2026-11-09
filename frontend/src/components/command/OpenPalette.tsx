@@ -26,6 +26,7 @@ import { SettingsPageIcon } from '@/components/preferences/SettingsPageIcon';
 import { commandMenuStore, useCommandMenuStore, type OpenPaletteKind } from '@/models/commandMenuStore';
 import { useScopeStore } from '@/models/scopeStore';
 import { openSettings as openSettingsPage } from '@/lib/routing';
+import '@/ui/favorites.css';
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, another palette. */
 const OPEN_LAYER_SELECTOR = [

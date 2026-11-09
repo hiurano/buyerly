@@ -5,6 +5,7 @@ import { favoritesStore, toggleFavorite, useFavorites, type FavoriteInput } from
 import { toolbarButtonStyles } from '@/ui/BuyerlyToolbarButton';
 import { Tooltip } from '@/ui/Tooltip';
 import { withClassName } from '@/ui/withClassName';
+import '@/ui/favorites.css';
 
 function isTyping(): boolean {
   const element = document.activeElement as HTMLElement | null;

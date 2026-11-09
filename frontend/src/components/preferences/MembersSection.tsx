@@ -35,6 +35,7 @@ import {
   roleLabel,
   type MemberItem,
 } from './MemberDialogs';
+import '@/ui/animations.css';
 
 const styles = stylex.create({
   roleBadge: {

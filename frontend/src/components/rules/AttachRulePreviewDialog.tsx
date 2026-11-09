@@ -7,6 +7,7 @@ import { withClassName } from '@/ui/withClassName';
 import { ApiError } from '@/lib/api';
 import { fetchRuleAccountPreview, formatRelativeTime } from '@/lib/rules';
 import type { RuleAccountPreview, RuleExecutionLevel } from '@/lib/rules';
+import '@/ui/animations.css';
 
 function requestErrorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;

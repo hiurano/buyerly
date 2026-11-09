@@ -4,6 +4,7 @@ import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
 import { menuItemMarker } from '@/ui/markers.stylex';
 import { withClassName } from '@/ui/withClassName';
+import './menu.css';
 
 export const DropdownMenu = DropdownMenuPrimitive.Root;
 export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
@@ -158,17 +159,18 @@ export const DropdownMenuLabel: React.FC<DropdownMenuPrimitive.DropdownMenuLabel
   />
 );
 
-export const DropdownMenuContent: React.FC<DropdownMenuPrimitive.DropdownMenuContentProps> = ({
+export const DropdownMenuContent: React.FC<DropdownMenuPrimitive.DropdownMenuContentProps & { xstyle?: stylex.StyleXStyles }> = ({
   className = '',
   sideOffset = 4,
   align = 'start',
+  xstyle,
   ...props
 }) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
       sideOffset={sideOffset}
       align={align}
-      {...withClassName(stylex.props(styles.content, styles.menu), `buyerly-menu ${className}`.trim())}
+      {...withClassName(stylex.props(styles.content, styles.menu, xstyle), `buyerly-menu ${className}`.trim())}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>
@@ -213,7 +215,7 @@ export const DropdownMenuSubContent: React.FC<DropdownMenuPrimitive.DropdownMenu
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.SubContent
       sideOffset={sideOffset}
-      {...withClassName(stylex.props(styles.content, styles.submenu), className)}
+      {...withClassName(stylex.props(styles.content, styles.submenu), `buyerly-menu ${className}`.trim())}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>

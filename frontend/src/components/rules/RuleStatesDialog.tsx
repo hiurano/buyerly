@@ -9,6 +9,7 @@ import type { RuleEntityStatePayload, RuleEntityStateName } from '@/lib/rules';
 import { RuleStateLine } from './RuleStateLine';
 import { useRulesStore, type RuleItem } from '@/models/rulesStore';
 import { useDialogStore } from '@/models/dialogStore';
+import '@/ui/animations.css';
 
 /** What needs the buyer's eye first: actions and holds, then quiet checks. */
 const STATE_ORDER: Record<RuleEntityStateName, number> = {

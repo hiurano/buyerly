@@ -4,6 +4,7 @@ import * as stylex from '@stylexjs/stylex';
 import { colors, radii } from '@/styles/tokens.stylex';
 import { Button } from '@/ui/Button';
 import { withClassName } from '@/ui/withClassName';
+import '@/ui/animations.css';
 
 interface ConfirmDialogProps {
   open: boolean;

@@ -12,6 +12,7 @@ import { toast } from '@/ui/toast';
 import { useLastPresent } from '@/ui/useLastPresent';
 import { withClassName } from '@/ui/withClassName';
 import { colors, radii } from '@/styles/tokens.stylex';
+import '@/ui/animations.css';
 
 const styles = stylex.create({
   overlay: {

@@ -1,0 +1,6 @@
+/* The dialogs' entrance, Linear's fade and 0.96→1 scale (#694). The keyframes
+   live in base.css; the class name stays unhashed so a CSS Module does not
+   rewrite the animation's name to a keyframe that does not exist. */
+.animate-scale-in {
+  animation: fadeIn 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+}

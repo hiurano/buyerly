@@ -27,6 +27,7 @@ import { SubmenuArrow } from '@/ui/SubmenuArrow';
 import { setRef } from '@/ui/setRef';
 import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlyToolbarButton, type BuyerlyToolbarButtonPlacement } from '@/ui/BuyerlyToolbarButton';
+import '@/ui/menu.css';
 
 const MENU_SURFACE = 'var(--card-bg)';
 const MENU_BORDER = 'var(--filter-menu-border)';
