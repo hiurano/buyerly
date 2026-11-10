@@ -21,7 +21,7 @@ Owner: Product / Frontend
 - `frontend/` is the authenticated production React/Vite application;
 - `frontend/src/styles/tokens.stylex.ts` owns semantic visual values and light/dark theme values;
 - `frontend/src/ui/` owns shared React primitives and their interaction/accessibility behavior;
-- `frontend/src/styles/index.css` composes shared and domain styles while consuming semantic tokens;
+- component styles are written with StyleX in each component, with a CSS Module beside it for what StyleX cannot express (`frontend/STYLEX.md`);
 - `frontend/src/components/` owns product surfaces and page-specific composition;
 - `frontend/src/lib/api.ts` and `frontend/src/lib/routing.ts` own the client API and canonical routes;
 - the `frontend` stage of the root `Dockerfile` builds hashed Vite assets, renders the public pages from `frontend/site/` and `changelog/`, and includes the assets in `frontend/public/`;

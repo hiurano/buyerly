@@ -1,4 +1,6 @@
 import React, { startTransition, use, useEffectEvent, useLayoutEffect, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors, layout, motion } from '@/styles/tokens.stylex';
 import { preloadPage, type PageToOpen } from '@/models/pagePreload';
 import { preloadPageChunk } from '@/components/layout/BuyerlyPageChunks';
 
@@ -68,17 +70,75 @@ export const BuyerlyPageGate: React.FC<{ ready: Promise<void> | null; children: 
 
 const SKELETON_ROWS = [64, 48, 72, 56, 40, 68, 52, 60];
 
+const skeletonStyles = stylex.create({
+  /* A page still reading its data: a header and rows, in the canvas's own colours, so it
+     reads the same in light and dark. It fades in, never blinks. */
+  skeleton: {
+    display: 'flex',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    flexDirection: 'column',
+    minHeight: 0,
+    animationName: 'buyerlyPageSkeletonIn',
+    animationDuration: motion['--speed-regularTransition'],
+    animationTimingFunction: motion['--ease-out-quad'],
+    '@media (prefers-reduced-motion: reduce)': { animationName: 'none' },
+  },
+  header: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    minHeight: layout['--header-height'],
+    paddingLeft: 24,
+    paddingRight: 24,
+    borderBottomWidth: 1,
+    borderBottomStyle: 'solid',
+    borderBottomColor: colors['--color-border-primary'],
+  },
+  rows: {
+    display: 'flex',
+    flexDirection: 'column',
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
+  row: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    height: layout['--facet-row-height'],
+    paddingLeft: 24,
+    paddingRight: 24,
+    borderBottomWidth: 1,
+    borderBottomStyle: 'solid',
+    borderBottomColor: colors['--color-border-primary'],
+  },
+  bar: {
+    display: 'block',
+    height: 10,
+    maxWidth: 480,
+    borderRadius: 4,
+    backgroundColor: colors['--item-active-bg'],
+  },
+  barIcon: {
+    flexShrink: 0,
+    width: 14,
+    height: 14,
+    borderRadius: '50%',
+  },
+});
+
 /** A page still reading its data after PAGE_HOLD_MS: a header and rows, as Linear's loading view. */
 export const BuyerlyPageSkeleton: React.FC = () => (
-  <div className="buyerly-page-skeleton" data-buyerly-page-skeleton="" role="status" aria-label="Loading…" aria-busy="true">
-    <div className="buyerly-page-skeleton-header">
-      <span className="buyerly-page-skeleton-bar" style={{ width: 120 }} />
+  <div {...stylex.props(skeletonStyles.skeleton)} data-buyerly-page-skeleton="" role="status" aria-label="Loading…" aria-busy="true">
+    <div {...stylex.props(skeletonStyles.header)}>
+      <span {...stylex.props(skeletonStyles.bar)} style={{ width: 120 }} />
     </div>
-    <div className="buyerly-page-skeleton-rows">
+    <div {...stylex.props(skeletonStyles.rows)}>
       {SKELETON_ROWS.map((width, index) => (
-        <div key={index} className="buyerly-page-skeleton-row">
-          <span className="buyerly-page-skeleton-bar buyerly-page-skeleton-bar--icon" />
-          <span className="buyerly-page-skeleton-bar" style={{ width: `${width}%` }} />
+        <div key={index} {...stylex.props(skeletonStyles.row)}>
+          <span {...stylex.props(skeletonStyles.bar, skeletonStyles.barIcon)} />
+          <span {...stylex.props(skeletonStyles.bar)} style={{ width: `${width}%` }} />
         </div>
       ))}
     </div>

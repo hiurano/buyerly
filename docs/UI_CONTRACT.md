@@ -16,7 +16,7 @@ Buyerly follows the Linear design language. That decision is already encoded in 
 |---|---|---|
 | Color, type, spacing, radius, control height, shadow, layer and motion values | [`frontend/src/styles/tokens.stylex.ts`](../frontend/src/styles/tokens.stylex.ts) | Change or add a semantic token; do not copy a reusable literal into a page component. |
 | Shared component behavior, markup and accessibility | [`frontend/src/ui/`](../frontend/src/ui/) | Reuse the React primitive where one exists. Add a shared primitive before introducing a repeated control family. |
-| Shared and domain style composition | [`frontend/src/styles/index.css`](../frontend/src/styles/index.css) | May consume tokens and compose layouts, but must not become a second token source. |
+| Shared and domain style composition | Each component's StyleX, with a CSS Module beside it ([`frontend/STYLEX.md`](../frontend/STYLEX.md)) | May consume tokens and compose layouts, but must not become a second token source. |
 | Product hierarchy, surfaces and accessibility principles | [`docs/DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) | A new screen follows the same information model and state language. |
 | Behavior, routing and API payloads | `frontend/src/components/`, `frontend/src/lib/routing.ts` and `frontend/src/lib/api.ts` | A visual refactor preserves behavior, workspace isolation and security boundaries unless the task explicitly changes them. |
 | Production web artifact | [`Dockerfile`](../Dockerfile) (stage `frontend`) | Vite builds hashed assets from `frontend/`; manual CSS cache-version bumps are not used. |
@@ -112,7 +112,7 @@ Every UI pull request must:
 
 1. Read this contract and the relevant part of `DESIGN_SYSTEM.md` before editing.
 2. Reuse an existing primitive from `frontend/src/ui/`. If none fits and the pattern will repeat, add and document a shared React primitive first.
-3. Change semantic values in `frontend/src/styles/tokens.stylex.ts`; consume them from components or `frontend/src/styles/index.css`.
+3. Change semantic values in `frontend/src/styles/tokens.stylex.ts`; consume them from components (StyleX) or a CSS Module.
 4. Preserve ids, handlers, API payloads, workspace isolation and security boundaries unless explicitly in scope.
 5. Update the browser checks in `scripts/*-browser.ts` when the production UI contract changes. Public route coverage lives in `server/test/site.test.ts`, and `frontend/site/site.test.ts` checks the rendered pages (`npm test` in `frontend/`).
 6. Pass GitHub Actions, and check keyboard focus, disabled/busy/error states and overflow.

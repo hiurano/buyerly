@@ -8,8 +8,8 @@
  * - reset: reset.css, the element reset.
  * - base: the tokens (tokens.css here, their variables from virtual:buyerly-tokens.css,
  *   which main.tsx imports next) and base.css, the page's own html and body.
- * - app.base: index.css's global classes until #694–#698 move them out (#699 deletes
- *   it). Below StyleX, as before, when StyleX's rules outranked them with :not(#\#).
+ * - app.base: empty, since #699 removed index.css's global classes. Kept in the
+ *   order below StyleX, where they used to sit.
  * - priority1…N: StyleX's rules, one layer per priority group (vite.config.ts).
  * - Outside any layer: CSS Modules (*.module.css), as Linear's, which style a
  *   component's children and so must win over the StyleX on them, and the splash
@@ -19,4 +19,3 @@
 @import './reset.css' layer(reset);
 @import './tokens.css' layer(base);
 @import './base.css' layer(base);
-@import './index.css' layer(app.base);

@@ -106,6 +106,8 @@ interface BuyerlyToolbarButtonProps extends Omit<React.ButtonHTMLAttributes<HTML
   placement?: BuyerlyToolbarButtonPlacement;
   /** Lit while its menu, popover or pane is open. */
   active?: boolean;
+  /** Linear's labelled variant: a 16px icon and 12px text, as "Add a member". */
+  labelled?: boolean;
   /** StyleX overrides for the button. */
   xstyle?: stylex.StyleXStyles;
 }
@@ -116,8 +118,7 @@ interface BuyerlyToolbarButtonProps extends Omit<React.ButtonHTMLAttributes<HTML
  * Spreads the rest so a wrapping Tooltip or menu trigger gets its handlers.
  */
 export const BuyerlyToolbarButton = React.forwardRef<HTMLButtonElement, BuyerlyToolbarButtonProps>(
-  ({ placement = 'toolbar', active = false, className, xstyle, children, ...rest }, ref) => {
-    const isLabelled = Boolean(className && className.split(/\s+/).includes('buyerly-header-button--labelled'));
+  ({ placement = 'toolbar', active = false, labelled = false, className, xstyle, children, ...rest }, ref) => {
     return (
       <button
         {...rest}
@@ -130,8 +131,8 @@ export const BuyerlyToolbarButton = React.forwardRef<HTMLButtonElement, BuyerlyT
             placement === 'header'
               ? (active ? toolbarButtonStyles.headerActive : toolbarButtonStyles.header)
               : (active ? toolbarButtonStyles.toolbarActive : toolbarButtonStyles.toolbar),
-            isLabelled && toolbarButtonStyles.labelled,
-            isLabelled && active && toolbarButtonStyles.labelledActive,
+            labelled && toolbarButtonStyles.labelled,
+            labelled && active && toolbarButtonStyles.labelledActive,
             xstyle,
           ),
           placement === 'toolbar' && css.toolbar,

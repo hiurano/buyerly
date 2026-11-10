@@ -36,7 +36,8 @@ import { InboxFilterBar } from '@/components/inbox/InboxFilterBar';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { BuyerlySearchGlyph, BuyerlyStatusCircleIcon } from '@/icons/BuyerlyIcons';
-import { BuyerlySelect } from '@/ui/BuyerlyDisplayOptions';
+import { BuyerlySelect, displayCss, displayStyles } from '@/ui/BuyerlyDisplayOptions';
+import { withClassName } from '@/ui/withClassName';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { BuyerlyTabs } from '@/ui/BuyerlyTabs';
 import { Tooltip } from '@/ui/Tooltip';
@@ -721,11 +722,16 @@ const SearchDisplayOptions: React.FC<SearchDisplayOptionsProps> = ({
       ref={popoverRef}
       role="dialog"
       aria-label="Display options"
-      className={isClosing ? 'buyerly-display-options-popover buyerly-menu-exit' : 'buyerly-display-options-popover'}
+      {...withClassName(
+        stylex.props(displayStyles.popover, isClosing && displayStyles.popoverClosing),
+        displayCss.popover,
+        'buyerly-display-options-popover',
+        isClosing && 'buyerly-menu-exit',
+      )}
       style={{ top: coords.top, left: coords.left }}
     >
-      <section className="buyerly-display-main-section">
-        <div className="buyerly-display-row">
+      <section {...withClassName(stylex.props(displayStyles.mainSection), 'buyerly-display-main-section')}>
+        <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
           <span>Ordering</span>
           <BuyerlySelect
             value={order}
@@ -737,8 +743,8 @@ const SearchDisplayOptions: React.FC<SearchDisplayOptionsProps> = ({
           />
         </div>
       </section>
-      <section className="buyerly-display-options-section">
-        <div className="buyerly-display-row">
+      <section {...withClassName(stylex.props(displayStyles.section), 'buyerly-display-options-section')}>
+        <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
           <span>Include deleted</span>
           <BuyerlyToggle
             label="Include deleted"
