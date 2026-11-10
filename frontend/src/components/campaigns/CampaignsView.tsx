@@ -94,7 +94,9 @@ import { useRulesStore } from '@/models/rulesStore';
 import { useSelectionStore } from '@/models/selectionStore';
 import { colors } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
+import { displayStyles } from '@/ui/BuyerlyDisplayOptions';
 import { BuyerlyDisplayOptionsButton } from '@/ui/BuyerlyToolbarButton';
+import css from './CampaignsView.module.css';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -221,6 +223,23 @@ const styles = stylex.create({
   },
   list: {
     position: 'relative',
+    display: 'flex',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    minWidth: 0,
+    minHeight: 0,
+    overflow: 'hidden',
+  },
+  filterSummary: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 'var(--facet-sidebar-gap)',
+    padding: 'var(--facet-empty-padding)',
+    color: colors['--text-secondary'],
+    fontSize: 'var(--facet-font-size)',
   },
   board: {
     display: 'flex',
@@ -249,10 +268,10 @@ function facetIcon(fieldId: string, option: FilterOption): React.ReactNode {
     return <BuyerlyIcon name="rules" size={14} style={{ color: option.value === 'no-rule' ? 'var(--text-muted)' : option.color }} />;
   }
   if (fieldId === 'account') return <BuyerlyIcon name="ad-accounts" size={14} className={stylex.props(styles.accountIcon).className} />;
-  if (fieldId === 'campaign') return <span className="details-facets-dot" style={{ backgroundColor: 'var(--text-tertiary)' }} />;
+  if (fieldId === 'campaign') return <span {...withClassName(stylex.props(displayStyles.facetDot), 'details-facets-dot')} style={{ backgroundColor: 'var(--text-tertiary)' }} />;
   if (fieldId === 'status') return <BuyerlyDeliveryIcon state={option.value as BuyerlyDeliveryState} />;
   if (option.value === 'active' || option.value === 'paused') return <BuyerlyStatusCircleIcon status={option.value} size={14} />;
-  return <span className="details-facets-dot" style={{ backgroundColor: option.color }} />;
+  return <span {...withClassName(stylex.props(displayStyles.facetDot), 'details-facets-dot')} style={{ backgroundColor: option.color }} />;
 }
 
 const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reveal, navigationKey }) => {
@@ -1029,7 +1048,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
       return (
         <div {...stylex.props(styles.board)}>
           {failedAccounts.length > 0 && (
-            <div className="campaign-filter-summary" role="alert">
+            <div {...stylex.props(styles.filterSummary)} role="alert">
               <span>
                 {"Couldn't load "}
                 {failedAccounts.length === 1
@@ -1061,7 +1080,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
         sortDirection={sortDirection}
         onSort={(columnId) => updateView(sortByColumn({ ...view, ordering: effectiveOrdering }, columnId, naturalAdsManagerDirection(columnId)))}
         before={failedAccounts.length > 0 && (
-          <div className="campaign-filter-summary" role="alert">
+          <div {...stylex.props(styles.filterSummary)} role="alert">
             <span>
               {"Couldn't load "}
               {failedAccounts.length === 1
@@ -1072,7 +1091,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
           </div>
         )}
         after={filteredCurrentCount > 0 && filteredCurrentCount < totalCurrent && (
-          <div className="campaign-filter-summary">
+          <div {...stylex.props(styles.filterSummary)}>
             <span>{totalCurrent - filteredCurrentCount} {entityLabels[campaignFilterTab].plural} hidden by filters</span>
             <Button size="compact" onClick={clearFilters}>Clear filters</Button>
           </div>
@@ -1124,7 +1143,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
           </div>
         </div>
 
-        <BuyerlyDataListToolbar className="campaign-view-toolbar">
+        <BuyerlyDataListToolbar className={css.toolbar}>
           {/* When the tabs no longer fit they fold into one menu, as in Linear; the actions stay on the right. */}
           <BuyerlyTabs
             collapseOverflow
@@ -1200,7 +1219,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
       />
 
       <DetailsPaneLayout pane="adsManager" label="Campaigns details" details={details}>
-        <div {...withClassName(stylex.props(styles.list), 'campaign-view-list')}>
+        <div {...stylex.props(styles.list)}>
           {renderData()}
           <SelectionDock count={selection.count} onOpenActions={() => selection.setMenuOpen(true)} onClear={selection.clear} />
         </div>

@@ -22,6 +22,22 @@ html {
   line-height: normal;
 }
 
+/*
+ * Display options' light-theme overrides. BuyerlyDisplayOptions.module.css sets
+ * them for the views that show Display options; the rest of the app (the auth
+ * and onboarding pages) reads them through their fallbacks, so they live here
+ * too, as they did in index.css.
+ */
+html[data-theme='light'] {
+  --display-popover-border: lch(90.55% 0 282);
+  --display-menu-border: lch(86.5% 0 282);
+  --display-divider: lch(97.3% 0 282);
+  --display-selected: lch(95.543% 0 282);
+  --display-property-selected: lch(94.857% 0 282);
+  --display-control-hover: lch(97.3% 0 282);
+  --display-option-hover: lch(95.543% 0 282);
+}
+
 body {
   font-size: 13px;
   line-height: normal;
@@ -91,3 +107,18 @@ body {
 @keyframes buyerlyCommandMenuFade { from { opacity: 0; } }
 @keyframes buyerlyCommandMenuGrow { from { transform: scale(0.98); } }
 @keyframes buyerlyCommandMenuShut { to { opacity: 0; transform: scale(0.96); } }
+
+@keyframes detailsPaneScrimIn { from { opacity: 0; } }
+
+/* The selection dock rises into place with a small overshoot; it leaves at once. */
+@keyframes selectionDockEnter {
+  0% { opacity: 0; transform: translateY(16px); }
+  33% { opacity: 1; transform: translateY(3px); }
+  60% { transform: translateY(-0.8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toastEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

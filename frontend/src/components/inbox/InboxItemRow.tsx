@@ -26,6 +26,8 @@ import {
 } from '@/ui/ContextMenu';
 import { SubmenuArrow } from '@/ui/SubmenuArrow';
 import { colors } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
+import inboxItemRowCss from './InboxItemRow.module.css';
 
 const truncate = {
   overflow: 'hidden',
@@ -202,6 +204,31 @@ const styles = stylex.create({
     fontWeight: 450,
     lineHeight: '15px',
     color: colors['--text-tertiary'],
+  },
+  // Linear's Focus group header: a 28px band level with the rows, caret after the name.
+  inboxGroup: {
+    paddingLeft: 10,
+    paddingRight: 10,
+  },
+  groupHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    width: '100%',
+    height: 28,
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 10,
+    borderWidth: 0,
+    borderStyle: 'none',
+    borderColor: 'currentColor',
+    borderRadius: 8,
+    color: colors['--inbox-group-header-fg'],
+    backgroundColor: colors['--inbox-group-header-bg'],
+    fontSize: 12,
+    fontWeight: 500,
+    cursor: 'default',
   },
 });
 
@@ -440,11 +467,11 @@ export const InboxGroupHeader: React.FC<{ label: string; expanded: boolean; onTo
   expanded,
   onToggle,
 }) => (
-  <div className="buyerly-inbox-group">
+  <div {...withClassName(stylex.props(styles.inboxGroup), inboxItemRowCss.group, 'buyerly-inbox-group')}>
     <button
       type="button"
       aria-expanded={expanded}
-      className="buyerly-inbox-group-header"
+      {...withClassName(stylex.props(styles.groupHeader), inboxItemRowCss.header, 'buyerly-inbox-group-header')}
       onClick={onToggle}
     >
       <span>{label}</span>

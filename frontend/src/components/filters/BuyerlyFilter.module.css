@@ -1,0 +1,4 @@
+/* A person without a photo under From: their initial, kept out of the option's text. */
+.filterAvatarInitial::before {
+  content: attr(data-initial);
+}

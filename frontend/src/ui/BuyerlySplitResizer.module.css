@@ -1,0 +1,17 @@
+/* The edge between a split view's list and its pane: the hairline fades in
+   100ms after the pointer arrives, and stays lit while dragging. */
+@media (any-hover: hover) and (any-pointer: fine) {
+  .resizer:hover .track {
+    opacity: 1;
+    transition-delay: 0.1s;
+  }
+}
+
+.resizer:active .track,
+.resizer[data-dragging='true'] .track {
+  opacity: 1;
+}
+
+.resizer:active .track {
+  transition-delay: 0.1s;
+}

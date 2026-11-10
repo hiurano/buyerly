@@ -1,0 +1,10 @@
+/*
+ * The Ads Manager table's container, so its metric columns could answer to the
+ * table's own width (Linear's container queries). The class stays a global hook
+ * because the tests and the table read it; the rules moved here from index.css
+ * with #695.
+ */
+.campaign-list-container {
+  container-name: campaign-list;
+  container-type: inline-size;
+}

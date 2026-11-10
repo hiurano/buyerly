@@ -4,6 +4,7 @@ import { favoritesStore } from '@/lib/favorites';
 import { searchPageTitle } from '@/lib/search';
 import { pageTitle } from '@/lib/pageTitle';
 import { useTeams } from '@/lib/teams';
+import { colors } from '@/styles/tokens.stylex';
 import { AppUtilityBar } from '@/components/layout/AppUtilityBar';
 import { TooltipProvider } from '@/ui/Tooltip';
 import { ToastRegion } from '@/ui/ToastRegion';
@@ -81,6 +82,8 @@ const styles = stylex.create({
     height: '100vh',
     width: '100vw',
     overflow: 'hidden',
+    backgroundColor: colors['--bg-window'],
+    color: colors['--text-primary'],
   },
 });
 

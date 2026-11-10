@@ -2,9 +2,68 @@ import React from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { DeliveryControl } from '@/lib/delivery';
 import { colors } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
 import { DeliveryStatusControl, rowDeliveryState } from './DeliveryStatusControl';
+import css from './AdsManagerCard.module.css';
 
 const styles = stylex.create({
+  // The card, as Linear's issue card: its surface, its states and the 8px gap between its parts.
+  card: {
+    display: 'flex',
+    width: '100%',
+    flexDirection: 'column',
+    gap: 6,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: {
+      default: colors['--card-bg'],
+      ':hover': colors['--item-hover-bg'],
+      '[data-selected]': colors['--item-active-bg'],
+    },
+    boxShadow: {
+      default: `0 0 0 0.5px ${colors['--board-card-ring']}, ${colors['--canvas-shadow']}`,
+      ':focus-visible': `0 0 0 1px ${colors['--focus-ring-color']}, ${colors['--canvas-shadow']}`,
+      '[data-selected]': `0 0 0 1px ${colors['--color-border-secondary']}, ${colors['--canvas-shadow']}`,
+      '[data-selected]:focus-visible': `0 0 0 1px ${colors['--focus-ring-color']}, ${colors['--canvas-shadow']}`,
+    },
+    opacity: {
+      default: null,
+      '[data-busy]': 0.6,
+    },
+    cursor: {
+      default: 'pointer',
+      '[data-busy]': 'progress',
+    },
+    textAlign: 'left',
+    outlineStyle: 'none',
+    userSelect: 'none',
+    transition: 'background-color 0.1s ease',
+  },
+  // The card's properties, as Linear's 24px chips.
+  chips: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  chip: {
+    display: 'inline-flex',
+    maxWidth: '100%',
+    height: 24,
+    alignItems: 'center',
+    gap: 5,
+    padding: '0 8px',
+    borderWidth: 1,
+    borderColor: colors['--rules-property-border'],
+    borderRadius: 9999,
+    backgroundColor: colors['--rules-property-bg'],
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--rules-property-text'],
+    whiteSpace: 'nowrap',
+  },
+  chipLabel: {
+    color: colors['--text-tertiary'],
+  },
   // The ID and the Status switch, as Linear's issue ID and assignee.
   top: {
     display: 'flex',
@@ -108,7 +167,7 @@ export const AdsManagerCard: React.FC<AdsManagerCardProps> = ({
       data-selected={selected || undefined}
       data-busy={busy || undefined}
       aria-busy={busy || undefined}
-      className="buyerly-board-card"
+      {...stylex.props(styles.card)}
       onClick={onToggleSelected}
       onKeyDown={(event) => {
         if (event.target !== event.currentTarget) return;
@@ -141,9 +200,9 @@ export const AdsManagerCard: React.FC<AdsManagerCardProps> = ({
         {name}
       </span>
       {chips.length > 0 && (
-        <div className="buyerly-board-chips">
+        <div {...stylex.props(styles.chips)}>
           {chips.map((chip) => (
-            <span key={chip.key} className="buyerly-board-chip" title={chip.label}>
+            <span key={chip.key} {...withClassName(stylex.props(styles.chip), css.chip)} title={chip.label}>
               {chip.icon && <span {...stylex.props(styles.chipIcon)} aria-hidden="true">{chip.icon}</span>}
               <span>{chip.label}</span>
             </span>
@@ -151,10 +210,10 @@ export const AdsManagerCard: React.FC<AdsManagerCardProps> = ({
         </div>
       )}
       {figures.length > 0 && (
-        <div className="buyerly-board-chips">
+        <div {...stylex.props(styles.chips)}>
           {figures.map((figure) => (
-            <span key={figure.key} className="buyerly-board-chip">
-              <span className="buyerly-board-chip-label">{figure.label}</span>
+            <span key={figure.key} {...withClassName(stylex.props(styles.chip), css.chip)}>
+              <span {...stylex.props(styles.chipLabel)}>{figure.label}</span>
               <span>{figure.value}</span>
             </span>
           ))}

@@ -4,6 +4,7 @@ import { colors } from '@/styles/tokens.stylex';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { Tooltip } from '@/ui/Tooltip';
 import { withClassName } from '@/ui/withClassName';
+import '@/ui/animations.css';
 
 interface SelectionDockProps {
   count: number;
