@@ -94,33 +94,9 @@ const DeliveryMark: React.FC<{ state: BuyerlyDeliveryState }> = ({ state }) => {
   return <circle cx="7" cy="7" r="5.5" stroke="#73767c" strokeWidth="1.5" strokeDasharray="1 2.4" />;
 };
 
-// 12a. Buyerly mark (#432): monochrome, follows the theme through --site-logo
-// (Linear's #222326 in light, white in dark). Same 512 frame as /buyerly-logo.png.
-export const BuyerlyMark: React.FC<{ size?: number; className?: string }> = ({
-  size = 16,
-  className = '',
-}) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 512 512"
-    fill="none"
-    aria-hidden="true"
-    className={className}
-    style={{ display: 'block', color: 'var(--site-logo)' }}
-  >
-    <path
-      fill="currentColor"
-      fillRule="evenodd"
-      clipRule="evenodd"
-      d="M192 464V336H112L80 224H192V192H288V48H320L432 464H192Z M288 224L224 256H288V224Z M192 176V48H224L256 176H192Z"
-    />
-  </svg>
-);
-
-// 12b. Buyerly Logo Avatar (#557), as Linear's logo in its Inbox welcome item:
+// 12. Buyerly Logo Avatar (#557), as Linear's logo in its Inbox welcome item:
 // a disc in the inverse of the page (#2f2f31 in light, #e3e4e6 in dark) with
-// the mark at 160/256 in the canvas color.
+// the letter B at 160/256 in the canvas color.
 const avatarStyles = stylex.create({
   root: {
     display: 'block',
@@ -150,7 +126,7 @@ export const BuyerlyLogoAvatar: React.FC<{ size?: number }> = ({ size = 32 }) =>
       <path
         fillRule="evenodd"
         clipRule="evenodd"
-        d="M192 464V336H112L80 224H192V192H288V48H320L432 464H192Z M288 224L224 256H288V224Z M192 176V48H224L256 176H192Z"
+        d="M117 64H271C335 64 379 102 379 160C379 200 359 230 327 246C369 260 395 296 395 344C395 406 347 448 277 448H117Z M199 130V218H261C289 218 305 200 305 174C305 148 289 130 261 130Z M199 282V382H269C299 382 317 362 317 332C317 302 299 282 269 282Z"
         {...stylex.props(avatarStyles.mark)}
       />
     </svg>

@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
 
-// Raster icons of the Buyerly mark, drawn from the same path as favicon.svg
+// Raster icons of the Buyerly mark (the letter B), drawn from the same path as favicon.svg
 // (#432; #611, stage 5: port of scripts/build_icons.py, drawn with sharp
 // instead of Pillow, so the pixels differ by antialiasing only).
 //
@@ -10,7 +10,7 @@ import sharp from 'sharp';
 // square with corners rounded 2/16, the same on light and dark tab bars, so it
 // reads at 16px in Chrome and Safari alike. The home screen icon is a full
 // #222326 tile (iOS rounds its corners). buyerly-logo.png stays the bare mark,
-// the CSS mask of the public pages' header.
+// the CSS mask of the landing page's Inbox mockup.
 //
 //   node server/src/scripts/build-icons.ts
 
@@ -23,10 +23,10 @@ const BLACK = '#000000';
 const WHITE = '#ffffff';
 
 // frontend/public/static/icons/favicon.svg, 512 frame, evenodd.
-const BODY = '192,464 192,336 112,336 80,224 192,224 192,192 288,192 288,48 320,48 432,464';
-const NOTCH = '288,224 224,256 288,256';
-const FLAG = '192,176 192,48 224,48 256,176';
-const MARK = `M${BODY.replace(/ /g, 'L')}ZM${FLAG.replace(/ /g, 'L')}ZM${NOTCH.replace(/ /g, 'L')}Z`;
+const MARK =
+  'M117 64H271C335 64 379 102 379 160C379 200 359 230 327 246C369 260 395 296 395 344C395 406 347 448 277 448H117Z' +
+  'M199 130V218H261C289 218 305 200 305 174C305 148 289 130 261 130Z' +
+  'M199 282V382H269C299 382 317 362 317 332C317 302 299 282 269 282Z';
 
 // The mark at `scale` of the 512 frame, centred, as an SVG group of `size`.
 function markGroup(size: number, color: string, scale: number): string {
@@ -81,8 +81,12 @@ async function main(): Promise<void> {
   writeFileSync(path.join(PUBLIC_DIR, 'static', 'icons', 'favicon-32x32.png'), favicon32);
   writeFileSync(path.join(BRANDING_DIR, 'favicon-32x32.png'), favicon32);
   writeFileSync(path.join(BRANDING_DIR, 'favicon.png'), favicon32);
-  // Also the CSS mask of the public pages, where only its alpha counts.
+  // Also a CSS mask on the landing page, where only its alpha counts.
   writeFileSync(path.join(PUBLIC_DIR, 'buyerly-logo.png'), await mark(1024, INK));
+  writeFileSync(path.join(BRANDING_DIR, 'logo.png'), await mark(1600, INK));
+  // The link preview card: the white mark, 240px, in the middle of a #0a0a0a card.
+  const card = `<rect width="1200" height="630" fill="#0a0a0a"/><g transform="translate(480 195)">${markGroup(240, WHITE, 1)}</g>`;
+  writeFileSync(path.join(BRANDING_DIR, 'og-image.png'), await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">${card}</svg>`), { density: 72 }).png({ compressionLevel: 9 }).toBuffer());
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) await main();

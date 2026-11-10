@@ -28,7 +28,6 @@
 
 :global(html[data-theme='dark']) .page,
 .dark {
-  --site-logo: #fff;
   --auth-bg: rgb(9, 9, 10);
   --auth-text: rgb(226, 227, 229);
   --auth-text-muted: rgb(148, 149, 151);
@@ -46,21 +45,4 @@
   --auth-error: rgb(235, 87, 87);
   --auth-signin-error: rgb(235, 87, 87);
   color-scheme: dark;
-}
-
-/* BuyerlyMark's <svg> inside BuyerlyBrand: StyleX cannot style an element's children. */
-.brand svg {
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
-}
-
-.brandCompact svg {
-  width: 32px;
-  height: 32px;
-}
-
-.brandSignin svg {
-  width: 48px;
-  height: 48px;
 }

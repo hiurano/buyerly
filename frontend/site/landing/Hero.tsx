@@ -39,7 +39,7 @@ export function Hero() {
             <div className={mockup.appSidebar}>
               <div className={mockup.appWs}>
                 <span className={mockup.appWsName}>
-                  <span className={mockup.appWsMark} />
+                  <span className={mockup.appWsInitial}>N</span>
                   Northwind
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
                     <path d="M4.47 6.47a.75.75 0 0 1 1.06 0L8 8.94l2.47-2.47a.75.75 0 1 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" />

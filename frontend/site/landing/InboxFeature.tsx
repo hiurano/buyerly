@@ -131,9 +131,7 @@ export function InboxFeature() {
                 <span className={mockup.cfSub}>notifications@buyerly.app</span>
               </div>
               <div className={mockup.emCard}>
-                <span className={mockup.emLogo}>
-                  <span className={mockup.appWsMark} />
-                </span>
+                <span className={mockup.emLogo}>Buyerly</span>
                 <h4>Budget raised · US | Sweeps | Broad</h4>
                 <p className={mockup.emContext}>US · Sweepstakes · Northwind</p>
                 <div className={mockup.emMessage}>$250 → $300 a day: CPL $1.80 is under $2.</div>

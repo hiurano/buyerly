@@ -1,9 +1,8 @@
-/* Footer as linear.app's: six 224px columns, the mark in the first, links 13px, legal links in a second row. */
+/* Footer as linear.app's: six 224px columns, the name in the first, links 13px, legal links in a second row. */
 .siteFooter { border-top: 1px solid var(--site-divider); background: var(--site-bg); }
 .siteFooterGrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); row-gap: 48px; width: min(1344px, calc(100% - 2 * (var(--site-gutter) - 32px))); margin-inline: auto; padding-block: 56px; font-size: 13px; line-height: 19.5px; letter-spacing: -0.01em; }
 .siteFooterLogo { padding-left: 32px; }
-.siteFooterMark { display: block; width: 20px; }
-.siteFooterMark .siteFooterMarkImage { width: 20px; height: 20px; }
+.siteFooterMark { display: block; width: fit-content; color: var(--site-fg); font-size: 16px; font-weight: 600; line-height: 20px; letter-spacing: -0.02em; text-decoration: none; }
 .siteFooterCol { padding-inline: 32px; }
 .siteFooter h2 { margin: 0 0 24px; color: var(--site-fg); font-size: 13px; font-weight: 510; line-height: 19.5px; }
 .siteFooter ul { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }

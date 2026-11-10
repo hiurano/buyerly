@@ -1,4 +1,3 @@
-import { BrandMark } from './BrandMark';
 import styles from './SiteFooter.module.css';
 
 export type FooterPage = 'changelog' | 'about' | 'privacy' | 'terms';
@@ -14,7 +13,7 @@ export function SiteFooter({ current }: { current?: FooterPage }) {
     <footer className={styles.siteFooter}>
       <div className={styles.siteFooterGrid}>
         <div className={styles.siteFooterLogo}>
-          <a className={styles.siteFooterMark} href="/" aria-label="Buyerly home"><BrandMark className={styles.siteFooterMarkImage} /></a>
+          <a className={styles.siteFooterMark} href="/" aria-label="Buyerly home">Buyerly</a>
         </div>
         <nav className={styles.siteFooterCol} aria-labelledby="footer-product">
           <h2 id="footer-product">Product</h2>

@@ -1,6 +1,6 @@
 # Buyerly Brand Assets — Official Vector Set
 
-Официальный набор векторных и растровых ассетов логотипа платформы **Buyerly**.
+Официальный набор векторных и растровых ассетов платформы **Buyerly**. Знак — буква «B»; прежний знак (голова собаки) убран 11.11.2026 и больше не используется.
 
 ---
 
@@ -19,4 +19,4 @@
 | **[`og-image.png`](og-image.png)** | PNG 1200×630 | Превью карточки при отправке ссылки в Telegram/WhatsApp/Twitter |
 | **[`logo.png`](logo.png)** | PNG High-Res | Растровый экспорт в высоком разрешении |
 
-Растровые иконки (`favicon.ico`, `favicon-32x32.png`, `favicon.png`, `apple-touch-icon.png`, а также `frontend/public/buyerly-logo.png`) собирает `node server/src/scripts/build-icons.ts` из того же контура, что и `favicon.svg`.
+Растровые иконки (`favicon.ico`, `favicon-32x32.png`, `favicon.png`, `apple-touch-icon.png`, `logo.png`, `og-image.png`, а также `frontend/public/buyerly-logo.png`) собирает `node server/src/scripts/build-icons.ts` из того же контура, что и `favicon.svg`.
