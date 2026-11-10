@@ -110,21 +110,14 @@ export const BuyerlyToggle: React.FC<BuyerlyToggleProps> = ({
       aria-busy={busy || undefined}
       aria-label={label ?? tooltipContent}
       tabIndex={interactive ? 0 : -1}
-      {...withClassName(
-        stylex.props(
+      {...withClassName(stylex.props(
           styles.toggle,
           !checked && canHover && styles.uncheckedInteractive,
           checked && (canHover ? styles.checkedInteractive : styles.checked),
           isSettings && styles.settings,
           disabled && styles.disabled,
           busy && styles.busy,
-        ),
-        css.toggle,
-        isSettings && css.settings,
-        'buyerly-toggle',
-        isSettings && 'buyerly-toggle--settings',
-        className,
-      )}
+        ), css.toggle, isSettings && css.settings, className)}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();

@@ -437,14 +437,14 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
       <Dialog.Portal>
         <Dialog.Overlay {...stylex.props(styles.overlay)} />
         <div {...stylex.props(styles.frame)}>
-          <Dialog.Content {...withClassName(stylex.props(styles.content), 'ui-dialog animate-scale-in')}>
+          <Dialog.Content {...withClassName(stylex.props(styles.content), 'animate-scale-in')}>
             <header {...stylex.props(styles.header)}>
               <div {...stylex.props(styles.heading)}>
                 <BuyerlyIcon name="meta" size={16} className={stylex.props(styles.metaIcon).className} />
                 <Dialog.Title {...stylex.props(styles.title)}>{title}</Dialog.Title>
               </div>
               <Dialog.Close asChild>
-                <button {...withClassName(stylex.props(styles.close), 'ui-icon-button')} type="button" aria-label="Close">
+                <button {...stylex.props(styles.close)} type="button" aria-label="Close">
                   <BuyerlyIcon name="close" size={14} />
                 </button>
               </Dialog.Close>
@@ -466,7 +466,7 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
                   <Dialog.Description {...stylex.props(styles.description)}>
                     Open this link in a browser signed in to the right Facebook profile, or send it to the profile owner. The link is valid for 24 hours and can be used once.
                   </Dialog.Description>
-                  <input {...withClassName(stylex.props(styles.invite), 'ui-input')} readOnly value={invite.invite_url} aria-label="One-time connection link" />
+                  <input {...stylex.props(styles.invite)} readOnly value={invite.invite_url} aria-label="One-time connection link" />
                 </div>
               )}
 

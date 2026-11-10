@@ -15,10 +15,16 @@ global hooks a browser check reads, `src/styles/reset.css` (the element reset),
    siblings (`+`, `~`), or a parent's state seen from a child
    (`[data-menu-open='true'] .icon`) where a StyleX marker does not fit.
 3. No new global classes: a class selector belongs in a CSS Module, and the
-   only plain global classes are the hooks a browser check reads (its own
-   `*.css` file next to the component). `src/styles/styles.test.ts` guards
-   this: no new file in `src/styles/`, no class selector in a layer
-   stylesheet, and no `className="…"` the stylesheets or a check don't name.
+   only other plain global classes are the hooks a browser check reads (its own
+   `*.css` file next to the component) and the few the test's `globalClasses`
+   allowlist names (a global @keyframes name in an `animation`, a descendant a
+   primitive draws itself, a CSS custom property set to override a primitive).
+   `src/styles/styles.test.ts` guards this: `src/styles/` holds only the layer
+   stylesheets, a layer stylesheet defines no class selector, every other plain
+   global class is a hook or in the allowlist, and every `className` — the
+   literal ones, a `` className={`…`} `` template's static tokens, and a
+   `withClassName(…)` call's arguments — is a class a stylesheet defines or a
+   check reads.
 
 ## Tokens
 

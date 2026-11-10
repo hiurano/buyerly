@@ -201,14 +201,14 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
       <Dialog.Portal>
         <Dialog.Overlay {...stylex.props(styles.overlay)} />
         <div {...stylex.props(styles.frame)}>
-          <Dialog.Content {...withClassName(stylex.props(styles.content), 'ui-dialog animate-scale-in')}>
+          <Dialog.Content {...withClassName(stylex.props(styles.content), 'animate-scale-in')}>
             <header {...stylex.props(styles.header)}>
               <Dialog.Title {...stylex.props(styles.title)}>
                 Change email
               </Dialog.Title>
               <Dialog.Close asChild>
                 <button
-                  {...withClassName(stylex.props(styles.close), 'ui-icon-button')}
+                  {...stylex.props(styles.close)}
                   type="button"
                   aria-label="Close"
                 >

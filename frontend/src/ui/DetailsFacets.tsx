@@ -344,14 +344,14 @@ export function DetailsFacets({ tabs, selection, onSelect, storageKey, noun }: D
   const chosen = selection && selection.fieldId === current?.id ? selection.value : null;
 
   return (
-    <section {...withClassName(stylex.props(styles.facets), 'details-facets')} aria-label={current ? `${current.label} quick filters` : 'Quick filters'}>
+    <section {...stylex.props(styles.facets)} aria-label={current ? `${current.label} quick filters` : 'Quick filters'}>
       <div
         ref={tabsRef}
-        {...withClassName(stylex.props(styles.tabs, folded && styles.tabsFolded), 'details-facets-tabs')}
+        {...stylex.props(styles.tabs, folded && styles.tabsFolded)}
         data-folded={folded ? 'true' : undefined}
         aria-hidden={folded || undefined}
       >
-        <div ref={listRef} role="tablist" aria-label="Quick filter categories" {...withClassName(stylex.props(styles.tablist), 'details-facets-tablist')}>
+        <div ref={listRef} role="tablist" aria-label="Quick filter categories" {...stylex.props(styles.tablist)}>
           {tabs.map((tab, index) => {
             const active = tab.id === current?.id;
             return (
@@ -362,7 +362,7 @@ export function DetailsFacets({ tabs, selection, onSelect, storageKey, noun }: D
                 data-tab-id={tab.id}
                 aria-selected={active}
                 tabIndex={active ? 0 : -1}
-                {...withClassName(stylex.props(styles.tab, active && styles.tabSelected), detailsFacetsCss.tab, 'details-facets-tab')}
+                {...withClassName(stylex.props(styles.tab, active && styles.tabSelected), detailsFacetsCss.tab)}
                 onClick={() => changeTab(tab.id)}
                 onKeyDown={(event) => tabKeyDown(event, index)}
               >
@@ -375,7 +375,7 @@ export function DetailsFacets({ tabs, selection, onSelect, storageKey, noun }: D
       {folded && current && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button type="button" {...withClassName(stylex.props(styles.select), 'details-facets-select')}>
+            <button type="button" {...stylex.props(styles.select)}>
               <span {...stylex.props(styles.selectLabel)}>{current.label}</span>
               <BuyerlyChevronGlyph size={8} />
             </button>
@@ -393,7 +393,7 @@ export function DetailsFacets({ tabs, selection, onSelect, storageKey, noun }: D
         <div
           role="tabpanel"
           aria-label={current.label}
-          {...withClassName(stylex.props(styles.rows), 'details-facets-rows')}
+          {...stylex.props(styles.rows)}
           style={{ '--details-facets-count-width': `${digits}ch` } as React.CSSProperties}
         >
           {current.options.length ? current.options.map((option) => {
@@ -422,17 +422,17 @@ export function DetailsFacets({ tabs, selection, onSelect, storageKey, noun }: D
                   toggle();
                 }}
               >
-                <div {...withClassName(stylex.props(styles.rowContent), 'details-facets-row-content')}>
+                <div {...stylex.props(styles.rowContent)}>
                   {option.icon && (
-                    <span {...withClassName(stylex.props(styles.rowIcon), detailsFacetsCss.rowIcon, 'details-facets-row-icon')}>{option.icon}</span>
+                    <span {...withClassName(stylex.props(styles.rowIcon), detailsFacetsCss.rowIcon)}>{option.icon}</span>
                   )}
-                  <span {...withClassName(stylex.props(styles.rowName), 'details-facets-row-name')} title={option.label}>{option.label}</span>
+                  <span {...stylex.props(styles.rowName)} title={option.label}>{option.label}</span>
                   <span {...withClassName(stylex.props(styles.rowLink), detailsFacetsCss.rowLink, 'details-facets-row-link')} aria-hidden="true">{active ? 'Clear filter' : `See ${noun}`}</span>
                 </div>
                 <span {...withClassName(stylex.props(styles.rowCount), 'details-facets-row-count')}>{option.count}</span>
               </div>
             );
-          }) : <p {...withClassName(stylex.props(styles.empty), 'details-facets-empty')}>No matching {noun}</p>}
+          }) : <p {...stylex.props(styles.empty)}>No matching {noun}</p>}
         </div>
       )}
     </section>

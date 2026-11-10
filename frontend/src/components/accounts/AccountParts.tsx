@@ -282,7 +282,7 @@ export const RenameAccountDialog: React.FC<RenameAccountDialogProps> = ({ accoun
               inputRef.current?.focus();
               inputRef.current?.select();
             }}
-            {...withClassName(stylex.props(styles.dialog), 'ui-dialog animate-scale-in')}
+            {...withClassName(stylex.props(styles.dialog), 'animate-scale-in')}
           >
             <Dialog.Title {...stylex.props(styles.dialogTitle)}>Rename ad account</Dialog.Title>
             <Dialog.Description {...stylex.props(styles.dialogDescription)}>

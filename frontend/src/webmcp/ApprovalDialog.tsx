@@ -134,14 +134,14 @@ export const ApprovalDialog: React.FC = () => {
   return (
     <Dialog.Root key={request.id} open onOpenChange={(open) => { if (!open) request.settle('declined'); }}>
       <Dialog.Portal>
-        <Dialog.Overlay {...withClassName(stylex.props(styles.overlay), 'animate-fade-in')} />
+        <Dialog.Overlay {...stylex.props(styles.overlay)} />
         <div {...stylex.props(styles.frame)}>
           <Dialog.Content
             onOpenAutoFocus={(event) => {
               event.preventDefault();
               declineRef.current?.focus();
             }}
-            {...withClassName(stylex.props(styles.content), 'ui-dialog animate-scale-in')}
+            {...withClassName(stylex.props(styles.content), 'animate-scale-in')}
           >
             <p {...stylex.props(styles.eyebrow)}>Your AI assistant asks</p>
             <Dialog.Title {...stylex.props(styles.title)}>

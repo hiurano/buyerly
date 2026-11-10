@@ -159,9 +159,9 @@ export function BuyerlySplitResizer({ width, minWidth, maxWidth, onResize, onRes
 
   return (
     <>
-      {dragging && <div {...withClassName(stylex.props(styles.overlay), 'buyerly-split-resizer-overlay')} />}
+      {dragging && <div {...stylex.props(styles.overlay)} />}
       <div
-        {...withClassName(stylex.props(styles.resizer), splitResizerCss.resizer, 'buyerly-split-resizer')}
+        {...withClassName(stylex.props(styles.resizer), splitResizerCss.resizer)}
         data-dragging={dragging ? 'true' : undefined}
         style={{ left: width - 3 }}
         onMouseEnter={(event) => placeIndicator(event.clientY)}
@@ -172,8 +172,8 @@ export function BuyerlySplitResizer({ width, minWidth, maxWidth, onResize, onRes
           start(event.clientX);
         }}
       >
-        <div ref={trackRef} {...withClassName(stylex.props(styles.track), splitResizerCss.track, 'buyerly-split-resizer-track')} aria-hidden="true">
-          <div ref={indicatorRef} {...withClassName(stylex.props(styles.indicator), 'buyerly-split-resizer-indicator')} />
+        <div ref={trackRef} {...withClassName(stylex.props(styles.track), splitResizerCss.track)} aria-hidden="true">
+          <div ref={indicatorRef} {...stylex.props(styles.indicator)} />
         </div>
       </div>
     </>

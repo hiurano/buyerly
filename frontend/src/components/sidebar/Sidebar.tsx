@@ -271,16 +271,13 @@ const SidebarContent: React.FC = () => {
           transform: surfaceTransform,
           transition: isDragging ? 'none' : undefined,
         }}
-        {...withClassName(
-          stylex.props(
+        {...withClassName(stylex.props(
             styles.surface,
             drawer.isSmall && styles.surfaceSmall,
             isPeekSurface && styles.surfacePeek,
             isPeekSurface && !peek.isOpen && styles.surfacePeekClosed,
             isDragging && styles.resizing,
-          ),
-          'sidebar-surface app-sidebar',
-        )}
+          ), 'app-sidebar')}
         {...drawer.swipeHandlers}
       >
         {/* 1. Header (Workspace + Search + Create) */}

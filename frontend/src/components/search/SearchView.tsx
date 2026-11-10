@@ -730,7 +730,7 @@ const SearchDisplayOptions: React.FC<SearchDisplayOptionsProps> = ({
       )}
       style={{ top: coords.top, left: coords.left }}
     >
-      <section {...withClassName(stylex.props(displayStyles.mainSection), 'buyerly-display-main-section')}>
+      <section {...stylex.props(displayStyles.mainSection)}>
         <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
           <span>Ordering</span>
           <BuyerlySelect
@@ -743,7 +743,7 @@ const SearchDisplayOptions: React.FC<SearchDisplayOptionsProps> = ({
           />
         </div>
       </section>
-      <section {...withClassName(stylex.props(displayStyles.section), 'buyerly-display-options-section')}>
+      <section {...stylex.props(displayStyles.section)}>
         <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
           <span>Include deleted</span>
           <BuyerlyToggle

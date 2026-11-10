@@ -335,12 +335,12 @@ function DetailsPaneResizeHandle({ width, windowWidth, onResize, onResizeEnd, on
         if (touch && event.touches.length === 1) start(touch.clientX, 'touch', touch.identifier);
       }}
     >
-      <div {...withClassName(stylex.props(styles.track), detailsPaneCss.track, 'details-pane-resizer-track')}>
-        <div ref={indicatorRef} {...withClassName(stylex.props(styles.indicator), 'details-pane-resizer-indicator')} />
+      <div {...withClassName(stylex.props(styles.track), detailsPaneCss.track)}>
+        <div ref={indicatorRef} {...stylex.props(styles.indicator)} />
       </div>
       {tooltipTop !== null && !dragging && (
         <div
-          {...withClassName(stylex.props(styles.tooltip), detailsPaneCss.tooltip, 'details-pane-resizer-tooltip')}
+          {...withClassName(stylex.props(styles.tooltip), detailsPaneCss.tooltip)}
           style={{ top: Math.min(Math.max(tooltipTop, 36), window.innerHeight - 36) }}
         >
           <span><strong>Drag</strong> to resize</span>
@@ -447,9 +447,9 @@ export function DetailsPaneLayout({ pane, label, details, children }: DetailsPan
           {...withClassName(stylex.props(styles.pane, overlay && styles.paneOverlay), 'details-pane')}
           data-overlay={overlay ? 'true' : 'false'}
         >
-          <div {...withClassName(stylex.props(styles.backdrop), 'details-pane-backdrop')} aria-hidden="true" />
+          <div {...stylex.props(styles.backdrop)} aria-hidden="true" />
           <aside
-            {...withClassName(stylex.props(styles.aside), 'details-pane-aside')}
+            {...stylex.props(styles.aside)}
             aria-label={label}
             onTouchStart={(event) => {
               const touchPoint = event.touches[0];

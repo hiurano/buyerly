@@ -9,7 +9,8 @@ const SANS = '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe
  * and the note that stands in for an empty list. Measured on Linear in both
  * themes (#311). The selection's command menu (src/ui/SelectionCommandMenu.tsx)
  * draws the same look. A group's heading is cmdk's own element, which StyleX
- * cannot reach: `.buyerly-command-group` in index.css styles it.
+ * cannot reach: `.buyerly-command-group` in components/command/commandExtras.css
+ * styles it.
  */
 export const commandMenuStyles = stylex.create({
   /** Where Ctrl/Cmd+K and Open sit: 13% down, up to 720px wide, 16px off the sides. */

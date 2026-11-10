@@ -467,7 +467,7 @@ export const InboxGroupHeader: React.FC<{ label: string; expanded: boolean; onTo
   expanded,
   onToggle,
 }) => (
-  <div {...withClassName(stylex.props(styles.inboxGroup), inboxItemRowCss.group, 'buyerly-inbox-group')}>
+  <div {...withClassName(stylex.props(styles.inboxGroup), inboxItemRowCss.group)}>
     <button
       type="button"
       aria-expanded={expanded}

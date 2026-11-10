@@ -245,7 +245,7 @@ export const ChoiceDialog: React.FC<ChoiceDialogProps> = ({ open, title, descrip
       <Dialog.Overlay {...stylex.props(styles.overlay)} />
       <div {...stylex.props(styles.frame)}>
         <Dialog.Content
-          {...withClassName(stylex.props(styles.content, wide && styles.contentWide), 'ui-dialog animate-scale-in')}
+          {...withClassName(stylex.props(styles.content, wide && styles.contentWide), 'animate-scale-in')}
         >
           <div {...stylex.props(styles.header)}>
             <Dialog.Title {...stylex.props(styles.title)}>{title}</Dialog.Title>
