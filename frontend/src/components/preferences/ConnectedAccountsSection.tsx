@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { createTelegramLink, disconnectTelegram, telegramAccountName } from '@/lib/telegram';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
@@ -7,6 +8,7 @@ import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
 import { useTelegramConnection } from './NotificationsSection';
 import { useNotificationSettingsStore } from '@/models/notificationSettingsStore';
+import { preferencesStyles } from './preferencesStyles';
 
 /** How often the page asks whether Start was pressed, and for how long (the link's life). */
 const LINK_POLL_MS = 2000;
@@ -19,7 +21,7 @@ const LINK_LIFETIME_MS = 10 * 60 * 1000;
  */
 /** A Connect / Connected button; takes a trigger's ref and props through (React 19's ref prop). */
 const ConnectButton = ({ label, ...props }: { label: string } & React.ComponentProps<'button'>) => (
-  <button type="button" className="preferences-connect-button" {...props}>
+  <button type="button" {...stylex.props(preferencesStyles.connectButton)} {...props}>
     {label}
     <BuyerlyIcon name="external" size={16} />
   </button>
@@ -95,35 +97,35 @@ export const ConnectedAccountsSection: React.FC = () => {
 
   return (
     <>
-      <div className="preferences-title-container preferences-title-container--with-note">
-        <h1 className="preferences-page-title">Connected accounts</h1>
-        <p className="preferences-page-note">Connect your user accounts to receive notifications in other apps</p>
+      <div {...stylex.props(preferencesStyles.titleContainer, preferencesStyles.titleContainerWithNote)}>
+        <h1 {...stylex.props(preferencesStyles.pageTitle)}>Connected accounts</h1>
+        <p {...stylex.props(preferencesStyles.pageNote)}>Connect your user accounts to receive notifications in other apps</p>
       </div>
-      <div className="preferences-section">
-        <section className="preferences-card-container" id="connection-telegram">
-          <div className="preferences-row-item preferences-connection-row">
-            <span className="preferences-connection-main">
-              <span className="preferences-channel-icon">
+      <div {...stylex.props(preferencesStyles.section)}>
+        <section {...stylex.props(preferencesStyles.cardContainer)} id="connection-telegram">
+          <div {...stylex.props(preferencesStyles.rowItem, preferencesStyles.connectionRow)}>
+            <span {...stylex.props(preferencesStyles.connectionMain)}>
+              <span {...stylex.props(preferencesStyles.channelIcon)}>
                 <BuyerlyIcon name="telegram" size={16} />
               </span>
-              <span className="preferences-row-copy preferences-connection-copy">
-                <span className="preferences-connection-title">
-                  <span className="preferences-row-title">
+              <span {...stylex.props(preferencesStyles.rowCopy)}>
+                <span {...stylex.props(preferencesStyles.connectionTitle)}>
+                  <span {...stylex.props(preferencesStyles.rowTitle)}>
                     Telegram
-                    {account && <span className="preferences-connection-account"> · {account}</span>}
+                    {account && <span {...stylex.props(preferencesStyles.connectionAccount)}> · {account}</span>}
                   </span>
                   {connection.connected && connection.error && (
                     <Tooltip
                       content="The bot is blocked, so notifications can't be delivered. Unblock it in Telegram and press Start."
                       side="top"
                     >
-                      <span className="preferences-connection-alert" aria-label="Notifications can't be delivered">
+                      <span {...stylex.props(preferencesStyles.connectionAlert)} aria-label="Notifications can't be delivered">
                         <BuyerlyIcon name="warning" size={14} aria-hidden="true" />
                       </span>
                     </Tooltip>
                   )}
                 </span>
-                <span className="preferences-row-desc">Receive notifications in Telegram</span>
+                <span {...stylex.props(preferencesStyles.rowDesc, preferencesStyles.connectionRowDesc)}>Receive notifications in Telegram</span>
               </span>
             </span>
             {connection.connected ? (

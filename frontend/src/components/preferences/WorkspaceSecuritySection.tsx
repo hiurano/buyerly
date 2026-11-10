@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { changeInviteLink, fetchInviteLink, type InviteLink } from '@/lib/workspaces';
 import type { Workspace } from '@/lib/types';
@@ -7,7 +8,10 @@ import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
+import { withClassName } from '@/ui/withClassName';
 import { errorMessage } from './MemberDialogs';
+import { preferencesStyles } from './preferencesStyles';
+import css from './Preferences.module.css';
 
 /** Reset to default: a circular arrow, where Linear has its ResetIcon. */
 const ResetIcon: React.FC = () => (
@@ -81,24 +85,24 @@ export const WorkspaceSecuritySection: React.FC<{ workspace: Workspace }> = ({ w
 
   return (
     <>
-      <div className="preferences-title-container">
-        <h1 className="preferences-page-title">Security</h1>
+      <div {...stylex.props(preferencesStyles.titleContainer)}>
+        <h1 {...stylex.props(preferencesStyles.pageTitle)}>Security</h1>
       </div>
 
-      <div className="preferences-section">
-        <div className="preferences-section-header preferences-section-header--group">
-          <h3 className="preferences-section-title">Workspace access</h3>
+      <div {...stylex.props(preferencesStyles.section)}>
+        <div {...stylex.props(preferencesStyles.sectionHeader, preferencesStyles.sectionHeaderGroup)}>
+          <h3 {...stylex.props(preferencesStyles.sectionTitle)}>Workspace access</h3>
         </div>
-        <div className="preferences-subsection">
-          <h4 className="preferences-subsection-title">Invite links</h4>
-          <p className="preferences-subsection-desc">
+        <div {...stylex.props(preferencesStyles.subsection)}>
+          <h4 {...stylex.props(preferencesStyles.subsectionTitle)}>Invite links</h4>
+          <p {...stylex.props(preferencesStyles.subsectionDesc)}>
             A uniquely generated invite link allows anyone with the link to join your workspace
           </p>
         </div>
-        <section className="preferences-card-container preferences-card-container--divided">
-          <div className="preferences-row-item preferences-row-item--toggle">
-            <div className="preferences-row-copy">
-              <span className="preferences-row-title">Enable invite links</span>
+        <section {...withClassName(stylex.props(preferencesStyles.cardContainer), css.cardDivided)}>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem), css.rowItem)}>
+            <div {...stylex.props(preferencesStyles.rowCopy)}>
+              <span {...stylex.props(preferencesStyles.rowTitle)}>Enable invite links</span>
             </div>
             <BuyerlyToggle
               size="settings"
@@ -109,16 +113,16 @@ export const WorkspaceSecuritySection: React.FC<{ workspace: Workspace }> = ({ w
             />
           </div>
           {enabled && (
-            <div className="preferences-invite-link">
-              <div className="preferences-invite-link-field">
-                <span className="preferences-invite-link-text" title={absoluteUrl(inviteUrl)}>
+            <div {...stylex.props(preferencesStyles.inviteLink)}>
+              <div {...stylex.props(preferencesStyles.inviteLinkField)}>
+                <span {...stylex.props(preferencesStyles.inviteLinkText)} title={absoluteUrl(inviteUrl)}>
                   {absoluteUrl(inviteUrl)}
                 </span>
                 <Tooltip content="Reset invite link" side="left">
                   <button
                     type="button"
                     aria-label="Reset invite link"
-                    className="preferences-invite-link-reset"
+                    {...stylex.props(preferencesStyles.inviteLinkReset)}
                     disabled={busy}
                     onClick={() => setResetOpen(true)}
                   >
@@ -132,24 +136,24 @@ export const WorkspaceSecuritySection: React.FC<{ workspace: Workspace }> = ({ w
         </section>
       </div>
 
-      <div className="preferences-section">
-        <div className="preferences-section-header">
-          <h3 className="preferences-section-title">Workspace management</h3>
+      <div {...stylex.props(preferencesStyles.section)}>
+        <div {...stylex.props(preferencesStyles.sectionHeader)}>
+          <h3 {...stylex.props(preferencesStyles.sectionTitle)}>Workspace management</h3>
         </div>
-        <section className="preferences-card-container preferences-card-container--divided">
-          <div className="preferences-row-item preferences-row-item--column-on-mobile">
-            <div className="preferences-row-copy">
-              <span className="preferences-row-title">Manage admins</span>
-              <span className="preferences-row-desc">Who can grant or revoke the workspace admin role</span>
+        <section {...withClassName(stylex.props(preferencesStyles.cardContainer), css.cardDivided)}>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem, preferencesStyles.rowItemColumnOnMobile), css.rowItem)}>
+            <div {...stylex.props(preferencesStyles.rowCopy, preferencesStyles.rowCopyColumnOnMobile)}>
+              <span {...stylex.props(preferencesStyles.rowTitle)}>Manage admins</span>
+              <span {...stylex.props(preferencesStyles.rowDesc)}>Who can grant or revoke the workspace admin role</span>
             </div>
-            <span className="preferences-row-value">Only the owner</span>
+            <span {...stylex.props(preferencesStyles.rowValue)}>Only the owner</span>
           </div>
-          <div className="preferences-row-item preferences-row-item--column-on-mobile">
-            <div className="preferences-row-copy">
-              <span className="preferences-row-title">New user invitations</span>
-              <span className="preferences-row-desc">Who can invite new members to the workspace</span>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem, preferencesStyles.rowItemColumnOnMobile), css.rowItem)}>
+            <div {...stylex.props(preferencesStyles.rowCopy, preferencesStyles.rowCopyColumnOnMobile)}>
+              <span {...stylex.props(preferencesStyles.rowTitle)}>New user invitations</span>
+              <span {...stylex.props(preferencesStyles.rowDesc)}>Who can invite new members to the workspace</span>
             </div>
-            <span className="preferences-row-value">Only admins</span>
+            <span {...stylex.props(preferencesStyles.rowValue)}>Only admins</span>
           </div>
         </section>
       </div>

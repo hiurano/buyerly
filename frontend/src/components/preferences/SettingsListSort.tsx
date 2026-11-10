@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { withClassName } from '@/ui/withClassName';
+import { preferencesStyles } from './preferencesStyles';
+import css from './Preferences.module.css';
 
 export type SortDirection = 'asc' | 'desc';
 
@@ -46,21 +50,21 @@ export function SortHeader<K extends string>({
   column,
   sort,
   onSort,
-  className,
+  xstyle,
 }: {
   label: string;
   column: K;
   sort: ListSort<K>;
   onSort: (key: K) => void;
-  className?: string;
+  xstyle?: stylex.StyleXStyles;
 }) {
   const active = sort.key === column;
   const order = sort.direction === 'asc' ? 'ascending' : 'descending';
   return (
-    <span role="columnheader" aria-sort={active ? order : 'none'} className={className}>
+    <span role="columnheader" aria-sort={active ? order : 'none'} {...stylex.props(xstyle)}>
       <button
         type="button"
-        className="settings-list-sort"
+        {...withClassName(stylex.props(preferencesStyles.listSort), css.listSort)}
         data-active={active ? 'true' : undefined}
         aria-label={`Order by ${label}${active ? `, sorted ${order}` : ''}`}
         onClick={() => onSort(column)}

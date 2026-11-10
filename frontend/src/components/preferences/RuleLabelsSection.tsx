@@ -18,6 +18,8 @@ import { useDialogStore } from '@/models/dialogStore';
 import { useRulesStore, type RuleLabel } from '@/models/rulesStore';
 import { useScopeStore } from '@/models/scopeStore';
 import { shellStore, useShellStore } from '@/models/shellStore';
+import { preferencesStyles } from './preferencesStyles';
+import css from './Preferences.module.css';
 
 const styles = stylex.create({
   fullWidth: {
@@ -235,7 +237,6 @@ const InlineText: React.FC<{
   useEffect(() => {
     if (editing) setDraft(value);
   }, [editing, value]);
-  const textClass = strong ? 'settings-list-inline settings-list-inline--strong' : 'settings-list-inline';
   if (editing) {
     const finish = (save: boolean) => {
       setEditing(false);
@@ -257,7 +258,12 @@ const InlineText: React.FC<{
             finish(false);
           }
         }}
-        {...withClassName(stylex.props(styles.field), textClass)}
+        {...stylex.props(
+          preferencesStyles.listInline,
+          preferencesStyles.listInlineInput,
+          strong && preferencesStyles.listInlineStrong,
+          styles.field,
+        )}
       />
     );
   }
@@ -266,7 +272,12 @@ const InlineText: React.FC<{
       type="button"
       disabled={disabled}
       onClick={() => setEditing(true)}
-      {...withClassName(stylex.props(styles.text), value ? textClass : `${textClass} settings-list-inline--placeholder`)}
+      {...stylex.props(
+        preferencesStyles.listInline,
+        strong && preferencesStyles.listInlineStrong,
+        !value && preferencesStyles.listInlinePlaceholder,
+        styles.text,
+      )}
     >
       {value || (disabled ? '' : placeholder)}
     </button>
@@ -303,8 +314,14 @@ const NewLabelRow: React.FC<{ onDone: () => void }> = ({ onDone }) => {
     }
   };
   return (
-    <div role="row" className="settings-list-row">
-      <span role="cell" className="settings-list-label">
+    <div
+      role="row"
+      {...withClassName(
+        stylex.props(preferencesStyles.listRow, preferencesStyles.listRowLabels, preferencesStyles.listRowCompact),
+        `${css.listRow} ${css.listRowInteractive}`,
+      )}
+    >
+      <span role="cell" {...stylex.props(preferencesStyles.listLabel)}>
         <ColorDot color={color} label="the new label" onPick={setColor} />
         <input
           autoFocus
@@ -315,10 +332,15 @@ const NewLabelRow: React.FC<{ onDone: () => void }> = ({ onDone }) => {
           disabled={busy}
           onChange={(event) => setName(event.target.value)}
           onKeyDown={onKeyDown}
-          {...withClassName(stylex.props(styles.fullWidth), 'settings-list-inline settings-list-inline--strong')}
+          {...stylex.props(
+            preferencesStyles.listInline,
+            preferencesStyles.listInlineInput,
+            preferencesStyles.listInlineStrong,
+            styles.fullWidth,
+          )}
         />
       </span>
-      <span role="cell" className="settings-list-col-wide settings-list-description">
+      <span role="cell" {...stylex.props(preferencesStyles.listColWide, preferencesStyles.listDescription)}>
         <input
           aria-label="Label description"
           placeholder="Add label description…"
@@ -327,12 +349,12 @@ const NewLabelRow: React.FC<{ onDone: () => void }> = ({ onDone }) => {
           disabled={busy}
           onChange={(event) => setDescription(event.target.value)}
           onKeyDown={onKeyDown}
-          {...withClassName(stylex.props(styles.fullWidth), 'settings-list-inline')}
+          {...stylex.props(preferencesStyles.listInline, preferencesStyles.listInlineInput, styles.fullWidth)}
         />
       </span>
       <span role="cell" />
-      <span role="cell" className="settings-list-col-wide" />
-      <span role="cell" className="settings-list-col-wide" />
+      <span role="cell" {...stylex.props(preferencesStyles.listColWide)} />
+      <span role="cell" {...stylex.props(preferencesStyles.listColWide)} />
       <span role="cell" />
     </div>
   );
@@ -400,27 +422,34 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
 
   return (
     <>
-      <div className="settings-list-title-row">
-        <div className="preferences-title-container">
-          <h1 className="preferences-page-title">Rule labels</h1>
+      <div {...stylex.props(preferencesStyles.listTitleRow)}>
+        <div {...stylex.props(preferencesStyles.titleContainer, preferencesStyles.titleContainerInTitleRow)}>
+          <h1 {...stylex.props(preferencesStyles.pageTitle)}>Rule labels</h1>
         </div>
         {canEdit && (
-          <button type="button" className="settings-list-button settings-list-button--primary" onClick={() => setAdding(true)}>
+          <button
+            type="button"
+            {...stylex.props(preferencesStyles.listButton, preferencesStyles.listButtonPrimary)}
+            onClick={() => setAdding(true)}
+          >
             New label
           </button>
         )}
       </div>
 
-      <div className="settings-list-filter-row">
-        <label className="settings-list-search">
+      <div {...stylex.props(preferencesStyles.listFilterRow)}>
+        <label {...stylex.props(preferencesStyles.listSearch, preferencesStyles.listSearchInFilterRow)}>
           <span {...stylex.props(styles.srOnly)}>Filter by name…</span>
-          <BuyerlyIcon name="search" className="settings-list-search-icon" />
+          <BuyerlyIcon name="search" {...stylex.props(preferencesStyles.listSearchIcon)} />
           <input
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Filter by name…"
-            className="settings-list-search-input"
+            {...withClassName(
+              stylex.props(preferencesStyles.listSearchInput, preferencesStyles.listSearchInputInFilterRow),
+              css.searchInput,
+            )}
           />
         </label>
       </div>
@@ -434,19 +463,32 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
 
       {loadState === 'ready' && (
         <>
-          <div className="settings-list-table settings-list--labels" role="table" aria-label="Rule labels">
-            <div role="row" className="settings-list-row settings-list-row--header">
+          <div {...stylex.props(preferencesStyles.listTable, preferencesStyles.listTableLabels)} role="table" aria-label="Rule labels">
+            <div
+              role="row"
+              {...withClassName(
+                stylex.props(preferencesStyles.listRow, preferencesStyles.listRowLabels, preferencesStyles.listRowHeader),
+                css.listRow,
+              )}
+            >
               <SortHeader label="Name" column="name" sort={sort} onSort={toggleSort} />
-              <SortHeader label="Description" column="description" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
+              <SortHeader label="Description" column="description" sort={sort} onSort={toggleSort} xstyle={preferencesStyles.listColWide} />
               <SortHeader label="Rules" column="rules" sort={sort} onSort={toggleSort} />
-              <SortHeader label="Last applied" column="lastApplied" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
-              <SortHeader label="Created" column="created" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
+              <SortHeader label="Last applied" column="lastApplied" sort={sort} onSort={toggleSort} xstyle={preferencesStyles.listColWide} />
+              <SortHeader label="Created" column="created" sort={sort} onSort={toggleSort} xstyle={preferencesStyles.listColWide} />
               <span role="columnheader" {...stylex.props(styles.srOnly)}>Actions</span>
             </div>
             {adding && <NewLabelRow onDone={() => setAdding(false)} />}
             {visible.map((label) => (
-              <div key={label.id} role="row" className="settings-list-row">
-                <span role="cell" className="settings-list-label">
+              <div
+                key={label.id}
+                role="row"
+                {...withClassName(
+                  stylex.props(preferencesStyles.listRow, preferencesStyles.listRowLabels, preferencesStyles.listRowCompact),
+                  `${css.listRow} ${css.listRowInteractive}`,
+                )}
+              >
+                <span role="cell" {...stylex.props(preferencesStyles.listLabel)}>
                   <ColorDot
                     color={label.color}
                     label={label.name}
@@ -464,7 +506,7 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
                     onSave={(name) => void save(label, { name })}
                   />
                 </span>
-                <span role="cell" className="settings-list-col-wide settings-list-description">
+                <span role="cell" {...stylex.props(preferencesStyles.listColWide, preferencesStyles.listDescription)}>
                   <InlineText
                     value={label.description}
                     placeholder="Add label description…"
@@ -473,12 +515,12 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
                     onSave={(description) => void save(label, { description })}
                   />
                 </span>
-                <span role="cell" className="settings-list-cell">
+                <span role="cell" {...stylex.props(preferencesStyles.listCell)}>
                   {label.ruleCount > 0 ? (
                     <a
                       href={`${pathForTab(workspace.slug, 'rules')}`}
                       aria-label={`${label.ruleCount} ${label.ruleCount === 1 ? 'rule' : 'rules'} labelled ${label.name}`}
-                      className="settings-list-count"
+                      {...stylex.props(preferencesStyles.listCount, preferencesStyles.listCountLink)}
                       onClick={(event) => {
                         event.preventDefault();
                         openRules(label);
@@ -487,13 +529,13 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
                       {label.ruleCount}
                     </a>
                   ) : (
-                    <span className="settings-list-count">0</span>
+                    <span {...stylex.props(preferencesStyles.listCount)}>0</span>
                   )}
                 </span>
-                <span role="cell" className="settings-list-cell settings-list-col-wide">
+                <span role="cell" {...stylex.props(preferencesStyles.listCell, preferencesStyles.listColWide)}>
                   {label.lastAppliedAt ? formatRelativeTime(label.lastAppliedAt) : ''}
                 </span>
-                <span role="cell" className="settings-list-cell settings-list-col-wide">{shortDate(label.createdAt)}</span>
+                <span role="cell" {...stylex.props(preferencesStyles.listCell, preferencesStyles.listColWide)}>{shortDate(label.createdAt)}</span>
                 <span role="cell" {...stylex.props(styles.actions)}>
                   {canEdit && (
                     <RowMenu label={`Label actions for ${label.name}`} visible>

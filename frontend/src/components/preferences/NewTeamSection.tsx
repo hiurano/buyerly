@@ -18,6 +18,9 @@ import { toast } from '@/ui/toast';
 import { errorMessage } from './MemberDialogs';
 import { TeamIcon } from './TeamIcon';
 import { openSettings, openTeamSettings } from '@/lib/routing';
+import { withClassName } from '@/ui/withClassName';
+import { preferencesStyles } from './preferencesStyles';
+import css from './Preferences.module.css';
 
 const styles = stylex.create({
   nameField: {
@@ -87,26 +90,26 @@ export const NewTeamSection: React.FC<{ workspace: Workspace }> = ({ workspace }
 
   return (
     <>
-      <button type="button" className="preferences-breadcrumb" onClick={() => openSettings('teams')}>
+      <button type="button" {...withClassName(stylex.props(preferencesStyles.breadcrumb), 'preferences-breadcrumb')} onClick={() => openSettings('teams')}>
         <BuyerlyIcon name="chevron-left" size={14} aria-hidden="true" />
         Back
       </button>
-      <div className="preferences-title-container preferences-title-container--with-note">
-        <h1 className="preferences-page-title">Create a new team</h1>
-        <p className="preferences-page-note">Create a new team to group members and the ad accounts they work on</p>
+      <div {...stylex.props(preferencesStyles.titleContainer, preferencesStyles.titleContainerWithNote)}>
+        <h1 {...stylex.props(preferencesStyles.pageTitle)}>Create a new team</h1>
+        <p {...stylex.props(preferencesStyles.pageNote)}>Create a new team to group members and the ad accounts they work on</p>
       </div>
 
       <form
-        className="preferences-section"
+        {...stylex.props(preferencesStyles.section)}
         onSubmit={(event) => {
           event.preventDefault();
           void create();
         }}
       >
-        <section className="preferences-card-container preferences-card-container--divided">
-          <div className="preferences-row-item preferences-row-item--column-on-mobile">
-            <div className="preferences-row-copy">
-              <label htmlFor="new-team-name" className="preferences-row-title">Icon &amp; Name</label>
+        <section {...withClassName(stylex.props(preferencesStyles.cardContainer), css.cardDivided)}>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem, preferencesStyles.rowItemColumnOnMobile), css.rowItem)}>
+            <div {...stylex.props(preferencesStyles.rowCopy, preferencesStyles.rowCopyColumnOnMobile)}>
+              <label htmlFor="new-team-name" {...stylex.props(preferencesStyles.rowTitle)}>Icon &amp; Name</label>
             </div>
             <div {...stylex.props(styles.nameField)}>
               <span {...stylex.props(styles.icon)}>
@@ -116,7 +119,7 @@ export const NewTeamSection: React.FC<{ workspace: Workspace }> = ({ workspace }
                 id="new-team-name"
                 autoFocus
                 autoComplete="off"
-                className="preferences-row-input preferences-profile-input"
+                xstyle={[preferencesStyles.rowInput, preferencesStyles.profileInput]}
                 placeholder="e.g. Media buying"
                 maxLength={TEAM_NAME_MAX}
                 value={name}
@@ -128,16 +131,16 @@ export const NewTeamSection: React.FC<{ workspace: Workspace }> = ({ workspace }
               />
             </div>
           </div>
-          <div className="preferences-row-item preferences-row-item--column-on-mobile">
-            <div className="preferences-row-copy">
-              <label htmlFor="new-team-key" className="preferences-row-title">Identifier</label>
-              <span className="preferences-row-desc">A short code that tells this team apart (e.g. MED)</span>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem, preferencesStyles.rowItemColumnOnMobile), css.rowItem)}>
+            <div {...stylex.props(preferencesStyles.rowCopy, preferencesStyles.rowCopyColumnOnMobile)}>
+              <label htmlFor="new-team-key" {...stylex.props(preferencesStyles.rowTitle)}>Identifier</label>
+              <span {...stylex.props(preferencesStyles.rowDesc)}>A short code that tells this team apart (e.g. MED)</span>
             </div>
             <Input
               id="new-team-key"
               autoComplete="off"
               spellCheck={false}
-              className="preferences-row-input preferences-profile-input"
+              xstyle={[preferencesStyles.rowInput, preferencesStyles.profileInput, preferencesStyles.profileInputMobileFull]}
               placeholder="e.g. MED"
               maxLength={TEAM_KEY_MAX}
               value={key}
@@ -148,15 +151,15 @@ export const NewTeamSection: React.FC<{ workspace: Workspace }> = ({ workspace }
               }}
             />
           </div>
-          <div className="preferences-row-item">
-            <div className="preferences-row-copy">
-              <span className="preferences-row-title">Make team private</span>
-              <span className="preferences-row-desc">Only members see this team, its ad accounts and their campaigns</span>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem), css.rowItem)}>
+            <div {...stylex.props(preferencesStyles.rowCopy)}>
+              <span {...stylex.props(preferencesStyles.rowTitle)}>Make team private</span>
+              <span {...stylex.props(preferencesStyles.rowDesc)}>Only members see this team, its ad accounts and their campaigns</span>
             </div>
             <BuyerlyToggle checked={isPrivate} label="Make team private" disabled={busy} onChange={setIsPrivate} />
           </div>
         </section>
-        {error && <p role="alert" className="preferences-row-error">{error}</p>}
+        {error && <p role="alert" {...stylex.props(preferencesStyles.rowError)}>{error}</p>}
         <div {...stylex.props(styles.actions)}>
           <Button type="submit" variant="primary" disabled={busy}>
             {busy ? 'Creating…' : 'Create team'}

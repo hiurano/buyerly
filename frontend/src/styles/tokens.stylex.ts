@@ -829,3 +829,7 @@ export const lightColors = stylex.createTheme(colors, {
   '--site-logo': '#222326',
   '--logo-avatar-bg': 'lch(19.588% 1.25 282 / 1)',
 });
+
+/** Aliases used by the Settings migration. */
+export const fonts = type;
+export const sizes = layout;

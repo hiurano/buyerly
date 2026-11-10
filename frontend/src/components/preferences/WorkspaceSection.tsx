@@ -12,7 +12,10 @@ import { Input } from '@/ui/Input';
 import { Tooltip } from '@/ui/Tooltip';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
 import { toast } from '@/ui/toast';
+import { withClassName } from '@/ui/withClassName';
 import { ChoiceDialog, errorMessage } from './MemberDialogs';
+import { preferencesStyles } from './preferencesStyles';
+import css from './Preferences.module.css';
 
 const styles = stylex.create({
   srOnly: {
@@ -134,27 +137,27 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({ workspace, o
 
   return (
     <>
-      <div className="preferences-title-container">
-        <h1 className="preferences-page-title">Workspace</h1>
+      <div {...stylex.props(preferencesStyles.titleContainer)}>
+        <h1 {...stylex.props(preferencesStyles.pageTitle)}>Workspace</h1>
       </div>
 
-      <div className="preferences-section">
-        <section className="preferences-card-container preferences-card-container--divided">
-          <div className="preferences-row-item">
-            <div className="preferences-row-copy">
-              <span className="preferences-row-title">Logo</span>
-              <span className="preferences-row-desc">Recommended size is 256x256px</span>
+      <div {...stylex.props(preferencesStyles.section)}>
+        <section {...withClassName(stylex.props(preferencesStyles.cardContainer), css.cardDivided)}>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem), css.rowItem)}>
+            <div {...stylex.props(preferencesStyles.rowCopy)}>
+              <span {...stylex.props(preferencesStyles.rowTitle)}>Logo</span>
+              <span {...stylex.props(preferencesStyles.rowDesc)}>Recommended size is 256x256px</span>
             </div>
             <Tooltip content="Upload logo" side="left">
               <button
                 type="button"
-                className="preferences-workspace-logo"
+                {...withClassName(stylex.props(preferencesStyles.workspaceLogo), `${css.workspaceLogo} preferences-workspace-logo`)}
                 aria-label="Logo"
                 disabled={uploading}
                 onClick={() => fileRef.current?.click()}
               >
                 <WorkspaceAvatar workspace={workspace} size="regular" px={32} />
-                <span className="preferences-workspace-logo-overlay" aria-hidden="true">
+                <span {...withClassName(stylex.props(preferencesStyles.workspaceLogoOverlay), css.workspaceLogoOverlay)} aria-hidden="true">
                   {/* A brush over the logo on hover, as Linear's. */}
                   <BuyerlyIcon name="brush" size={16} />
                 </span>
@@ -174,13 +177,13 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({ workspace, o
             />
           </div>
 
-          <div className="preferences-row-item preferences-row-item--column-on-mobile">
-            <div className="preferences-row-copy">
-              <label htmlFor="workspace-name" className="preferences-row-title">Name</label>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem, preferencesStyles.rowItemColumnOnMobile), css.rowItem)}>
+            <div {...stylex.props(preferencesStyles.rowCopy, preferencesStyles.rowCopyColumnOnMobile)}>
+              <label htmlFor="workspace-name" {...stylex.props(preferencesStyles.rowTitle)}>Name</label>
             </div>
             <Input
               id="workspace-name"
-              className="preferences-row-input preferences-row-input--wide"
+              xstyle={[preferencesStyles.rowInput, preferencesStyles.rowInputWide]}
               value={name}
               placeholder={workspace.name}
               maxLength={60}
@@ -193,18 +196,17 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({ workspace, o
             />
           </div>
 
-          <div className="preferences-row-item preferences-row-item--column-on-mobile">
-            <div className="preferences-row-copy">
-              <label htmlFor="workspace-url" className="preferences-row-title">URL</label>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem, preferencesStyles.rowItemColumnOnMobile), css.rowItem)}>
+            <div {...stylex.props(preferencesStyles.rowCopy, preferencesStyles.rowCopyColumnOnMobile)}>
+              <label htmlFor="workspace-url" {...stylex.props(preferencesStyles.rowTitle)}>URL</label>
             </div>
-            <div className="preferences-url-field preferences-row-input--wide">
-              <span className="preferences-url-prefix" aria-hidden="true">{urlPrefix()}</span>
+            <div {...stylex.props(preferencesStyles.urlField, preferencesStyles.urlFieldWide)}>
+              <span {...stylex.props(preferencesStyles.urlPrefix)} aria-hidden="true">{urlPrefix()}</span>
               <input
                 id="workspace-url"
                 readOnly
                 value={workspace.slug}
-                className="preferences-url-input"
-
+                {...stylex.props(preferencesStyles.urlInput)}
                 onClick={() => setUrlOpen(true)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
@@ -213,7 +215,7 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({ workspace, o
                   }
                 }}
               />
-              <span className="preferences-url-accessory" aria-hidden="true">
+              <span {...stylex.props(preferencesStyles.urlAccessory)} aria-hidden="true">
                 <BuyerlyIcon name="edit" size={14} />
               </span>
             </div>
@@ -221,15 +223,15 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({ workspace, o
         </section>
       </div>
 
-      <div className="preferences-section">
-        <div className="preferences-section-header">
-          <h3 className="preferences-section-title">Danger zone</h3>
+      <div {...stylex.props(preferencesStyles.section)}>
+        <div {...stylex.props(preferencesStyles.sectionHeader)}>
+          <h3 {...stylex.props(preferencesStyles.sectionTitle)}>Danger zone</h3>
         </div>
-        <section className="preferences-card-container">
-          <div className={`preferences-row-item preferences-row-item--single${cannotDelete ? ' preferences-row-item--disabled' : ''}`}>
-            <div className="preferences-row-copy">
-              <span className="preferences-row-title">Delete workspace</span>
-              <span className="preferences-row-desc">
+        <section {...stylex.props(preferencesStyles.cardContainer)}>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem), cannotDelete ? 'preferences-row-item--disabled' : undefined)}>
+            <div {...stylex.props(preferencesStyles.rowCopy, cannotDelete && preferencesStyles.rowCopyDisabled)}>
+              <span {...stylex.props(preferencesStyles.rowTitle)}>Delete workspace</span>
+              <span {...stylex.props(preferencesStyles.rowDesc)}>
                 {!isOwner
                   ? 'Only the workspace owner can delete it'
                   : onlyWorkspace
@@ -239,7 +241,7 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({ workspace, o
             </div>
             <button
               type="button"
-              className="preferences-row-ghost-button preferences-row-ghost-button--danger"
+              {...stylex.props(preferencesStyles.rowGhostButton, preferencesStyles.rowGhostButtonDanger)}
               disabled={cannotDelete}
               onClick={() => setDeleteOpen(true)}
             >
@@ -332,8 +334,8 @@ const ChangeWorkspaceUrlDialog: React.FC<{
         <label htmlFor="workspace-url-new" {...stylex.props(styles.label)}>
           Enter the new workspace URL
         </label>
-        <div className="preferences-url-field">
-          <span className="preferences-url-prefix" aria-hidden="true">{urlPrefix()}</span>
+        <div {...stylex.props(preferencesStyles.urlField)}>
+          <span {...stylex.props(preferencesStyles.urlPrefix)} aria-hidden="true">{urlPrefix()}</span>
           <input
             id="workspace-url-new"
             autoFocus
@@ -344,8 +346,7 @@ const ChangeWorkspaceUrlDialog: React.FC<{
             placeholder={workspace.slug}
             disabled={busy}
             onChange={(event) => setValue(event.target.value)}
-            className="preferences-url-input preferences-url-input--editable"
-
+            {...stylex.props(preferencesStyles.urlInput, preferencesStyles.urlInputEditable)}
           />
         </div>
         {error && <p role="alert" {...stylex.props(styles.error)}>{error}</p>}

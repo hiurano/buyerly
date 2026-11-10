@@ -3,7 +3,10 @@ import * as stylex from '@stylexjs/stylex';
 import { colors, radii } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
 
-type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  /** Styles from the parent, applied last. */
+  xstyle?: stylex.StyleXStyles;
+}
 
 const styles = stylex.create({
   input: {
@@ -46,11 +49,11 @@ const styles = stylex.create({
 
 /** Shared text input for authenticated product surfaces. */
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className = '', type = 'text', ...props }, ref) => (
+  ({ className = '', type = 'text', xstyle, ...props }, ref) => (
     <input
       ref={ref}
       type={type}
-      {...withClassName(stylex.props(styles.input), `ui-input ${className}`.trim())}
+      {...withClassName(stylex.props(styles.input, xstyle), `ui-input ${className}`.trim())}
       {...props}
     />
   ),

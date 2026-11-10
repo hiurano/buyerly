@@ -10,8 +10,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { withClassName } from '@/ui/withClassName';
 import { ChangeEmailDialog } from './ChangeEmailDialog';
 import { LeaveWorkspaceDialog } from './MemberDialogs';
+import { preferencesStyles } from './preferencesStyles';
+import css from './Preferences.module.css';
 
 interface ProfileSectionProps {
   user: SessionUser;
@@ -120,13 +123,13 @@ const ProfileFieldRow: React.FC<ProfileFieldRowProps> = ({
   };
 
   return (
-    <div className="preferences-row-item preferences-row-item--column-on-mobile">
-      <div className="preferences-row-copy">
-        <span className="preferences-row-title">{label}</span>
-        {description && <span className="preferences-row-desc">{description}</span>}
+    <div {...withClassName(stylex.props(preferencesStyles.rowItem, preferencesStyles.rowItemColumnOnMobile), css.rowItem)}>
+      <div {...stylex.props(preferencesStyles.rowCopy, preferencesStyles.rowCopyColumnOnMobile)}>
+        <span {...withClassName(stylex.props(preferencesStyles.rowTitle), 'preferences-row-title')}>{label}</span>
+        {description && <span {...stylex.props(preferencesStyles.rowDesc)}>{description}</span>}
       </div>
       <Input
-        className="preferences-row-input preferences-profile-input"
+        xstyle={[preferencesStyles.rowInput, preferencesStyles.profileInput, preferencesStyles.profileInputMobileFull]}
         aria-label={label}
         placeholder={placeholder}
         value={draft}
@@ -190,11 +193,11 @@ const ProfileAvatar: React.FC<{ user: SessionUser; onUserChanged: () => void | P
   const face = (
     <>
       {hasPhoto ? (
-        <img src={user.avatar_url} alt={`Avatar of ${user.full_name || user.username}`} className="preferences-avatar-image" />
+        <img src={user.avatar_url} alt={`Avatar of ${user.full_name || user.username}`} {...stylex.props(preferencesStyles.avatarImage)} />
       ) : (
-        <span className="preferences-avatar-initials">{initials(user)}</span>
+        <span {...stylex.props(preferencesStyles.avatarInitials)}>{initials(user)}</span>
       )}
-      <span className="preferences-avatar-overlay" aria-hidden="true">
+      <span {...withClassName(stylex.props(preferencesStyles.avatarOverlay), css.avatarOverlay)} aria-hidden="true">
         {hasPhoto ? <BuyerlyIcon name="edit" size={16} /> : <BuyerlyIcon name="add" size={16} />}
       </span>
     </>
@@ -220,7 +223,7 @@ const ProfileAvatar: React.FC<{ user: SessionUser; onUserChanged: () => void | P
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="preferences-avatar preferences-avatar--button"
+              {...withClassName(stylex.props(preferencesStyles.avatar, preferencesStyles.avatarButton), css.avatarButton)}
               aria-label="Change avatar"
               disabled={busy}
             >
@@ -246,7 +249,7 @@ const ProfileAvatar: React.FC<{ user: SessionUser; onUserChanged: () => void | P
         <Tooltip content="Upload an avatar">
           <button
             type="button"
-            className="preferences-avatar preferences-avatar--button"
+            {...withClassName(stylex.props(preferencesStyles.avatar, preferencesStyles.avatarButton), css.avatarButton)}
             aria-label="Upload profile photo"
             disabled={busy}
             onClick={() => fileRef.current?.click()}
@@ -288,33 +291,33 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, workspace,
 
   return (
     <>
-      <div className="preferences-title-container">
-        <h1 className="preferences-page-title">Profile</h1>
+      <div {...stylex.props(preferencesStyles.titleContainer)}>
+        <h1 {...stylex.props(preferencesStyles.pageTitle)}>Profile</h1>
       </div>
 
-      <div className="preferences-section">
-        <section className="preferences-card-container preferences-card-container--divided">
-          <div className="preferences-row-item preferences-row-item--column-on-mobile">
-            <div className="preferences-row-copy">
-              <span className="preferences-row-title">Profile picture</span>
+      <div {...stylex.props(preferencesStyles.section)}>
+        <section {...withClassName(stylex.props(preferencesStyles.cardContainer), `${css.cardDivided} preferences-card-container--divided`)}>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem, preferencesStyles.rowItemColumnOnMobile), css.rowItem)}>
+            <div {...stylex.props(preferencesStyles.rowCopy, preferencesStyles.rowCopyColumnOnMobile)}>
+              <span {...withClassName(stylex.props(preferencesStyles.rowTitle), 'preferences-row-title')}>Profile picture</span>
             </div>
             <ProfileAvatar user={user} onUserChanged={onUserChanged} />
           </div>
 
-          <div className="preferences-row-item preferences-row-item--column-on-mobile">
-            <div className="preferences-row-copy">
-              <span className="preferences-row-title">Email</span>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem, preferencesStyles.rowItemColumnOnMobile), css.rowItem)}>
+            <div {...stylex.props(preferencesStyles.rowCopy, preferencesStyles.rowCopyColumnOnMobile)}>
+              <span {...withClassName(stylex.props(preferencesStyles.rowTitle), 'preferences-row-title')}>Email</span>
               {user.unconfirmed_email && (
-                <span className="preferences-row-desc">
+                <span {...stylex.props(preferencesStyles.rowDesc)}>
                   Pending confirmation: {user.unconfirmed_email}
                 </span>
               )}
             </div>
-            <div className="preferences-row-control">
-              <span className="preferences-row-value">{user.email || 'Not set'}</span>
+            <div {...stylex.props(preferencesStyles.rowControl, preferencesStyles.rowControlColumnOnMobile)}>
+              <span {...stylex.props(preferencesStyles.rowValue)}>{user.email || 'Not set'}</span>
               <button
                 type="button"
-                className="preferences-row-edit-button"
+                {...stylex.props(preferencesStyles.rowEditButton)}
                 aria-label="Change email"
                 onClick={() => setEmailDialogOpen(true)}
               >
@@ -359,20 +362,20 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, workspace,
         the button to 0.6, turns it off and explains why in a tooltip; here that
         is an owner with nobody to hand the workspace to.
       */}
-      <div className="preferences-section">
-        <div className="preferences-section-header">
-          <h3 className="preferences-section-title">Workspace access</h3>
+      <div {...stylex.props(preferencesStyles.section)}>
+        <div {...stylex.props(preferencesStyles.sectionHeader)}>
+          <h3 {...stylex.props(preferencesStyles.sectionTitle)}>Workspace access</h3>
         </div>
-        <section className="preferences-card-container">
-          <div className={`preferences-row-item preferences-row-item--single${cannotLeave ? ' preferences-row-item--disabled' : ''}`}>
-            <div className="preferences-row-copy">
-              <span className="preferences-row-title">Remove yourself from workspace</span>
+        <section {...stylex.props(preferencesStyles.cardContainer)}>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem), cannotLeave ? 'preferences-row-item--disabled' : undefined)}>
+            <div {...stylex.props(preferencesStyles.rowCopy, cannotLeave && preferencesStyles.rowCopyDisabled)}>
+              <span {...withClassName(stylex.props(preferencesStyles.rowTitle), 'preferences-row-title')}>Remove yourself from workspace</span>
             </div>
             <Tooltip content="Workspace requires at least one owner" disabled={!cannotLeave}>
               <span {...stylex.props(styles.tooltipTarget)}>
                 <button
                   type="button"
-                  className="preferences-row-ghost-button"
+                  {...stylex.props(preferencesStyles.rowGhostButton)}
                   disabled={cannotLeave}
                   onClick={() => setLeaveOpen(true)}
                 >

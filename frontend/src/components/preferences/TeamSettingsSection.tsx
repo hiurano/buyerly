@@ -36,8 +36,11 @@ import { Initials, RoleStatus, RowMenu } from './MembersSection';
 import { TeamIcon } from './TeamIcon';
 import { useLastPresent } from '@/ui/useLastPresent';
 import { rowMarker } from '@/ui/markers.stylex';
+import { withClassName } from '@/ui/withClassName';
 import { colors } from '@/styles/tokens.stylex';
 import { openSettings, openTeamSettings } from '@/lib/routing';
+import { preferencesStyles } from './preferencesStyles';
+import css from './Preferences.module.css';
 
 const SM = '@media (min-width: 640px)';
 
@@ -348,7 +351,7 @@ const TeamBreadcrumb: React.FC<{ team?: TeamItem }> = ({ team }) => {
   return (
     <button
       type="button"
-      className="preferences-breadcrumb"
+      {...withClassName(stylex.props(preferencesStyles.breadcrumb), 'preferences-breadcrumb')}
       onClick={() => (team ? openTeamSettings(team.key) : openSettings('teams'))}
     >
       <BuyerlyIcon name="chevron-left" size={14} aria-hidden="true" />
@@ -365,14 +368,18 @@ const LinkRow: React.FC<{ title: string; description: string; value?: string; on
   value,
   onOpen,
 }) => (
-  <button type="button" className="preferences-row-item preferences-row-link" onClick={onOpen}>
-    <span className="preferences-row-copy">
-      <span className="preferences-row-title">{title}</span>
-      <span className="preferences-row-desc">{description}</span>
+  <button
+    type="button"
+    {...withClassName(stylex.props(preferencesStyles.rowItem, preferencesStyles.rowLink), css.rowItem)}
+    onClick={onOpen}
+  >
+    <span {...stylex.props(preferencesStyles.rowCopy)}>
+      <span {...stylex.props(preferencesStyles.rowTitle)}>{title}</span>
+      <span {...stylex.props(preferencesStyles.rowDesc)}>{description}</span>
     </span>
-    <span className="preferences-row-control">
-      {value && <span className="preferences-row-value">{value}</span>}
-      <BuyerlyIcon name="chevron-right" size={16} aria-hidden="true" className="preferences-row-chevron" />
+    <span {...stylex.props(preferencesStyles.rowControl, preferencesStyles.rowControlLink)}>
+      {value && <span {...stylex.props(preferencesStyles.rowValue, preferencesStyles.rowValueLink)}>{value}</span>}
+      <BuyerlyIcon name="chevron-right" size={16} aria-hidden="true" {...stylex.props(preferencesStyles.rowChevron, preferencesStyles.rowChevronInControl)} />
     </span>
   </button>
 );
@@ -383,12 +390,12 @@ const DangerRow: React.FC<{ title: string; description: string; action: string; 
   action,
   onClick,
 }) => (
-  <div className="preferences-row-item">
-    <div className="preferences-row-copy">
-      <span className="preferences-row-title">{title}</span>
-      <span className="preferences-row-desc">{description}</span>
+  <div {...withClassName(stylex.props(preferencesStyles.rowItem), css.rowItem)}>
+    <div {...stylex.props(preferencesStyles.rowCopy)}>
+      <span {...stylex.props(preferencesStyles.rowTitle)}>{title}</span>
+      <span {...stylex.props(preferencesStyles.rowDesc)}>{description}</span>
     </div>
-    <button type="button" className="preferences-row-ghost-button" onClick={onClick}>{action}</button>
+    <button type="button" {...stylex.props(preferencesStyles.rowGhostButton)} onClick={onClick}>{action}</button>
   </div>
 );
 
@@ -416,15 +423,15 @@ const TeamOverview: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
   return (
     <>
       <TeamBreadcrumb />
-      <div className="preferences-title-container preferences-title-container--with-note">
-        <h1 className="preferences-page-title">{team.name}</h1>
-        <p className="preferences-page-note">
+      <div {...stylex.props(preferencesStyles.titleContainer, preferencesStyles.titleContainerWithNote)}>
+        <h1 {...stylex.props(preferencesStyles.pageTitle)}>{team.name}</h1>
+        <p {...stylex.props(preferencesStyles.pageNote)}>
           {retired ? 'Retired · ' : ''}{team.private ? 'Private · only members see it' : 'Accessible to all workspace members'}
         </p>
       </div>
 
-      <div className="preferences-section">
-        <section className="preferences-card-container preferences-card-container--divided">
+      <div {...stylex.props(preferencesStyles.section)}>
+        <section {...withClassName(stylex.props(preferencesStyles.cardContainer), css.cardDivided)}>
           <LinkRow
             title="General"
             description="Name, identifier and description"
@@ -445,11 +452,11 @@ const TeamOverview: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
         </section>
       </div>
 
-      {(team.is_member || canManage) && <div className="preferences-section">
-        <div className="preferences-section-header">
-          <h3 className="preferences-section-title">Danger zone</h3>
+      {(team.is_member || canManage) && <div {...stylex.props(preferencesStyles.section)}>
+        <div {...stylex.props(preferencesStyles.sectionHeader)}>
+          <h3 {...stylex.props(preferencesStyles.sectionTitle)}>Danger zone</h3>
         </div>
-        <section className="preferences-card-container preferences-card-container--divided">
+        <section {...withClassName(stylex.props(preferencesStyles.cardContainer), css.cardDivided)}>
           {team.is_member && (
             <DangerRow
               title="Leave team"
@@ -688,15 +695,15 @@ const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
   return (
     <>
       <TeamBreadcrumb team={team} />
-      <div className="preferences-title-container">
-        <h1 className="preferences-page-title">General</h1>
+      <div {...stylex.props(preferencesStyles.titleContainer)}>
+        <h1 {...stylex.props(preferencesStyles.pageTitle)}>General</h1>
       </div>
 
-      <div className="preferences-section">
-        <section className="preferences-card-container preferences-card-container--divided">
-          <div className="preferences-row-item preferences-row-item--column-on-mobile">
-            <div className="preferences-row-copy">
-              <label htmlFor="team-name" className="preferences-row-title">Name</label>
+      <div {...stylex.props(preferencesStyles.section)}>
+        <section {...withClassName(stylex.props(preferencesStyles.cardContainer), css.cardDivided)}>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem, preferencesStyles.rowItemColumnOnMobile), css.rowItem)}>
+            <div {...stylex.props(preferencesStyles.rowCopy, preferencesStyles.rowCopyColumnOnMobile)}>
+              <label htmlFor="team-name" {...stylex.props(preferencesStyles.rowTitle)}>Name</label>
             </div>
             <div {...stylex.props(styles.nameField)}>
               <span {...stylex.props(styles.nameIcon)}>
@@ -705,7 +712,7 @@ const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
               <Input
                 id="team-name"
                 autoComplete="off"
-                className="preferences-row-input preferences-profile-input"
+                xstyle={[preferencesStyles.rowInput, preferencesStyles.profileInput]}
                 maxLength={TEAM_NAME_MAX}
                 readOnly={readOnly}
                 value={name}
@@ -715,16 +722,16 @@ const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
               />
             </div>
           </div>
-          <div className="preferences-row-item preferences-row-item--column-on-mobile">
-            <div className="preferences-row-copy">
-              <label htmlFor="team-key" className="preferences-row-title">Identifier</label>
-              <span className="preferences-row-desc">Used in this team’s address</span>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem, preferencesStyles.rowItemColumnOnMobile), css.rowItem)}>
+            <div {...stylex.props(preferencesStyles.rowCopy, preferencesStyles.rowCopyColumnOnMobile)}>
+              <label htmlFor="team-key" {...stylex.props(preferencesStyles.rowTitle)}>Identifier</label>
+              <span {...stylex.props(preferencesStyles.rowDesc)}>Used in this team’s address</span>
             </div>
             <Input
               id="team-key"
               autoComplete="off"
               spellCheck={false}
-              className="preferences-row-input preferences-profile-input"
+              xstyle={[preferencesStyles.rowInput, preferencesStyles.profileInput, preferencesStyles.profileInputMobileFull]}
               maxLength={TEAM_KEY_MAX}
               readOnly={readOnly}
               value={key}
@@ -734,10 +741,10 @@ const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
             />
           </div>
           {/* Linear's "Change team visibility": only those who run the team change it. */}
-          <div className="preferences-row-item">
-            <div className="preferences-row-copy">
-              <span className="preferences-row-title">Private team</span>
-              <span className="preferences-row-desc">Only members see this team, its ad accounts and their campaigns</span>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem), css.rowItem)}>
+            <div {...stylex.props(preferencesStyles.rowCopy)}>
+              <span {...stylex.props(preferencesStyles.rowTitle)}>Private team</span>
+              <span {...stylex.props(preferencesStyles.rowDesc)}>Only members see this team, its ad accounts and their campaigns</span>
             </div>
             <BuyerlyToggle
               checked={team.private}
@@ -750,12 +757,12 @@ const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
         </section>
       </div>
 
-      <div className="preferences-section">
-        <div className="preferences-section-header">
-          <h3 className="preferences-section-title">Description</h3>
+      <div {...stylex.props(preferencesStyles.section)}>
+        <div {...stylex.props(preferencesStyles.sectionHeader)}>
+          <h3 {...stylex.props(preferencesStyles.sectionTitle)}>Description</h3>
         </div>
-        <p className="preferences-section-note">A short summary shown on the team page</p>
-        <section className="preferences-card-container">
+        <p {...stylex.props(preferencesStyles.sectionNote)}>A short summary shown on the team page</p>
+        <section {...stylex.props(preferencesStyles.cardContainer)}>
           <textarea
             aria-label="Team description"
             rows={4}
@@ -944,8 +951,8 @@ const TeamMembers: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
   return (
     <>
       <TeamBreadcrumb team={team} />
-      <div className="preferences-title-container">
-        <h1 className="preferences-page-title">Team members</h1>
+      <div {...stylex.props(preferencesStyles.titleContainer)}>
+        <h1 {...stylex.props(preferencesStyles.pageTitle)}>Team members</h1>
       </div>
       <div {...stylex.props(styles.toolbar)}>
         <SearchField value={query} onChange={setQuery} placeholder="Search by name or email" />
@@ -1075,8 +1082,8 @@ const TeamAccounts: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
   return (
     <>
       <TeamBreadcrumb team={team} />
-      <div className="preferences-title-container">
-        <h1 className="preferences-page-title">Ad accounts</h1>
+      <div {...stylex.props(preferencesStyles.titleContainer)}>
+        <h1 {...stylex.props(preferencesStyles.pageTitle)}>Ad accounts</h1>
       </div>
       <div {...stylex.props(styles.toolbar)}>
         <SearchField value={query} onChange={setQuery} placeholder="Search by name or ID" />
