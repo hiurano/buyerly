@@ -57,6 +57,7 @@ import {
 import { useScopeStore, scopeStore } from '@/models/scopeStore';
 import { useDialogStore } from '@/models/dialogStore';
 import { useRulesStore } from '@/models/rulesStore';
+import '@/ui/animations.css';
 
 const LEVEL_HINTS = {
   adset: 'Each ad set on its own',

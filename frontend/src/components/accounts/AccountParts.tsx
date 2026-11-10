@@ -17,6 +17,7 @@ import {
 import { withClassName } from '@/ui/withClassName';
 import { colors, radii } from '@/styles/tokens.stylex';
 import { accountName, accountStatus, connectionProblem } from './accountsModel';
+import '@/ui/animations.css';
 
 const TOUCH = '@media (hover: none) and (pointer: coarse)';
 

@@ -1,0 +1,31 @@
+/*
+ * Adjacent selected rows read as one block, as in Linear: the inner corners are
+ * squared and the row gap between them is filled with the selection colour.
+ */
+.row[data-selected='true']:has(+ .row[data-selected='true']) {
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  box-shadow: 0 2px 0 0 var(--row-selected-bg);
+}
+
+.row[data-selected='true'] + .row[data-selected='true'] {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+
+/* A pinned Name cell paints the row's own state so it never covers the selection. */
+:global(.buyerly-data-row) :global(.buyerly-data-sticky) {
+  background-color: var(--bg-canvas);
+}
+
+:global(.buyerly-data-row):hover :global(.buyerly-data-sticky) {
+  background-color: var(--data-row-hover-bg);
+}
+
+:global(.buyerly-data-row)[data-selected='true'] :global(.buyerly-data-sticky) {
+  background-color: var(--row-selected-bg);
+}
+
+:global(.buyerly-data-row)[data-selected='true']:hover :global(.buyerly-data-sticky) {
+  background-color: var(--row-selected-hover-bg);
+}

@@ -1,7 +1,9 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BuyerlyDisplayOptions, type DisplayGroupOption } from '@/ui/BuyerlyDisplayOptions';
+import * as stylex from '@stylexjs/stylex';
+import { BuyerlyDisplayOptions, displayCss, displayStyles, type DisplayGroupOption } from '@/ui/BuyerlyDisplayOptions';
 import { groupingChange, orderGroups, toggleHiddenGroup } from '@/ui/listView';
+import { withClassName } from '@/ui/withClassName';
 import {
   adsManagerActiveGrouping,
   adsManagerActiveRows,
@@ -72,7 +74,11 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
   const hidden = view.hiddenGroups[grouping] ?? [];
 
   return createPortal(
-    <div ref={popoverRef} className="buyerly-display-options-popover" style={{ top: coords.top, right: coords.right }}>
+    <div
+      ref={popoverRef}
+      {...withClassName(stylex.props(displayStyles.popover), displayCss.popover, 'buyerly-display-options-popover')}
+      style={{ top: coords.top, right: coords.right }}
+    >
       <BuyerlyDisplayOptions
         viewMode={view.layout}
         onViewModeChange={(layout) => update({ layout })}

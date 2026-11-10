@@ -1,0 +1,63 @@
+/* Linear pill tabs draw their visible outline on ::after rather than on the
+   button border, keeping the 28px geometry stable across states. */
+.tab::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  pointer-events: none;
+  transition-property: box-shadow;
+  transition-duration: inherit;
+  transition-timing-function: inherit;
+}
+
+/* Light Theme (html[data-theme='light']) */
+:global(html[data-theme='light']) .tab[data-active='false']::after {
+  box-shadow:
+    0 0 0 0.5px lch(0% 0 0 / 0.09),
+    0 3px 6px -2px rgba(0, 0, 0, 0.02),
+    0 1px 1px 0px rgba(0, 0, 0, 0.04);
+}
+
+:global(html[data-theme='light']) .tab[data-active='false']:active::after {
+  box-shadow:
+    0 0 0 0.5px lch(0% 0 0 / 0.15),
+    0 3px 6px -2px rgba(0, 0, 0, 0.02),
+    0 1px 1px 0px rgba(0, 0, 0, 0.04);
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  :global(html[data-theme='light']) .tab[data-active='false']:hover::after {
+    box-shadow:
+      0 0 0 0.5px lch(0% 0 0 / 0.15),
+      0 3px 6px -2px rgba(0, 0, 0, 0.02),
+      0 1px 1px 0px rgba(0, 0, 0, 0.04);
+  }
+}
+
+:global(html[data-theme='light']) .tab[data-active='true']::after {
+  box-shadow: 0 0 0 0.5px lch(0% 0 0 / 0.09);
+}
+
+/* Dark Theme (:root:not([data-theme='light']) & html[data-theme='dark']) */
+:global(:root:not([data-theme='light'])) .tab[data-active='false']::after,
+:global(html[data-theme='dark']) .tab[data-active='false']::after {
+  box-shadow: 0 0 0 0.5px lch(100% 0 0 / 0.137), 0 0.5px 1px 1px lch(0% 0 0 / 0.3);
+}
+
+:global(:root:not([data-theme='light'])) .tab[data-active='false']:active::after,
+:global(html[data-theme='dark']) .tab[data-active='false']:active::after {
+  box-shadow: 0 0 0 0.5px lch(100% 0 0 / 0.229), 0 0.5px 1px 1px lch(0% 0 0 / 0.3);
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  :global(:root:not([data-theme='light'])) .tab[data-active='false']:hover::after,
+  :global(html[data-theme='dark']) .tab[data-active='false']:hover::after {
+    box-shadow: 0 0 0 0.5px lch(100% 0 0 / 0.229), 0 0.5px 1px 1px lch(0% 0 0 / 0.3);
+  }
+}
+
+:global(:root:not([data-theme='light'])) .tab[data-active='true']::after,
+:global(html[data-theme='dark']) .tab[data-active='true']::after {
+  box-shadow: 0 0 0 0.5px lch(100% 0 0 / 0.137);
+}

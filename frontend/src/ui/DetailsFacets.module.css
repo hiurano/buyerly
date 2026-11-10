@@ -1,0 +1,56 @@
+/* Linear draws the tab's ring on ::after; the chosen tab's is lighter and without the drop. */
+.tab::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: var(--details-tab-ring);
+}
+
+.tab[aria-selected='true']::after {
+  box-shadow: var(--details-tab-ring-active);
+}
+
+/* As Linear's (01.11): the mark takes its own width and the name follows 8px after it, so a
+   16px icon and a 9px label dot each set where the name starts. */
+.rowIcon > svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rowIcon > :global(.details-facets-dot) {
+  width: 9px;
+  height: 9px;
+}
+
+/* "See …" on hover, "Clear filter" on the chosen row, laid over the name's end. */
+.row {
+  --details-facets-row-current-bg: var(--details-row-bg);
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .row:hover {
+    --details-facets-row-current-bg: var(--details-row-hover-bg);
+  }
+
+  .row:hover .rowLink {
+    display: flex;
+  }
+}
+
+.row:focus-visible .rowLink {
+  display: flex;
+}
+
+.row[data-status='active'] {
+  --details-facets-row-current-bg: var(--details-row-active-bg);
+}
+
+.row[data-status='active'] .rowLink {
+  display: flex;
+}
+
+.rowLink {
+  background-color: var(--details-facets-row-current-bg);
+}

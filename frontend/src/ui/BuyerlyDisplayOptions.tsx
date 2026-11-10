@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import * as stylex from '@stylexjs/stylex';
 import {
   closestCenter,
   DndContext,
@@ -19,9 +20,506 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { BuyerlyChevronGlyph } from '@/icons/BuyerlyIcons';
+import { colors, type as typeTokens } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
 import { BuyerlyToggle } from './BuyerlyToggle';
 import { Tooltip } from './Tooltip';
 import { LAYOUT_SHORTCUT } from './useLayoutShortcut';
+import displayCss from './BuyerlyDisplayOptions.module.css';
+
+export { displayCss };
+
+const DISPLAY_INTER_STACK =
+  '"Inter Variable", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", "Linear Thai", sans-serif';
+
+export const displayStyles = stylex.create({
+  /* Linear My Issues Display options contract, shared by Ads Manager, Rules, Accounts, Inbox and Search. */
+  popover: {
+    position: 'fixed',
+    width: 302,
+    maxWidth: 'calc(100vw - 16px)',
+    zIndex: 9999,
+    overflow: 'visible',
+    isolation: 'isolate',
+    color: colors['--text-primary'],
+    backgroundColor: colors['--card-bg'],
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'var(--display-popover-border, var(--color-border-secondary))',
+    borderRadius: 12,
+    boxShadow: colors['--dropdown-shadow'],
+    fontFamily: typeTokens['--font-regular'],
+    fontSize: 12,
+    lineHeight: '18px',
+    userSelect: 'none',
+    animationName: 'buyerlyMenuFadeIn, buyerlyMenuScaleIn',
+    animationDuration: '40ms, 250ms',
+    animationTimingFunction: 'linear, cubic-bezier(0.25, 0.95, 0.6, 1)',
+    animationDelay: '0s, 0s',
+    animationDirection: 'normal, normal',
+    animationFillMode: 'none, none',
+    animationIterationCount: '1, 1',
+    animationPlayState: 'running, running',
+    transformOrigin: '100% 0',
+  },
+  popoverClosing: {
+    transform: 'scale(0.98)',
+    pointerEvents: 'none',
+    animationName: 'buyerlyMenuFadeOut',
+    animationDuration: '140ms',
+    animationTimingFunction: 'cubic-bezier(0.2, 0.65, 0.2, 1)',
+    animationFillMode: 'forwards',
+  },
+  mainSection: {
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingLeft: 16,
+    paddingRight: 16,
+  },
+  section: {
+    display: 'flex',
+    flexDirection: 'column',
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingLeft: 16,
+    paddingRight: 16,
+    borderTopWidth: 1,
+    borderTopStyle: 'solid',
+    borderTopColor: 'var(--display-divider, var(--color-border-primary))',
+  },
+  tabs: {
+    display: 'flex',
+    alignItems: 'center',
+    width: 268,
+    height: 32,
+    gap: 2,
+    marginTop: 6,
+    marginRight: 0,
+    marginBottom: 16,
+    marginLeft: 0,
+    padding: 0,
+    borderRadius: 5,
+    backgroundColor: colors['--card-bg'],
+  },
+  tabSlot: {
+    display: 'flex',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    alignItems: 'center',
+    height: 32,
+  },
+  tab: {
+    position: 'relative',
+    display: 'flex',
+    width: 'calc(100% - 4px)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 28,
+    margin: 2,
+    gap: 6,
+    paddingTop: 6,
+    paddingBottom: 6,
+    paddingLeft: 8,
+    paddingRight: 8,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    borderRadius: 9999,
+    color: colors['--sidebar-tab-inactive-text'],
+    backgroundColor: colors['--card-bg'],
+    fontWeight: 500,
+    outlineStyle: 'none',
+    cursor: 'pointer',
+  },
+  tabSelected: {
+    color: colors['--sidebar-tab-active-text'],
+    backgroundColor: 'var(--display-selected, var(--tab-active-bg))',
+  },
+  row: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: 268,
+    height: 32,
+    color: colors['--text-tertiary'],
+    fontWeight: 500,
+  },
+  rowControls: {
+    display: 'flex',
+    alignItems: 'center',
+    flexDirection: 'row-reverse',
+  },
+  select: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: 100,
+    height: 24,
+    paddingTop: 1,
+    paddingBottom: 1,
+    paddingLeft: 8,
+    paddingRight: 8,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    borderRadius: 8,
+    color: colors['--text-secondary'],
+    backgroundColor: {
+      default: colors['--card-bg'],
+      ':hover': 'var(--display-control-hover, var(--bg-canvas))',
+    },
+    boxShadow:
+      '0 0 0 1px color-mix(in srgb, var(--text-primary) 10.3%, transparent), 0 3px 6px -2px rgb(0 0 0 / 2%), 0 1px 1px rgb(0 0 0 / 4%)',
+    fontWeight: 400,
+    outlineStyle: 'none',
+    cursor: 'pointer',
+  },
+  selectOpen: {
+    backgroundColor: 'var(--display-control-hover, var(--bg-canvas))',
+  },
+  orderButton: {
+    display: 'grid',
+    placeItems: 'center',
+    width: 24,
+    height: 24,
+    marginRight: 4,
+    paddingTop: 0,
+    paddingBottom: 0,
+    paddingLeft: 2,
+    paddingRight: 2,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    borderRadius: 9999,
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: 'transparent',
+      ':hover': 'var(--display-control-hover, var(--bg-canvas))',
+    },
+    backgroundPosition: '0 0',
+    outlineStyle: 'none',
+    cursor: 'pointer',
+  },
+  groupOrderButton: {
+    marginRight: 0,
+  },
+  /* Linear's Group ordering panel (measured 11.10): a 49px header with Back and
+     the title, then 32px rows: handle, the group, and an eye to hide it. */
+  groupHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    height: 49,
+    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomStyle: 'solid',
+    borderBottomColor: 'var(--display-divider, var(--color-border-primary))',
+    color: colors['--text-tertiary'],
+    fontWeight: 500,
+  },
+  groupList: {
+    padding: 8,
+    maxHeight: 'min(420px, calc(100vh - 160px))',
+    overflowY: 'auto',
+  },
+  groupRow: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    height: 32,
+    paddingTop: 4,
+    paddingRight: 8,
+    paddingBottom: 4,
+    paddingLeft: 28,
+    borderRadius: 8,
+    backgroundColor: {
+      default: colors['--card-bg'],
+      ':hover': 'var(--display-option-hover, var(--bg-canvas))',
+    },
+  },
+  groupRowDragging: {
+    zIndex: 1,
+    boxShadow: colors['--dropdown-shadow'],
+  },
+  groupHandle: {
+    position: 'absolute',
+    left: 4,
+    top: 0,
+    display: 'grid',
+    placeItems: 'center',
+    width: 20,
+    height: 32,
+    color: colors['--text-tertiary'],
+    cursor: 'grab',
+    touchAction: 'none',
+  },
+  groupLabel: {
+    display: 'flex',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 6,
+    color: colors['--text-secondary'],
+    fontSize: 13,
+    fontWeight: 450,
+    whiteSpace: 'nowrap',
+  },
+  groupLabelHidden: {
+    opacity: 0.5,
+  },
+  groupIcon: {
+    display: 'inline-flex',
+    width: 16,
+    justifyContent: 'center',
+  },
+  /* Linear's footer while the view differs from its default. */
+  footer: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: 4,
+    padding: 8,
+    borderTopWidth: 1,
+    borderTopStyle: 'solid',
+    borderTopColor: 'var(--display-divider, var(--color-border-primary))',
+  },
+  footerButton: {
+    height: 24,
+    paddingTop: 0,
+    paddingBottom: 0,
+    paddingLeft: 8,
+    paddingRight: 8,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    borderRadius: 9999,
+    color: colors['--text-primary'],
+    backgroundColor: {
+      default: 'transparent',
+      ':hover': 'var(--display-control-hover, var(--bg-canvas))',
+    },
+    backgroundPosition: '0 0',
+    fontSize: 12,
+    fontWeight: 500,
+    outlineStyle: 'none',
+    cursor: 'pointer',
+  },
+  /* "Set default for everyone" reads in Linear's accent (#472). */
+  footerButtonAccent: {
+    color: colors['--display-footer-accent'],
+  },
+  /* Linear's 7px accent dot on the Display options icon while the view is changed. */
+  changedDot: {
+    position: 'absolute',
+    top: 1,
+    right: 1,
+    width: 7,
+    height: 7,
+    borderRadius: '50%',
+    backgroundColor: colors['--action-primary'],
+    pointerEvents: 'none',
+  },
+  selectMenu: {
+    position: 'fixed',
+    zIndex: 10000,
+    display: 'flex',
+    flexDirection: 'column',
+    minWidth: 100,
+    width: 'max-content',
+    overflow: 'hidden',
+    padding: 0,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'var(--display-menu-border, var(--color-border-secondary))',
+    borderRadius: 12,
+    color: colors['--text-secondary'],
+    backgroundColor: colors['--card-bg'],
+    boxShadow: colors['--dropdown-shadow'],
+  },
+  selectOption: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    minWidth: 117,
+    height: 24,
+    paddingTop: 0,
+    paddingRight: 35,
+    paddingBottom: 0,
+    paddingLeft: 12,
+    borderWidth: 0,
+    borderStyle: 'none',
+    borderColor: 'currentColor',
+    color: colors['--text-secondary'],
+    backgroundColor: {
+      default: 'transparent',
+      ':hover': 'var(--display-option-hover, var(--bg-canvas))',
+      ':focus-visible': 'var(--display-option-hover, var(--bg-canvas))',
+    },
+    backgroundPosition: '0 0',
+    textAlign: 'left',
+    whiteSpace: 'nowrap',
+    outlineStyle: 'none',
+    cursor: 'pointer',
+  },
+  /* Linear's checkbox dropdown in Display options (Include in priority inbox). */
+  checkMenu: {
+    paddingTop: 4,
+    paddingBottom: 4,
+    paddingLeft: 0,
+    paddingRight: 0,
+  },
+  checkOption: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    minWidth: 173,
+    height: 32,
+    paddingTop: 0,
+    paddingBottom: 0,
+    paddingLeft: 14,
+    paddingRight: 14,
+    borderWidth: 0,
+    borderStyle: 'none',
+    borderColor: 'currentColor',
+    color: colors['--text-primary'],
+    backgroundColor: {
+      default: 'transparent',
+      ':hover': 'var(--display-option-hover, var(--bg-canvas))',
+      ':focus-visible': 'var(--display-option-hover, var(--bg-canvas))',
+    },
+    backgroundPosition: '0 0',
+    textAlign: 'left',
+    whiteSpace: 'nowrap',
+    outlineStyle: 'none',
+    cursor: 'pointer',
+  },
+  checkbox: {
+    display: 'inline-flex',
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: 'auto',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 14,
+    height: 14,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--filter-checkbox-border'],
+    borderRadius: 3,
+    color: '#fff',
+  },
+  checkboxChecked: {
+    borderColor: colors['--filter-checkbox-selected'],
+    backgroundColor: colors['--filter-checkbox-selected'],
+  },
+  checkDivider: {
+    height: 1,
+    marginTop: 4,
+    marginBottom: 4,
+    marginLeft: 0,
+    marginRight: 0,
+    backgroundColor: 'var(--display-menu-border, var(--color-border-secondary))',
+  },
+  checkIcon: {
+    display: 'inline-flex',
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: 'auto',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 14,
+    color: colors['--text-tertiary'],
+  },
+  sectionTitle: {
+    height: 15,
+    marginTop: 8,
+    marginRight: 0,
+    marginBottom: 2,
+    marginLeft: 0,
+    color: colors['--text-secondary'],
+    fontWeight: 500,
+    lineHeight: '15px',
+  },
+  propertiesLabel: {
+    display: 'flex',
+    height: 15,
+    marginTop: 8,
+    marginRight: 0,
+    marginBottom: 4,
+    marginLeft: 0,
+    color: colors['--sidebar-tab-inactive-text'],
+    fontFamily: DISPLAY_INTER_STACK,
+    fontWeight: 500,
+    fontFeatureSettings: 'normal',
+    lineHeight: 'normal',
+  },
+  properties: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    width: 268,
+    marginTop: 8,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    gap: 1,
+    lineHeight: '24px',
+  },
+  property: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 24,
+    marginTop: 0,
+    marginRight: 4,
+    marginBottom: 4,
+    marginLeft: 0,
+    paddingTop: 0,
+    paddingBottom: 0,
+    paddingLeft: 8,
+    paddingRight: 8,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    borderRadius: 9999,
+    color: colors['--sidebar-tab-inactive-text'],
+    backgroundColor: {
+      default: colors['--card-bg'],
+      ':hover': 'var(--display-control-hover, var(--bg-canvas))',
+    },
+    fontFamily: DISPLAY_INTER_STACK,
+    fontSize: 12,
+    fontWeight: 500,
+    fontFeatureSettings: 'normal',
+    lineHeight: 'normal',
+    textRendering: 'auto',
+    outlineStyle: 'none',
+    cursor: 'pointer',
+  },
+  propertyPressed: {
+    color: colors['--sidebar-tab-active-text'],
+    backgroundColor: {
+      default: 'var(--display-property-selected, var(--tab-active-bg))',
+      ':hover': 'var(--display-control-hover, var(--bg-canvas))',
+    },
+  },
+  /* The board's columns or rows already show it: off and not clickable, as Linear's. */
+  propertyDisabled: {
+    backgroundColor: colors['--card-bg'],
+    cursor: 'default',
+  },
+  facetDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 9999,
+  },
+});
 
 export type DisplayOption = { value: string; label: string };
 
@@ -82,7 +580,11 @@ export const BuyerlySelect: React.FC<BuyerlySelectProps> = ({ value, options, on
         role="combobox"
         aria-expanded={open}
         aria-haspopup="listbox"
-        className="buyerly-display-select"
+        {...withClassName(
+          stylex.props(displayStyles.select, open && displayStyles.selectOpen),
+          displayCss.select,
+          'buyerly-display-select',
+        )}
         data-open={open || undefined}
         onClick={() => setOpen((current) => !current)}
       >
@@ -93,7 +595,7 @@ export const BuyerlySelect: React.FC<BuyerlySelectProps> = ({ value, options, on
         <div
           ref={menuRef}
           role="listbox"
-          className="buyerly-display-select-menu"
+          {...withClassName(stylex.props(displayStyles.selectMenu), 'buyerly-display-select-menu')}
           style={{ top: coords.top, right: coords.right }}
         >
           {options.map((option) => {
@@ -104,7 +606,11 @@ export const BuyerlySelect: React.FC<BuyerlySelectProps> = ({ value, options, on
                 role="option"
                 aria-selected={isSelected}
                 key={option.value}
-                className="buyerly-display-select-option"
+                {...withClassName(
+                  stylex.props(displayStyles.selectOption),
+                  displayCss.selectOption,
+                  'buyerly-display-select-option',
+                )}
                 onClick={() => {
                   onChange(option.value);
                   close();
@@ -176,7 +682,11 @@ export const BuyerlyMultiSelect: React.FC<BuyerlyMultiSelectProps> = ({ values, 
         aria-label={ariaLabel}
         aria-expanded={open}
         aria-haspopup="listbox"
-        className="buyerly-display-select"
+        {...withClassName(
+          stylex.props(displayStyles.select, open && displayStyles.selectOpen),
+          displayCss.select,
+          'buyerly-display-select',
+        )}
         data-open={open || undefined}
         onClick={() => setOpen((current) => !current)}
       >
@@ -189,7 +699,10 @@ export const BuyerlyMultiSelect: React.FC<BuyerlyMultiSelectProps> = ({ values, 
           role="listbox"
           aria-multiselectable="true"
           aria-label={ariaLabel}
-          className="buyerly-display-select-menu buyerly-display-check-menu"
+          {...withClassName(
+            stylex.props(displayStyles.selectMenu, displayStyles.checkMenu),
+            'buyerly-display-select-menu buyerly-display-check-menu',
+          )}
           style={{ top: coords.top, right: coords.right }}
         >
           {options.map((option) => {
@@ -200,14 +713,22 @@ export const BuyerlyMultiSelect: React.FC<BuyerlyMultiSelectProps> = ({ values, 
                 role="option"
                 aria-selected={isSelected}
                 key={option.value}
-                className="buyerly-display-check-option"
+                {...withClassName(stylex.props(displayStyles.checkOption), 'buyerly-display-check-option')}
                 onClick={() => onChange(
                   isSelected
                     ? values.filter((value) => value !== option.value)
                     : options.map((entry) => entry.value).filter((value) => value === option.value || values.includes(value)),
                 )}
               >
-                <span className="buyerly-display-checkbox" data-checked={isSelected || undefined} aria-hidden="true">
+                <span
+                  {...withClassName(
+                    stylex.props(displayStyles.checkbox, isSelected && displayStyles.checkboxChecked),
+                    displayCss.checkbox,
+                    'buyerly-display-checkbox',
+                  )}
+                  data-checked={isSelected || undefined}
+                  aria-hidden="true"
+                >
                   {isSelected && <Check />}
                 </span>
                 <span>{option.label}</span>
@@ -216,18 +737,18 @@ export const BuyerlyMultiSelect: React.FC<BuyerlyMultiSelectProps> = ({ values, 
           })}
           {footer && (
             <>
-              <div role="separator" className="buyerly-display-check-divider" />
+              <div role="separator" {...withClassName(stylex.props(displayStyles.checkDivider), 'buyerly-display-check-divider')} />
               <button
                 type="button"
                 role="option"
                 aria-selected={false}
-                className="buyerly-display-check-option"
+                {...withClassName(stylex.props(displayStyles.checkOption), 'buyerly-display-check-option')}
                 onClick={() => {
                   setOpen(false);
                   footer.onSelect();
                 }}
               >
-                <span className="buyerly-display-check-icon" aria-hidden="true">{footer.icon}</span>
+                <span {...withClassName(stylex.props(displayStyles.checkIcon), 'buyerly-display-check-icon')} aria-hidden="true">{footer.icon}</span>
                 <span>{footer.label}</span>
               </button>
             </>
@@ -284,20 +805,38 @@ const SortableGroupRow: React.FC<{ group: DisplayGroupOption; hidden: boolean; o
   return (
     <div
       ref={setNodeRef}
-      className="buyerly-display-group-row"
+      {...withClassName(
+        stylex.props(displayStyles.groupRow, isDragging && displayStyles.groupRowDragging),
+        'buyerly-display-group-row',
+      )}
       data-dragging={isDragging || undefined}
       style={{ transform: CSS.Translate.toString(transform), transition }}
     >
-      <div className="buyerly-display-group-handle" aria-label={`Move ${group.label}`} {...attributes} {...listeners}>
+      <div
+        {...withClassName(stylex.props(displayStyles.groupHandle), 'buyerly-display-group-handle')}
+        aria-label={`Move ${group.label}`}
+        {...attributes}
+        {...listeners}
+      >
         <DragHandleIcon />
       </div>
-      <div className="buyerly-display-group-label" data-hidden={hidden || undefined}>
-        {group.icon && <span className="buyerly-display-group-icon" aria-hidden="true">{group.icon}</span>}
+      <div
+        {...withClassName(
+          stylex.props(displayStyles.groupLabel, hidden && displayStyles.groupLabelHidden),
+          displayCss.groupLabel,
+          'buyerly-display-group-label',
+        )}
+        data-hidden={hidden || undefined}
+      >
+        {group.icon && <span {...withClassName(stylex.props(displayStyles.groupIcon), 'buyerly-display-group-icon')} aria-hidden="true">{group.icon}</span>}
         <span>{group.label}</span>
       </div>
       <button
         type="button"
-        className="buyerly-display-order-button"
+        {...withClassName(
+          stylex.props(displayStyles.orderButton, displayStyles.groupOrderButton),
+          'buyerly-display-order-button',
+        )}
         aria-label={hidden ? 'Show group' : 'Hide group'}
         aria-pressed={hidden}
         onClick={onToggleHidden}
@@ -327,13 +866,21 @@ const GroupOrderingPanel: React.FC<GroupOrderingProps & { onBack: () => void }> 
   };
   return (
     <>
-      <section className="buyerly-display-group-header">
-        <button type="button" className="buyerly-display-order-button" aria-label="Back" onClick={onBack}>
+      <section {...withClassName(stylex.props(displayStyles.groupHeader), 'buyerly-display-group-header')}>
+        <button
+          type="button"
+          {...withClassName(
+            stylex.props(displayStyles.orderButton, displayStyles.groupOrderButton),
+            'buyerly-display-order-button',
+          )}
+          aria-label="Back"
+          onClick={onBack}
+        >
           <BackIcon />
         </button>
         <span>Group ordering</span>
       </section>
-      <section className="buyerly-display-group-list" aria-label="Group ordering">
+      <section {...withClassName(stylex.props(displayStyles.groupList), 'buyerly-display-group-list')} aria-label="Group ordering">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={ids} strategy={verticalListSortingStrategy}>
             {groups.map((group) => (
@@ -447,44 +994,51 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
 
   return (
     <>
-      <section className="buyerly-display-main-section">
-        {showViewModes && <div role="tablist" className="buyerly-display-tabs">
-          {(['list', 'board'] as const).map((mode) => (
-            <div className="buyerly-display-tab-slot" key={mode}>
-              <Tooltip content="Toggle layout view" shortcut={LAYOUT_SHORTCUT}>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={viewMode === mode}
-                aria-label={mode === 'list' ? 'List' : 'Board'}
-                data-state={viewMode === mode ? 'active' : 'inactive'}
-                tabIndex={viewMode === mode ? 0 : -1}
-                className="buyerly-display-tab"
-                onClick={() => onViewModeChange(mode)}
-                onKeyDown={(event) => {
-                  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-                    event.preventDefault();
-                    onViewModeChange(mode === 'list' ? 'board' : 'list');
-                  }
-                }}
-              >
-                {mode === 'list' ? <BuyerlyIcon name="list" size={16} /> : <BuyerlyIcon name="board" size={16} />}
-                <span>{mode === 'list' ? 'List' : 'Board'}</span>
-              </button>
-              </Tooltip>
-            </div>
-          ))}
+      <section {...withClassName(stylex.props(displayStyles.mainSection), 'buyerly-display-main-section')}>
+        {showViewModes && <div role="tablist" {...withClassName(stylex.props(displayStyles.tabs), 'buyerly-display-tabs')}>
+          {(['list', 'board'] as const).map((mode) => {
+            const isSelected = viewMode === mode;
+            return (
+              <div {...withClassName(stylex.props(displayStyles.tabSlot), 'buyerly-display-tab-slot')} key={mode}>
+                <Tooltip content="Toggle layout view" shortcut={LAYOUT_SHORTCUT}>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={isSelected}
+                    aria-label={mode === 'list' ? 'List' : 'Board'}
+                    data-state={isSelected ? 'active' : 'inactive'}
+                    tabIndex={isSelected ? 0 : -1}
+                    {...withClassName(
+                      stylex.props(displayStyles.tab, isSelected && displayStyles.tabSelected),
+                      displayCss.tab,
+                      'buyerly-display-tab',
+                    )}
+                    onClick={() => onViewModeChange(mode)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                        event.preventDefault();
+                        onViewModeChange(mode === 'list' ? 'board' : 'list');
+                      }
+                    }}
+                  >
+                    {mode === 'list' ? <BuyerlyIcon name="list" size={16} /> : <BuyerlyIcon name="board" size={16} />}
+                    <span>{mode === 'list' ? 'List' : 'Board'}</span>
+                  </button>
+                </Tooltip>
+              </div>
+            );
+          })}
         </div>}
 
-        {showGrouping && <div className="buyerly-display-row">
+        {showGrouping && <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
           <span>{groupingLabel}</span>
-          <div className="buyerly-display-row-controls">
+          <div {...withClassName(stylex.props(displayStyles.rowControls), 'buyerly-display-row-controls')}>
             <BuyerlySelect value={grouping} options={groupingOptions} onChange={onGroupingChange} />
             {canOrderGroups && (
               <Tooltip content="Group ordering">
                 <button
                   type="button"
-                  className="buyerly-display-order-button"
+                  {...withClassName(stylex.props(displayStyles.orderButton), 'buyerly-display-order-button')}
                   aria-label="Group ordering"
                   onClick={() => setPanel('groups')}
                 >
@@ -496,21 +1050,21 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
         </div>}
 
         {showGrouping && subGrouping !== undefined && subGroupingOptions && onSubGroupingChange && (
-          <div className="buyerly-display-row">
+          <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
             <span>{subGroupingLabel}</span>
             <BuyerlySelect value={subGrouping} options={subGroupingOptions} onChange={onSubGroupingChange} />
           </div>
         )}
 
-        <div className="buyerly-display-row">
+        <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
           <span>Ordering</span>
-          <div className="buyerly-display-row-controls">
+          <div {...withClassName(stylex.props(displayStyles.rowControls), 'buyerly-display-row-controls')}>
             <BuyerlySelect value={ordering} options={orderingOptions} onChange={onOrderingChange} />
             {direction && onDirectionChange && ordering !== 'manual' && (
               <Tooltip content={direction === 'asc' ? 'Ascending' : 'Descending'}>
                 <button
                   type="button"
-                  className="buyerly-display-order-button"
+                  {...withClassName(stylex.props(displayStyles.orderButton), 'buyerly-display-order-button')}
                   aria-label="Direction"
                   data-direction={direction}
                   onClick={() => onDirectionChange(direction === 'asc' ? 'desc' : 'asc')}
@@ -524,18 +1078,18 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
       </section>
 
       {period !== undefined && periodOptions && onPeriodChange && (
-        <section className="buyerly-display-view-section">
-          <div className="buyerly-display-row">
+        <section {...withClassName(stylex.props(displayStyles.section), 'buyerly-display-view-section')}>
+          <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
             <span>Period</span>
             <BuyerlySelect value={period} options={periodOptions} onChange={onPeriodChange} />
           </div>
         </section>
       )}
 
-      <section className="buyerly-display-options-section">
-        {showOptionsTitle && <div className="buyerly-display-section-title">{optionsLabel}</div>}
+      <section {...withClassName(stylex.props(displayStyles.section), 'buyerly-display-options-section')}>
+        {showOptionsTitle && <div {...withClassName(stylex.props(displayStyles.sectionTitle), 'buyerly-display-section-title')}>{optionsLabel}</div>}
         {showEmptyGroups !== undefined && onShowEmptyGroupsChange && (
-          <div className="buyerly-display-row">
+          <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
             <span>{showEmptyLabel}</span>
             <BuyerlyToggle
               label={showEmptyLabel}
@@ -545,7 +1099,7 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
           </div>
         )}
         {showEmptySubGroups !== undefined && onShowEmptySubGroupsChange && (
-          <div className="buyerly-display-row">
+          <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
             <span>Show empty rows</span>
             <BuyerlyToggle
               label="Show empty rows"
@@ -555,22 +1109,31 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
           </div>
         )}
         {toggles.map((toggle) => (
-          <div key={toggle.id} className="buyerly-display-row">
+          <div key={toggle.id} {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
             <span>{toggle.label}</span>
             <BuyerlyToggle label={toggle.label} checked={toggle.checked} onChange={toggle.onChange} />
           </div>
         ))}
-        <div className="buyerly-display-properties-label">Display properties</div>
-        <div className="buyerly-display-properties">
+        <div {...withClassName(stylex.props(displayStyles.propertiesLabel), 'buyerly-display-properties-label')}>Display properties</div>
+        <div {...withClassName(stylex.props(displayStyles.properties), 'buyerly-display-properties')}>
           {Object.entries(properties).map(([key, label]) => {
             const inactive = inactiveProperties.includes(key);
+            const isPressed = !inactive && !!enabledProperties[key];
             return (
               <button
                 type="button"
                 key={key}
-                aria-pressed={!inactive && !!enabledProperties[key]}
+                aria-pressed={isPressed}
                 disabled={inactive}
-                className="buyerly-display-property"
+                {...withClassName(
+                  stylex.props(
+                    displayStyles.property,
+                    isPressed && displayStyles.propertyPressed,
+                    inactive && displayStyles.propertyDisabled,
+                  ),
+                  displayCss.property,
+                  'buyerly-display-property',
+                )}
                 onClick={() => onToggleProperty(key)}
               >
                 {label}
@@ -581,14 +1144,26 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
       </section>
 
       {(onReset || onSetDefault) && (
-        <section className="buyerly-display-footer">
+        <section {...withClassName(stylex.props(displayStyles.footer), 'buyerly-display-footer')}>
           {onReset && (
-            <button type="button" className="buyerly-display-footer-button" aria-label="Reset to default" onClick={onReset}>
+            <button
+              type="button"
+              {...withClassName(stylex.props(displayStyles.footerButton), 'buyerly-display-footer-button')}
+              aria-label="Reset to default"
+              onClick={onReset}
+            >
               Reset
             </button>
           )}
           {onSetDefault && (
-            <button type="button" className="buyerly-display-footer-button buyerly-display-footer-button--accent" onClick={onSetDefault}>
+            <button
+              type="button"
+              {...withClassName(
+                stylex.props(displayStyles.footerButton, displayStyles.footerButtonAccent),
+                'buyerly-display-footer-button buyerly-display-footer-button--accent',
+              )}
+              onClick={onSetDefault}
+            >
               Set default for everyone
             </button>
           )}
@@ -603,4 +1178,10 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
  * its default: a 7px accent dot at the icon's top right.
  */
 export const DisplayOptionsChangedDot: React.FC<{ show: boolean }> = ({ show }) =>
-  show ? <span className="buyerly-display-changed-dot" data-display-changed="true" aria-hidden="true" /> : null;
+  show ? (
+    <span
+      {...withClassName(stylex.props(displayStyles.changedDot), 'buyerly-display-changed-dot')}
+      data-display-changed="true"
+      aria-hidden="true"
+    />
+  ) : null;

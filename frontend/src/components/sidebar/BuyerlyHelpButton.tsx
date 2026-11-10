@@ -9,6 +9,7 @@ import changelogLatest from '@/lib/changelogLatest.json';
 import { useCommandMenuStore } from '@/models/commandMenuStore';
 import { openSettings } from '@/lib/routing';
 import { colors } from '@/styles/tokens.stylex';
+import css from './BuyerlyHelpButton.module.css';
 
 const styles = stylex.create({
   // Linear keeps the field off-screen until something is typed, then shows it as the first row.
@@ -149,6 +150,88 @@ const styles = stylex.create({
     clipPath: 'inset(50%)',
     whiteSpace: 'nowrap',
   },
+  button: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 24,
+    height: 24,
+    flexShrink: 0,
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    borderWidth: 0.5,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    borderRadius: '50%',
+    backgroundColor: {
+      default: 'transparent',
+      ':hover': colors['--help-button-hover-bg'],
+      ':active': 'transparent',
+      ':is([data-state="open"])': colors['--help-button-hover-bg'],
+    },
+    color: {
+      default: colors['--help-button-fg'],
+      ':hover': colors['--help-button-hover-fg'],
+      ':is([data-state="open"])': colors['--help-button-hover-fg'],
+    },
+    cursor: 'default',
+    outline: 'none',
+    transition: 'border 0.15s, background-color 0.15s, color 0.15s',
+    ':focus-visible': {
+      outline: `1px solid ${colors['--help-focus-ring']}`,
+      outlineOffset: 0,
+    },
+    '@media (any-hover: hover) and (any-pointer: fine)': {
+      ':hover': { transitionDuration: '0s' },
+    },
+  },
+  icon: {
+    display: 'flex',
+    flexShrink: 0,
+    width: 16,
+    height: 16,
+    color: colors['--help-menu-secondary'],
+  },
+  timeline: {
+    width: 16,
+    height: 32,
+    marginTop: -8,
+    marginRight: 0,
+    marginBottom: -8,
+    marginLeft: 0,
+    overflow: 'visible',
+  },
+  timelineLine: {
+    stroke: colors['--help-menu-timeline'],
+  },
+  timelineCircle: {
+    fill: colors['--help-menu-secondary'],
+  },
+  group: {
+    paddingTop: 8,
+    paddingRight: 14,
+    paddingBottom: 8,
+    paddingLeft: 14,
+    fontSize: 12,
+    lineHeight: '14px',
+    fontWeight: 500,
+    color: colors['--help-menu-secondary'],
+  },
+  shortcut: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 3,
+    fontSize: 11,
+    lineHeight: '12.1px',
+    fontWeight: 450,
+    color: colors['--help-menu-secondary'],
+  },
+  shortcutKbd: {
+    fontFamily: 'inherit',
+    fontWeight: 500,
+  },
 });
 
 /**
@@ -160,9 +243,9 @@ type TimelinePart = 'first' | 'middle' | 'last' | 'only';
 function TimelineMark({ part }: { part: TimelinePart }) {
   const [from, to] = part === 'first' ? [16, 32] : part === 'middle' ? [0, 32] : [0, 16];
   return (
-    <svg className="buyerly-help-timeline" viewBox="0 0 16 32" aria-hidden="true">
-      {part !== 'only' && <line x1="8" x2="8" y1={from} y2={to} strokeWidth="2" strokeDasharray="4 4" strokeDashoffset="2" />}
-      <circle cx="8" cy="16" r="3" />
+    <svg {...stylex.props(styles.timeline)} viewBox="0 0 16 32" aria-hidden="true">
+      {part !== 'only' && <line {...stylex.props(styles.timelineLine)} x1="8" x2="8" y1={from} y2={to} strokeWidth="2" strokeDasharray="4 4" strokeDashoffset="2" />}
+      <circle {...stylex.props(styles.timelineCircle)} cx="8" cy="16" r="3" />
     </svg>
   );
 }
@@ -270,9 +353,9 @@ export function BuyerlyHelpButton() {
       news: false,
       icon: () => <BuyerlyIcon name="keyboard" size={16} />,
       keys: (
-        <span className="buyerly-help-shortcut" aria-label={IS_MAC ? 'Command /' : 'Control /'}>
-          <kbd>{IS_MAC ? '⌘' : 'Ctrl'}</kbd>
-          <kbd>/</kbd>
+        <span {...stylex.props(styles.shortcut)} aria-label={IS_MAC ? 'Command /' : 'Control /'}>
+          <kbd {...stylex.props(styles.shortcutKbd)}>{IS_MAC ? '⌘' : 'Ctrl'}</kbd>
+          <kbd {...stylex.props(styles.shortcutKbd)}>/</kbd>
         </span>
       ),
       run: () => setShortcutsOpen(true),
@@ -283,10 +366,10 @@ export function BuyerlyHelpButton() {
       news: false,
       icon: () => <BuyerlyIcon name="settings" size={16} />,
       keys: (
-        <span className="buyerly-help-shortcut" aria-label={`G, then ${GO_TO_KEYS.preferences}`}>
-          <kbd>G</kbd>
+        <span {...stylex.props(styles.shortcut)} aria-label={`G, then ${GO_TO_KEYS.preferences}`}>
+          <kbd {...stylex.props(styles.shortcutKbd)}>G</kbd>
           <span>then</span>
-          <kbd>{GO_TO_KEYS.preferences}</kbd>
+          <kbd {...stylex.props(styles.shortcutKbd)}>{GO_TO_KEYS.preferences}</kbd>
         </span>
       ),
       run: () => openSettings('preferences'),
@@ -356,7 +439,7 @@ export function BuyerlyHelpButton() {
           <button
             type="button"
             aria-label="Open Help menu"
-            className="buyerly-help-button"
+            {...stylex.props(styles.button)}
             onPointerDown={() => { byKeyboardRef.current = false; }}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') byKeyboardRef.current = true;
@@ -373,7 +456,7 @@ export function BuyerlyHelpButton() {
         alignOffset={2}
         role="dialog"
         aria-label="Help"
-        className="buyerly-help-menu"
+        className={css.menu}
         style={{ width: 270 }}
         // Radix focuses the menu itself on opening; typing goes to the field from the start.
         onFocus={(event) => {
@@ -428,7 +511,7 @@ export function BuyerlyHelpButton() {
               const part: TimelinePart = before && after ? 'middle' : before ? 'last' : after ? 'first' : 'only';
               return (
                 <React.Fragment key={row.id}>
-                  {heading && <div role="presentation" className="buyerly-help-group">{heading}</div>}
+                  {heading && <div role="presentation" {...stylex.props(styles.group)}>{heading}</div>}
                   <div
                     id={rowId(row)}
                     role="option"
@@ -441,7 +524,7 @@ export function BuyerlyHelpButton() {
                   >
                     <div {...stylex.props(styles.pill, isActive && styles.pillActive)} />
                     <span {...stylex.props(styles.body)}>
-                      <span className="buyerly-help-icon">{row.icon(part)}</span>
+                      <span {...stylex.props(styles.icon)}>{row.icon(part)}</span>
                       <span {...stylex.props(styles.label)}>{row.label}</span>
                       {row.keys}
                     </span>

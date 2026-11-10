@@ -13,6 +13,8 @@ import { toast } from '@/ui/toast';
 import { Tooltip } from '@/ui/Tooltip';
 import { useMenuExit } from '@/ui/useMenuExit';
 import { BuyerlyToolbarButton } from '@/ui/BuyerlyToolbarButton';
+import './BuyerlyAccountBell.css';
+import '@/ui/menu.css';
 
 const POPOVER_WIDTH = 334;
 

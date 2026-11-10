@@ -5,6 +5,7 @@ import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { colors, layout, radii, space } from '@/styles/tokens.stylex';
 import { Button } from '@/ui/Button';
 import { withClassName } from '@/ui/withClassName';
+import '@/ui/animations.css';
 import { TOAST_DURATION_MS, useToastStore, type ToastItem, type ToastTone } from '@/ui/toast';
 
 const styles = stylex.create({

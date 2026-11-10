@@ -26,6 +26,7 @@ import { withClassName } from '@/ui/withClassName';
 import { colors, fonts, radii } from '@/styles/tokens.stylex';
 import { preferencesStyles } from './preferencesStyles';
 import css from './Preferences.module.css';
+import '@/ui/animations.css';
 
 type LoadState = 'loading' | 'ready' | 'error';
 

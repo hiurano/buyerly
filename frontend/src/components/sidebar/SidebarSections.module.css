@@ -1,0 +1,91 @@
+/* Child and parent-state rules for sidebar items, sections, and teams that StyleX cannot express. */
+.navItem svg {
+  color: var(--sidebar-item-fg);
+  transition: none;
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .navItem:hover svg {
+    color: var(--sidebar-item-fg-strong);
+  }
+}
+
+.navItem:active svg,
+.navItem[data-active="true"] svg {
+  color: var(--sidebar-item-fg-strong);
+}
+
+.section + .section {
+  padding-top: 7px;
+}
+
+.sectionHeaderRow:focus-within .sectionAction,
+.sectionAction:focus-visible {
+  opacity: 1;
+  transition-duration: 0s;
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .sectionHeaderRow:hover .sectionAction {
+    opacity: 1;
+    transition-duration: 0s;
+  }
+
+  .sectionAction:hover {
+    background-color: var(--sidebar-icon-button-hover-bg);
+    color: var(--sidebar-item-fg-strong);
+  }
+}
+
+.teamRow:active .teamName,
+.teamRow:active .teamDisclosure .disclosure {
+  color: var(--sidebar-item-fg-strong);
+}
+
+.teamRow:focus-within .teamMenu,
+.teamRow[data-menu-open='true'] .teamMenu {
+  width: 26px;
+}
+
+.teamRow:focus-within .sectionAction,
+.teamRow[data-menu-open='true'] .sectionAction {
+  opacity: 1;
+  transition-duration: 0s;
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .teamRow:hover {
+    background-color: var(--sidebar-item-hover-bg);
+  }
+
+  .teamRow:hover .teamName,
+  .teamRow:hover .teamDisclosure .disclosure {
+    color: var(--sidebar-item-fg-strong);
+  }
+
+  .teamRow:hover .teamMenu {
+    width: 26px;
+  }
+
+  .teamRow:hover .sectionAction {
+    opacity: 1;
+    transition-duration: 0s;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .sectionHeaderRow,
+  .sectionHeader,
+  .teamRow,
+  .teamToggle {
+    height: 36px;
+  }
+
+  .sectionAction {
+    opacity: 1;
+  }
+
+  .teamMenu {
+    width: 26px;
+  }
+}

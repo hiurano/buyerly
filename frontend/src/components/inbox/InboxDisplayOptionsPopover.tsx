@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import * as stylex from '@stylexjs/stylex';
 import {
   INBOX_KINDS,
   INBOX_KIND_LABELS,
@@ -9,11 +10,13 @@ import {
   type InboxOrdering,
 } from '@/lib/inbox';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
-import { BuyerlyMultiSelect, BuyerlySelect } from '@/ui/BuyerlyDisplayOptions';
+import { BuyerlyMultiSelect, BuyerlySelect, displayCss, displayStyles } from '@/ui/BuyerlyDisplayOptions';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { useMenuExit } from '@/ui/useMenuExit';
+import { withClassName } from '@/ui/withClassName';
 import { useInboxStore } from '@/models/inboxStore';
 import { openSettings } from '@/lib/routing';
+import '@/ui/menu.css';
 
 interface InboxDisplayOptionsPopoverProps {
   isOpen: boolean;
@@ -26,7 +29,7 @@ const SwitchRow: React.FC<{ label: string; checked: boolean; onChange: (value: b
   checked,
   onChange,
 }) => (
-  <div className="buyerly-display-row">
+  <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
     <span>{label}</span>
     <BuyerlyToggle label={label} checked={checked} onChange={onChange} />
   </div>
@@ -82,11 +85,16 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
       ref={popoverRef}
       role="dialog"
       aria-label="Display options"
-      className={isClosing ? 'buyerly-display-options-popover buyerly-menu-exit' : 'buyerly-display-options-popover'}
+      {...withClassName(
+        stylex.props(displayStyles.popover, isClosing && displayStyles.popoverClosing),
+        displayCss.popover,
+        'buyerly-display-options-popover',
+        isClosing && 'buyerly-menu-exit',
+      )}
       style={{ top: coords.top, left: coords.left }}
       data-wide={inboxDisplay.priorityInbox || undefined}
     >
-      <section className="buyerly-display-main-section">
+      <section {...withClassName(stylex.props(displayStyles.mainSection), 'buyerly-display-main-section')}>
         <SwitchRow
           label="Enable priority inbox"
           checked={inboxDisplay.priorityInbox}
@@ -94,7 +102,7 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
         />
         {inboxDisplay.priorityInbox && (
           <>
-            <div className="buyerly-display-row">
+            <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
               <span>Include in priority inbox</span>
               <BuyerlyMultiSelect
                 ariaLabel="Priority notification options"
@@ -114,7 +122,7 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
                 }}
               />
             </div>
-            <div className="buyerly-display-row">
+            <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
               <span>Badge count</span>
               <BuyerlySelect
                 value={inboxDisplay.badgeCount}
@@ -129,8 +137,8 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
           </>
         )}
       </section>
-      <section className="buyerly-display-options-section">
-        <div className="buyerly-display-row">
+      <section {...withClassName(stylex.props(displayStyles.section), 'buyerly-display-options-section')}>
+        <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
           <span>Group unreads by</span>
           <BuyerlySelect
             value={inboxDisplay.grouping}
@@ -141,7 +149,7 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
             onChange={(value) => setInboxDisplay({ grouping: value as InboxGrouping })}
           />
         </div>
-        <div className="buyerly-display-row">
+        <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
           <span>Ordering</span>
           <BuyerlySelect
             value={inboxDisplay.ordering}
@@ -153,7 +161,7 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
           />
         </div>
       </section>
-      <section className="buyerly-display-options-section">
+      <section {...withClassName(stylex.props(displayStyles.section), 'buyerly-display-options-section')}>
         <SwitchRow
           label="Show snoozed"
           checked={inboxDisplay.showSnoozed}

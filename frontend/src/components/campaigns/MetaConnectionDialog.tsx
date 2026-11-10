@@ -7,6 +7,7 @@ import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { BuyerlyCheckbox } from '@/ui/BuyerlyCheckbox';
 import { withClassName } from '@/ui/withClassName';
 import { colors } from '@/styles/tokens.stylex';
+import '@/ui/animations.css';
 
 const WIDE = '@media (min-width: 640px)';
 

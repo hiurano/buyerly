@@ -2,7 +2,11 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { BuyerlyChevronGlyph } from '@/icons/BuyerlyIcons';
 import { colors } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './DropdownMenu';
+import detailsFacetsCss from './DetailsFacets.module.css';
+
+const HOVER = '@media (any-hover: hover) and (any-pointer: fine)';
 
 export interface DetailsFacetOption {
   value: string;
@@ -41,6 +45,223 @@ const styles = stylex.create({
   },
   current: {
     color: colors['--text-primary'],
+  },
+  /* Linear's quick-filter section (DetailsFacets): one card filling the pane, 8px from its right and bottom. */
+  facets: {
+    display: 'flex',
+    flexGrow: 1,
+    flexShrink: 0,
+    flexBasis: 'auto',
+    flexDirection: 'column',
+    marginTop: 0,
+    marginRight: 8,
+    marginBottom: 8,
+    marginLeft: 0,
+    padding: 12,
+    borderWidth: 0.5,
+    borderStyle: 'solid',
+    borderColor: colors['--details-pane-card-border'],
+    borderRadius: 10,
+    backgroundColor: colors['--details-pane-card-bg'],
+    boxShadow: colors['--details-pane-card-shadow'],
+    userSelect: 'none',
+  },
+  tabs: {
+    marginBottom: 10,
+  },
+  tabsFolded: {
+    height: 0,
+    marginBottom: 0,
+    overflow: 'hidden',
+    visibility: 'hidden',
+  },
+  tablist: {
+    display: 'flex',
+    gap: 2,
+    width: '100%',
+    height: 32,
+    borderRadius: 5,
+    backgroundColor: colors['--details-tabs-bg'],
+  },
+  tab: {
+    position: 'relative',
+    display: 'inline-flex',
+    flexGrow: 1,
+    flexShrink: 0,
+    flexBasis: 'auto',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 28,
+    margin: 2,
+    paddingLeft: 12,
+    paddingRight: 12,
+    borderWidth: 0.5,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    borderRadius: 9999,
+    backgroundColor: {
+      default: colors['--details-tab-bg'],
+      ':hover': colors['--details-tab-hover-bg'],
+    },
+    color: {
+      default: colors['--details-tab-fg'],
+      ':hover': colors['--details-tab-hover-fg'],
+    },
+    fontSize: 12,
+    fontWeight: 500,
+    whiteSpace: 'nowrap',
+    outlineStyle: {
+      default: 'none',
+      ':focus-visible': 'solid',
+    },
+    outlineWidth: {
+      default: null,
+      ':focus-visible': 1,
+    },
+    outlineColor: {
+      default: null,
+      ':focus-visible': colors['--focus-ring-color'],
+    },
+    outlineOffset: {
+      default: null,
+      ':focus-visible': -1,
+    },
+    cursor: 'pointer',
+    transition: 'border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s',
+  },
+  tabSelected: {
+    backgroundColor: colors['--details-tab-active-bg'],
+    color: colors['--details-tab-active-fg'],
+    cursor: 'default',
+  },
+  select: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    width: '100%',
+    height: 30,
+    marginTop: 8,
+    marginRight: 0,
+    marginBottom: 10,
+    marginLeft: 0,
+    paddingTop: 1,
+    paddingBottom: 1,
+    paddingLeft: 10,
+    paddingRight: 10,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    borderRadius: 8,
+    backgroundColor: colors['--details-select-bg'],
+    color: colors['--details-select-fg'],
+    fontSize: 13,
+    fontWeight: 400,
+    textAlign: 'left',
+    outlineStyle: 'none',
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 1px ${colors['--focus-ring-color']}`,
+    },
+  },
+  rows: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 1,
+  },
+  row: {
+    display: 'flex',
+    alignItems: 'center',
+    height: 42,
+    paddingLeft: 10,
+    paddingRight: 10,
+    borderRadius: 8,
+    backgroundColor: {
+      default: colors['--details-row-bg'],
+      ':active': colors['--details-row-hover-bg'],
+      [HOVER]: {
+        default: null,
+        ':hover': colors['--details-row-hover-bg'],
+      },
+    },
+    outlineStyle: 'none',
+    cursor: 'default',
+    transition: 'opacity 0.15s',
+    boxShadow: {
+      default: null,
+      ':focus-visible': `inset 0 0 0 1px ${colors['--focus-ring-color']}`,
+    },
+  },
+  rowActive: {
+    backgroundColor: colors['--details-row-active-bg'],
+  },
+  rowMuted: {
+    opacity: 0.5,
+  },
+  rowContent: {
+    position: 'relative',
+    display: 'flex',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 'auto',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 0,
+    alignSelf: 'stretch',
+  },
+  rowIcon: {
+    display: 'inline-flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 18,
+  },
+  rowName: {
+    minWidth: 0,
+    overflow: 'hidden',
+    color: colors['--details-row-fg'],
+    fontSize: 13,
+    fontWeight: 450,
+    lineHeight: '16px',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  rowLink: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    display: 'none',
+    alignItems: 'center',
+    paddingTop: 0,
+    paddingRight: 8,
+    paddingBottom: 0,
+    paddingLeft: 35,
+    color: colors['--details-row-link-fg'],
+    fontSize: 12,
+    fontWeight: 450,
+    whiteSpace: 'nowrap',
+    textAlign: 'right',
+    maskImage: 'linear-gradient(to right, transparent, #000 25px)',
+  },
+  rowCount: {
+    flexShrink: 0,
+    minWidth: 'var(--details-facets-count-width, 1ch)',
+    color: colors['--details-row-count-fg'],
+    fontSize: 13,
+    fontWeight: 450,
+    fontVariantNumeric: 'tabular-nums',
+    textAlign: 'right',
+  },
+  empty: {
+    paddingTop: 24,
+    paddingBottom: 24,
+    paddingLeft: 8,
+    paddingRight: 8,
+    color: colors['--text-tertiary'],
+    fontSize: 13,
+    textAlign: 'center',
   },
 });
 
@@ -123,9 +344,14 @@ export function DetailsFacets({ tabs, selection, onSelect, storageKey, noun }: D
   const chosen = selection && selection.fieldId === current?.id ? selection.value : null;
 
   return (
-    <section className="details-facets" aria-label={current ? `${current.label} quick filters` : 'Quick filters'}>
-      <div ref={tabsRef} className="details-facets-tabs" data-folded={folded ? 'true' : undefined} aria-hidden={folded || undefined}>
-        <div ref={listRef} role="tablist" aria-label="Quick filter categories" className="details-facets-tablist">
+    <section {...withClassName(stylex.props(styles.facets), 'details-facets')} aria-label={current ? `${current.label} quick filters` : 'Quick filters'}>
+      <div
+        ref={tabsRef}
+        {...withClassName(stylex.props(styles.tabs, folded && styles.tabsFolded), 'details-facets-tabs')}
+        data-folded={folded ? 'true' : undefined}
+        aria-hidden={folded || undefined}
+      >
+        <div ref={listRef} role="tablist" aria-label="Quick filter categories" {...withClassName(stylex.props(styles.tablist), 'details-facets-tablist')}>
           {tabs.map((tab, index) => {
             const active = tab.id === current?.id;
             return (
@@ -136,7 +362,7 @@ export function DetailsFacets({ tabs, selection, onSelect, storageKey, noun }: D
                 data-tab-id={tab.id}
                 aria-selected={active}
                 tabIndex={active ? 0 : -1}
-                className="details-facets-tab"
+                {...withClassName(stylex.props(styles.tab, active && styles.tabSelected), detailsFacetsCss.tab, 'details-facets-tab')}
                 onClick={() => changeTab(tab.id)}
                 onKeyDown={(event) => tabKeyDown(event, index)}
               >
@@ -149,7 +375,7 @@ export function DetailsFacets({ tabs, selection, onSelect, storageKey, noun }: D
       {folded && current && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button type="button" className="details-facets-select">
+            <button type="button" {...withClassName(stylex.props(styles.select), 'details-facets-select')}>
               <span {...stylex.props(styles.selectLabel)}>{current.label}</span>
               <BuyerlyChevronGlyph size={8} />
             </button>
@@ -167,7 +393,7 @@ export function DetailsFacets({ tabs, selection, onSelect, storageKey, noun }: D
         <div
           role="tabpanel"
           aria-label={current.label}
-          className="details-facets-rows"
+          {...withClassName(stylex.props(styles.rows), 'details-facets-rows')}
           style={{ '--details-facets-count-width': `${digits}ch` } as React.CSSProperties}
         >
           {current.options.length ? current.options.map((option) => {
@@ -181,7 +407,11 @@ export function DetailsFacets({ tabs, selection, onSelect, storageKey, noun }: D
                 tabIndex={0}
                 aria-pressed={active}
                 data-status={status}
-                className="details-facets-row"
+                {...withClassName(
+                  stylex.props(styles.row, status === 'active' && styles.rowActive, status === 'muted' && styles.rowMuted),
+                  detailsFacetsCss.row,
+                  'details-facets-row',
+                )}
                 onClick={(event) => {
                   toggle();
                   event.currentTarget.blur();
@@ -192,15 +422,17 @@ export function DetailsFacets({ tabs, selection, onSelect, storageKey, noun }: D
                   toggle();
                 }}
               >
-                <div className="details-facets-row-content">
-                  {option.icon && <span className="details-facets-row-icon">{option.icon}</span>}
-                  <span className="details-facets-row-name" title={option.label}>{option.label}</span>
-                  <span className="details-facets-row-link" aria-hidden="true">{active ? 'Clear filter' : `See ${noun}`}</span>
+                <div {...withClassName(stylex.props(styles.rowContent), 'details-facets-row-content')}>
+                  {option.icon && (
+                    <span {...withClassName(stylex.props(styles.rowIcon), detailsFacetsCss.rowIcon, 'details-facets-row-icon')}>{option.icon}</span>
+                  )}
+                  <span {...withClassName(stylex.props(styles.rowName), 'details-facets-row-name')} title={option.label}>{option.label}</span>
+                  <span {...withClassName(stylex.props(styles.rowLink), detailsFacetsCss.rowLink, 'details-facets-row-link')} aria-hidden="true">{active ? 'Clear filter' : `See ${noun}`}</span>
                 </div>
-                <span className="details-facets-row-count">{option.count}</span>
+                <span {...withClassName(stylex.props(styles.rowCount), 'details-facets-row-count')}>{option.count}</span>
               </div>
             );
-          }) : <p className="details-facets-empty">No matching {noun}</p>}
+          }) : <p {...withClassName(stylex.props(styles.empty), 'details-facets-empty')}>No matching {noun}</p>}
         </div>
       )}
     </section>

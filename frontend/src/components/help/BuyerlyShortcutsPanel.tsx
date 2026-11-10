@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { filterShortcutGroups, keyCap, type ShortcutEntry } from '@/lib/shortcutCatalog';
 import { commandMenuStore, useCommandMenuStore } from '@/models/commandMenuStore';
+import './BuyerlyShortcutsPanel.css';
 
 function ShortcutKeys({ entry }: { entry: ShortcutEntry }) {
   const spoken = [...entry.keys.map(keyCap), ...(entry.then ? ['then', entry.then] : [])].join(' ');

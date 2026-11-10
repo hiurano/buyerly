@@ -1,0 +1,17 @@
+/* The resizer on the pane's left edge: the hairline fades in after 100ms on a
+   fine pointer, and stays lit while dragging. */
+@media (any-hover: hover) and (any-pointer: fine) {
+  .resizer:hover .track {
+    opacity: 1;
+    transition-delay: 0.1s;
+  }
+}
+
+.resizer[data-dragging='true'] .track {
+  opacity: 1;
+}
+
+.tooltip strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}

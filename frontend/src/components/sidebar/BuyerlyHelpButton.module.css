@@ -1,0 +1,9 @@
+/* The help menu's colours: Linear's 0.5px edge, override the menu primitive's. */
+.menu {
+  --card-bg: var(--help-menu-bg);
+  --color-border-secondary: var(--help-menu-border);
+  --menu-item-highlight: var(--help-menu-highlight);
+  --text-secondary: var(--help-menu-fg);
+  --text-primary: var(--help-menu-fg-highlighted);
+  border-width: 0.5px !important;
+}

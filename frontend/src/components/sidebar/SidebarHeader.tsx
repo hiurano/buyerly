@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { colors } from '@/styles/tokens.stylex';
+import { colors, type as fontTokens } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
 import { logOut } from '@/lib/sessions';
 import { accountBlocks } from '@/lib/accounts';
@@ -28,6 +28,7 @@ import { openSettings, useRoute } from '@/lib/routing';
 
 /** The sans stack the app's controls use. */
 const SANS = '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+const HOVER = '@media (any-hover: hover) and (any-pointer: fine)';
 
 const styles = stylex.create({
   header: {
@@ -44,8 +45,83 @@ const styles = stylex.create({
   },
   /** Fluid, and leaves Search its 36px. */
   workspace: {
+    boxSizing: 'border-box',
+    fontFamily: fontTokens['--font-regular'],
+    margin: 0,
+    borderRadius: 10,
+    borderStyle: 'none',
+    borderColor: 'currentColor',
+    gap: 6,
+    overflow: 'hidden',
+    paddingTop: 0,
+    paddingRight: 9,
+    paddingBottom: 0,
+    paddingLeft: 5,
+    height: 28,
+    display: 'inline-flex',
+    alignItems: 'center',
+    backgroundColor: {
+      default: 'transparent',
+      [HOVER]: {
+        default: 'transparent',
+        ':hover': colors['--sidebar-item-hover-bg'],
+      },
+      ':active': colors['--sidebar-item-hover-bg'],
+    },
+    color: colors['--sidebar-workspace-fg'],
+    cursor: 'default',
+    userSelect: 'none',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
+    outline: 'none',
     minWidth: 0,
     maxWidth: 'calc(100% - 36px)',
+  },
+  chevron: {
+    flexShrink: 0,
+    color: colors['--sidebar-item-fg'],
+    fill: 'currentColor',
+  },
+  searchButton: {
+    boxSizing: 'border-box',
+    margin: 0,
+    paddingTop: 0,
+    paddingRight: 2,
+    paddingBottom: 0,
+    paddingLeft: 2,
+    borderWidth: 0.5,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    borderRadius: 9999,
+    width: 28,
+    minWidth: 28,
+    height: 28,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: {
+      default: 'transparent',
+      [HOVER]: {
+        default: 'transparent',
+        ':hover': colors['--sidebar-icon-button-hover-bg'],
+      },
+      ':active': colors['--sidebar-icon-button-hover-bg'],
+    },
+    color: {
+      default: colors['--sidebar-item-fg'],
+      [HOVER]: {
+        default: colors['--sidebar-item-fg'],
+        ':hover': colors['--sidebar-item-fg-strong'],
+      },
+      ':active': colors['--sidebar-item-fg-strong'],
+    },
+    cursor: 'default',
+    userSelect: 'none',
+    outline: 'none',
+    transition: 'border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s',
+  },
+  searchButtonActive: {
+    backgroundColor: colors['--sidebar-icon-button-active-bg'],
   },
   truncate: {
     overflow: 'hidden',
@@ -209,7 +285,7 @@ export const SidebarHeader: React.FC = () => {
               </span>
 
               {/* The workspace menu's 8px chevron. */}
-              <BuyerlyChevronGlyph size={8} {...withClassName(stylex.props(styles.fixed), 'chevron')} />
+              <BuyerlyChevronGlyph size={8} {...stylex.props(styles.chevron)} />
             </button>
           </DropdownMenuTrigger>
 
@@ -367,7 +443,7 @@ export const SidebarHeader: React.FC = () => {
               aria-label="Search workspace"
               // Linear's Search stays pressed while its page is open.
               data-active={isSearchOpen ? 'true' : undefined}
-              className="buyerly-icon-btn buyerly-sidebar-icon-btn"
+              {...stylex.props(styles.searchButton, isSearchOpen && styles.searchButtonActive)}
             >
               <span {...stylex.props(styles.searchIcon)}>
                 <BuyerlySearchGlyph size={14} />

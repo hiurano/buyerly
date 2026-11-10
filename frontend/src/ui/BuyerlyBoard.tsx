@@ -10,10 +10,250 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
+import * as stylex from '@stylexjs/stylex';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './DropdownMenu';
 import { Tooltip } from './Tooltip';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { BuyerlyDisclosureGlyph } from '@/icons/BuyerlyIcons';
+import { colors } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
+
+const styles = stylex.create({
+  scroll: {
+    height: '100%',
+    minHeight: 0,
+    overflow: 'auto',
+  },
+  board: {
+    display: 'flex',
+    alignItems: 'stretch',
+    width: 'max-content',
+    minWidth: '100%',
+    minHeight: '100%',
+    paddingLeft: 4,
+  },
+  grid: {
+    display: 'grid',
+    position: 'relative',
+    minHeight: '100%',
+  },
+  /** The column's lane: the sidebar tone fading into the canvas, 4px in from each side. */
+  columnBg: {
+    margin: '4px 4px 0',
+    borderRadius: '5px 5px 0 0',
+    backgroundImage: `linear-gradient(${colors['--bg-sidebar']}, ${colors['--bg-canvas']})`,
+    pointerEvents: 'none',
+  },
+  columnHeader: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 3,
+    isolation: 'isolate',
+    // Opaque, so cards scroll under it; the lane's top tone is drawn again behind the title.
+    backgroundColor: colors['--bg-canvas'],
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 50,
+    padding: '2px 12px 0 18px',
+    userSelect: 'none',
+    '::before': {
+      content: "''",
+      position: 'absolute',
+      inset: '4px 4px 0',
+      zIndex: -1,
+      borderRadius: '5px 5px 0 0',
+      backgroundColor: colors['--bg-sidebar'],
+    },
+  },
+  /** A column's or a lane's title: its icon, its name and the count. */
+  title: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 8,
+  },
+  icon: {
+    display: 'flex',
+    width: 16,
+    height: 16,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: colors['--text-tertiary'],
+  },
+  columnName: {
+    marginLeft: 2,
+    overflow: 'hidden',
+    fontSize: 13,
+    fontWeight: 500,
+    lineHeight: '16px',
+    color: colors['--text-secondary'],
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  count: {
+    flexShrink: 0,
+    fontSize: 13,
+    fontWeight: 450,
+    lineHeight: '16px',
+    color: colors['--text-tertiary'],
+  },
+  columnActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 2,
+  },
+  iconButton: {
+    display: 'inline-flex',
+    width: 24,
+    height: 24,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+    borderRadius: 9999,
+    backgroundColor: {
+      default: 'transparent',
+      ':hover': colors['--item-hover-bg'],
+      '[data-state="open"]': colors['--item-hover-bg'],
+    },
+    backgroundPosition: '0 0',
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+      '[data-state="open"]': colors['--text-primary'],
+    },
+    cursor: 'pointer',
+    outlineStyle: 'none',
+    transition: 'background-color 0.15s ease, color 0.15s ease',
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 1px ${colors['--focus-ring-color']}`,
+    },
+  },
+  chevron: {
+    fill: 'currentColor',
+    transition: 'transform 0.15s ease',
+  },
+  chevronOpen: {
+    transform: 'rotate(90deg)',
+  },
+  chevronClosed: {
+    transform: 'rotate(0deg)',
+  },
+  /** A row: a 35px band across every column, held under the column headers. */
+  lane: {
+    position: 'sticky',
+    top: 50,
+    zIndex: 2,
+    display: 'flex',
+    alignItems: 'center',
+    height: 35,
+    margin: '0 4px',
+    paddingLeft: 4,
+    borderRadius: 8,
+    backgroundColor: colors['--board-lane-bg'],
+    userSelect: 'none',
+  },
+  laneTitle: {
+    position: 'sticky',
+    left: 8,
+  },
+  cell: {
+    position: 'relative',
+    zIndex: 1,
+    minWidth: 0,
+    padding: '9px 12px 8px',
+    borderRadius: {
+      default: null,
+      '[data-drop-over]': 8,
+    },
+    backgroundColor: {
+      default: null,
+      '[data-drop-over]': colors['--item-hover-bg'],
+    },
+  },
+  cardSlot: {
+    padding: '0 1px 8px',
+    outlineStyle: 'none',
+  },
+  overlay: {
+    borderRadius: 8,
+    boxShadow: colors['--dropdown-shadow'],
+    transform: 'rotate(1.5deg)',
+  },
+  /** Linear's "Hidden columns": a 350px lane on the right, one 37px row per column. */
+  hidden: {
+    display: 'flex',
+    width: 350,
+    flexShrink: 0,
+    flexDirection: 'column',
+    paddingRight: 12,
+  },
+  hiddenHeader: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 3,
+    display: 'flex',
+    alignItems: 'center',
+    height: 50,
+    backgroundColor: colors['--bg-canvas'],
+  },
+  hiddenToggle: {
+    display: 'inline-flex',
+    height: 24,
+    alignItems: 'center',
+    gap: 2,
+    padding: '0 8px 0 6px',
+    borderRadius: 9999,
+    backgroundColor: {
+      default: 'transparent',
+      ':hover': colors['--item-hover-bg'],
+    },
+    backgroundPosition: '0 0',
+    fontSize: 12,
+    fontWeight: 500,
+    color: colors['--text-secondary'],
+    cursor: 'pointer',
+    outlineStyle: 'none',
+  },
+  hiddenList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+  },
+  hiddenRow: {
+    display: 'flex',
+    width: '100%',
+    height: 37,
+    alignItems: 'center',
+    gap: 12,
+    padding: '4px 12px',
+    borderRadius: 8,
+    backgroundColor: {
+      default: colors['--card-bg'],
+      ':is(button):hover': colors['--item-hover-bg'],
+      '[data-drop-over]': colors['--item-hover-bg'],
+    },
+    boxShadow: colors['--canvas-shadow'],
+    textAlign: 'left',
+    userSelect: 'none',
+    cursor: {
+      default: null,
+      ':is(button)': 'pointer',
+    },
+  },
+  hiddenName: {
+    overflow: 'hidden',
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-secondary'],
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+});
 
 /**
  * Linear's Board (measured on linear.app 2026-10-22, light and dark): 348px
@@ -72,10 +312,7 @@ interface BuyerlyBoardProps<T> {
 }
 
 const Chevron: React.FC<{ open: boolean }> = ({ open }) => (
-  <BuyerlyDisclosureGlyph
-    className="buyerly-board-chevron"
-    style={{ transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}
-  />
+  <BuyerlyDisclosureGlyph {...stylex.props(styles.chevron, open ? styles.chevronOpen : styles.chevronClosed)} />
 );
 
 const PlusIcon = () => (
@@ -96,7 +333,7 @@ const DraggableCard: React.FC<React.PropsWithChildren<{ id: string; disabled: bo
       // The card itself is focusable; the wrapper only carries the drag.
       tabIndex={-1}
       role="presentation"
-      className="buyerly-board-card-slot"
+      {...stylex.props(styles.cardSlot)}
       data-board-drag={disabled ? undefined : id}
       style={{ opacity: isDragging ? 0.4 : 1 }}
     >
@@ -118,7 +355,7 @@ const DroppableCell: React.FC<React.PropsWithChildren<{
       ref={setNodeRef}
       role="group"
       aria-label={label}
-      className="buyerly-board-cell"
+      {...stylex.props(styles.cell)}
       data-board-cell={id}
       data-board-column={columnId}
       data-drop-over={isOver || undefined}
@@ -184,27 +421,27 @@ export function BuyerlyBoard<T>({
   };
 
   const board = (
-    <div className="buyerly-board">
+    <div {...withClassName(stylex.props(styles.board), 'buyerly-board')}>
       <div
-        className="buyerly-board-grid"
+        {...stylex.props(styles.grid)}
         style={{ gridTemplateColumns: `repeat(${columns.length}, 348px)`, gridTemplateRows: rowTemplate }}
       >
         {columns.map((column, index) => (
-          <div key={`bg-${column.id}`} className="buyerly-board-column-bg" style={{ gridColumn: index + 1, gridRow: '1 / -1' }} />
+          <div key={`bg-${column.id}`} {...stylex.props(styles.columnBg)} style={{ gridColumn: index + 1, gridRow: '1 / -1' }} />
         ))}
 
         {columns.map((column, index) => (
-          <div key={`head-${column.id}`} className="buyerly-board-column-header" style={{ gridColumn: index + 1, gridRow: 1 }}>
-            <div className="buyerly-board-column-title">
-              {column.icon && <span className="buyerly-board-icon" aria-hidden="true">{column.icon}</span>}
-              <span className="buyerly-board-column-name">{column.label}</span>
-              <span className="buyerly-board-count">{column.rows.length}</span>
+          <div key={`head-${column.id}`} {...withClassName(stylex.props(styles.columnHeader), 'buyerly-board-column-header')} style={{ gridColumn: index + 1, gridRow: 1 }}>
+            <div {...stylex.props(styles.title)}>
+              {column.icon && <span {...stylex.props(styles.icon)} aria-hidden="true">{column.icon}</span>}
+              <span {...withClassName(stylex.props(styles.columnName), 'buyerly-board-column-name')}>{column.label}</span>
+              <span {...stylex.props(styles.count)}>{column.rows.length}</span>
             </div>
-            <div className="buyerly-board-column-actions">
+            <div {...stylex.props(styles.columnActions)}>
               {onHideColumn && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button type="button" className="buyerly-board-icon-button" aria-label={`${column.label} menu`}>
+                    <button type="button" {...stylex.props(styles.iconButton)} aria-label={`${column.label} menu`}>
                       <BuyerlyIcon name="more" size={14} />
                     </button>
                   </DropdownMenuTrigger>
@@ -215,7 +452,7 @@ export function BuyerlyBoard<T>({
               )}
               {add && (
                 <Tooltip content={add.label} shortcut={add.shortcut} side="bottom" sideOffset={8}>
-                  <button type="button" className="buyerly-board-icon-button" aria-label={add.label} onClick={() => add.run(column.id)}>
+                  <button type="button" {...stylex.props(styles.iconButton)} aria-label={add.label} onClick={() => add.run(column.id)}>
                     <PlusIcon />
                   </button>
                 </Tooltip>
@@ -231,20 +468,20 @@ export function BuyerlyBoard<T>({
           return (
             <React.Fragment key={lane.id}>
               {lanes && (
-                <div className="buyerly-board-lane" style={{ gridColumn: '1 / -1', gridRow: cellsRow - 1 }}>
-                  <div className="buyerly-board-lane-title">
+                <div {...withClassName(stylex.props(styles.lane), 'buyerly-board-lane')} style={{ gridColumn: '1 / -1', gridRow: cellsRow - 1 }}>
+                  <div {...stylex.props(styles.title, styles.laneTitle)}>
                     <button
                       type="button"
-                      className="buyerly-board-icon-button"
+                      {...stylex.props(styles.iconButton)}
                       aria-label={collapsed ? `Expand ${lane.label}` : `Collapse ${lane.label}`}
                       aria-expanded={!collapsed}
                       onClick={() => setCollapsedLanes((state) => ({ ...state, [lane.id]: !collapsed }))}
                     >
                       <Chevron open={!collapsed} />
                     </button>
-                    {lane.icon && <span className="buyerly-board-icon" aria-hidden="true">{lane.icon}</span>}
-                    <span className="buyerly-board-column-name">{lane.label}</span>
-                    <span className="buyerly-board-count">{count}</span>
+                    {lane.icon && <span {...stylex.props(styles.icon)} aria-hidden="true">{lane.icon}</span>}
+                    <span {...withClassName(stylex.props(styles.columnName), 'buyerly-board-column-name')}>{lane.label}</span>
+                    <span {...stylex.props(styles.count)}>{count}</span>
                   </div>
                 </div>
               )}
@@ -266,7 +503,7 @@ export function BuyerlyBoard<T>({
                       return move ? (
                         <DraggableCard key={id} id={id} disabled={!draggable}>{renderCard(row, column.id)}</DraggableCard>
                       ) : (
-                        <div key={id} className="buyerly-board-card-slot">{renderCard(row, column.id)}</div>
+                        <div key={id} {...stylex.props(styles.cardSlot)}>{renderCard(row, column.id)}</div>
                       );
                     })}
                   </DroppableCell>
@@ -278,11 +515,11 @@ export function BuyerlyBoard<T>({
       </div>
 
       {hiddenColumns.length > 0 && (
-        <div className="buyerly-board-hidden">
-          <div className="buyerly-board-hidden-header">
+        <div {...stylex.props(styles.hidden)}>
+          <div {...stylex.props(styles.hiddenHeader)}>
             <button
               type="button"
-              className="buyerly-board-hidden-toggle"
+              {...stylex.props(styles.hiddenToggle)}
               aria-expanded={hiddenOpen}
               onClick={() => setHiddenOpen((open) => !open)}
             >
@@ -291,20 +528,20 @@ export function BuyerlyBoard<T>({
             </button>
           </div>
           {hiddenOpen && (
-            <div className="buyerly-board-hidden-list">
+            <div {...stylex.props(styles.hiddenList)}>
               {hiddenColumns.map((column) => {
                 const content = (
                   <>
-                    {column.icon && <span className="buyerly-board-icon" aria-hidden="true">{column.icon}</span>}
-                    <span className="buyerly-board-hidden-name">{column.label}</span>
-                    {column.count > 0 && <span className="buyerly-board-count">{column.count}</span>}
+                    {column.icon && <span {...stylex.props(styles.icon)} aria-hidden="true">{column.icon}</span>}
+                    <span {...stylex.props(styles.hiddenName)}>{column.label}</span>
+                    {column.count > 0 && <span {...stylex.props(styles.count)}>{column.count}</span>}
                   </>
                 );
                 const row = (over: boolean) => (column.hiddenByMember && onShowColumn ? (
                   <Tooltip content="Show column" side="left">
                     <button
                       type="button"
-                      className="buyerly-board-hidden-row"
+                      {...withClassName(stylex.props(styles.hiddenRow), 'buyerly-board-hidden-row')}
                       data-drop-over={over || undefined}
                       onClick={() => onShowColumn(column.id)}
                     >
@@ -312,7 +549,7 @@ export function BuyerlyBoard<T>({
                     </button>
                   </Tooltip>
                 ) : (
-                  <div className="buyerly-board-hidden-row" data-drop-over={over || undefined}>{content}</div>
+                  <div {...withClassName(stylex.props(styles.hiddenRow), 'buyerly-board-hidden-row')} data-drop-over={over || undefined}>{content}</div>
                 ));
                 return move ? (
                   <DroppableHidden key={column.id} id={column.id} disabled={!move.canMove(column.id)}>{row}</DroppableHidden>
@@ -328,12 +565,12 @@ export function BuyerlyBoard<T>({
   );
 
   return (
-    <div className="buyerly-board-scroll">
+    <div {...stylex.props(styles.scroll)}>
       {move ? (
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
           {board}
           <DragOverlay dropAnimation={null}>
-            {dragging !== null && <div className="buyerly-board-overlay">{move.renderOverlay(dragging)}</div>}
+            {dragging !== null && <div {...stylex.props(styles.overlay)}>{move.renderOverlay(dragging)}</div>}
           </DragOverlay>
         </DndContext>
       ) : board}

@@ -66,8 +66,10 @@ import { useScopeStore } from '@/models/scopeStore';
 import * as stylex from '@stylexjs/stylex';
 import { colors, radii } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
+import { iconButton } from '@/ui/iconButton.stylex';
 import { openSettings } from '@/lib/routing';
 import { BuyerlyDisplayOptionsButton, BuyerlyToolbarButton } from '@/ui/BuyerlyToolbarButton';
+import '@/ui/menu.css';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type ActionState = 'idle' | 'loading';
@@ -250,6 +252,47 @@ const styles = stylex.create({
       [SPLIT]: 'flex',
     },
   },
+  // Linear's priority inbox tabs under the Inbox header: Priority N / Other.
+  inboxTabs: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 6,
+    paddingTop: 8,
+    paddingRight: 8,
+    paddingBottom: 7,
+    paddingLeft: 8,
+  },
+  inboxTab: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    height: {
+      default: 28,
+      // Linear's pure-touch headers: view tabs grow to 32px tall.
+      '@media (hover: none) and (pointer: coarse)': 32,
+    },
+    paddingLeft: 10,
+    paddingRight: 10,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    borderRadius: 9999,
+    color: colors['--inbox-tab-fg'],
+    backgroundColor: colors['--inbox-tab-bg'],
+    fontSize: 12,
+    fontWeight: 500,
+    textDecorationLine: 'none',
+    whiteSpace: 'nowrap',
+  },
+  inboxTabActive: {
+    color: colors['--text-primary'],
+    backgroundColor: colors['--inbox-tab-active-bg'],
+  },
+  inboxTabCount: {
+    marginLeft: 6,
+    color: colors['--inbox-tab-fg'],
+    fontWeight: 450,
+  },
   // Linear's: 8px in, its buttons 6px apart, over the canvas's 0.5px line (set inline: a shorthand).
   header: {
     display: 'flex',
@@ -294,7 +337,7 @@ const styles = stylex.create({
   },
   back: {
     display: {
-      default: null,
+      default: 'inline-flex',
       [SPLIT]: 'none',
     },
   },
@@ -1014,7 +1057,12 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
       <section
         aria-label="Inbox"
         {...withClassName(stylex.props(styles.inboxList, selectedItem && styles.hiddenUntilSplit), 'inbox-list')}
-        style={{ '--inbox-list-width': `${splitWidth}px` } as React.CSSProperties}
+        style={{
+          '--inbox-list-width': `${splitWidth}px`,
+          // Linear's Inbox list beside the notification: a 0.5px edge in the canvas border's colour.
+          // --canvas-border is a whole border, which StyleX would split.
+          ...(splitShown ? { borderRight: 'var(--canvas-border)' } : null),
+        } as React.CSSProperties}
       >
         <header {...stylex.props(styles.header)} style={{ borderBottom: 'var(--canvas-border)' }}>
           <SidebarCollapsedNavigation />
@@ -1091,7 +1139,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
         </header>
 
         {activeTab && (
-          <nav aria-label="Priority inbox" className="buyerly-inbox-tabs">
+          <nav aria-label="Priority inbox" {...withClassName(stylex.props(styles.inboxTabs), 'buyerly-inbox-tabs')}>
             {(['priority', 'other'] as const).map((tab) => {
               const count = tab === 'priority' ? inboxPriorityUnreadCount : inboxUnreadCount - inboxPriorityUnreadCount;
               return (
@@ -1099,14 +1147,14 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                   key={tab}
                   href={`${pathname.split('/inbox')[0]}/inbox/${tab}`}
                   aria-current={activeTab === tab ? 'page' : undefined}
-                  className="buyerly-inbox-tab"
+                  {...withClassName(stylex.props(styles.inboxTab, activeTab === tab && styles.inboxTabActive), 'buyerly-inbox-tab')}
                   onClick={(event) => {
                     event.preventDefault();
                     onNavigate(tab, null);
                   }}
                 >
                   {tab === 'priority' ? 'Priority' : 'Other'}
-                  {count > 0 && <span className="buyerly-inbox-tab-count">{count}</span>}
+                  {count > 0 && <span {...withClassName(stylex.props(styles.inboxTabCount), 'buyerly-inbox-tab-count')}>{count}</span>}
                 </a>
               );
             })}
@@ -1160,7 +1208,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                 <button
                   type="button"
                   onClick={() => openItem(null)}
-                  {...withClassName(stylex.props(styles.back), 'buyerly-icon-btn buyerly-header-target')}
+                  {...stylex.props(iconButton.root, iconButton.hoverInstant, iconButton.headerTarget, styles.back)}
                   aria-label="Back to Inbox"
                 >
                   <BuyerlyIcon name="arrow-left" size={16} aria-hidden="true" />
