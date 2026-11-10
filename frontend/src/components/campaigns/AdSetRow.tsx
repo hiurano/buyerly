@@ -44,7 +44,6 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, sel
       columns={columns}
       tabIndex={readOnly ? undefined : 0}
       selected={isSelected}
-      className="adset-data-row"
       xstyle={readOnly ? styles.readOnly : styles.row}
     >
       <BuyerlyDataPrimaryCell

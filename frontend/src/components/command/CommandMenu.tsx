@@ -36,6 +36,7 @@ import { useScopeStore } from '@/models/scopeStore';
 import { shellStore, useShellStore, type InterfaceTheme } from '@/models/shellStore';
 import { toast } from '@/ui/toast';
 import { useViewStore } from '@/models/viewStore';
+import { preferencesStyles } from '@/components/preferences/preferencesStyles';
 import './commandExtras.css';
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, another palette. */
@@ -753,8 +754,24 @@ function useQuickResults(text: string): SearchResult[] | null {
 
 /** Linear's "Aa" swatch of a theme, as Settings → Preferences draws it. */
 const ThemeBadge: React.FC<{ theme: InterfaceTheme }> = ({ theme }) => (
-  <span className={`preferences-aa-badge preferences-aa-badge--${theme} buyerly-command-theme-badge`} aria-hidden="true">
-    <span className="preferences-aa-dot">•</span>
+  <span
+    {...withClassName(
+      stylex.props(
+        preferencesStyles.aaBadge,
+        theme === 'light' ? preferencesStyles.aaBadgeLight : theme === 'dark' ? preferencesStyles.aaBadgeDark : null,
+      ),
+      'buyerly-command-theme-badge',
+    )}
+    aria-hidden="true"
+  >
+    <span
+      {...stylex.props(
+        preferencesStyles.aaDot,
+        theme === 'light' ? preferencesStyles.aaDotLight : theme === 'dark' ? preferencesStyles.aaDotDark : null,
+      )}
+    >
+      •
+    </span>
     <span>Aa</span>
   </span>
 );

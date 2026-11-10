@@ -2,9 +2,10 @@
 
 Buyerly's components are styled with StyleX, as Linear's styles are written
 (#501). Tailwind is gone since #519. Next to StyleX there are CSS Modules for
-what StyleX cannot express (#693), `src/styles/reset.css` (the element reset),
-`src/styles/base.css` (html and body), the semantic classes in
-`src/styles/index.css` (until #699) and the public site's CSS Modules (`site/`).
+what StyleX cannot express (#693), a few plain CSS files for the keyframes and
+global hooks a browser check reads, `src/styles/reset.css` (the element reset),
+`src/styles/base.css` (html and body) and the public site's CSS Modules
+(`site/`). The global stylesheet (`src/styles/index.css`) is gone since #699.
 
 ## The rule
 
@@ -13,8 +14,11 @@ what StyleX cannot express (#693), `src/styles/reset.css` (the element reset),
    StyleX does not express: an element's children (`> svg`, `> * + *`), its
    siblings (`+`, `~`), or a parent's state seen from a child
    (`[data-menu-open='true'] .icon`) where a StyleX marker does not fit.
-3. No new global classes: nothing new goes in index.css, and no new markup
-   reads a class from it.
+3. No new global classes: a class selector belongs in a CSS Module, and the
+   only plain global classes are the hooks a browser check reads (its own
+   `*.css` file next to the component). `src/styles/styles.test.ts` guards
+   this: no new file in `src/styles/`, no class selector in a layer
+   stylesheet, and no `className="…"` the stylesheets or a check don't name.
 
 ## Tokens
 
@@ -22,8 +26,7 @@ what StyleX cannot express (#693), `src/styles/reset.css` (the element reset),
   `space`, `radii`, `type`, `layout` and `motion`, each a `stylex.defineVars`.
   `colors` holds the dark values; `lightColors` (`stylex.createTheme`) holds the light ones.
 - The keys keep their CSS names (`'--bg-canvas'`), so StyleX leaves them unhashed
-  and `index.css` and the public website keep reading
-  `var(--bg-canvas)`.
+  and the public website keeps reading `var(--bg-canvas)`.
 - `buyerlyTokens()` in `vite.config.ts` compiles that file into the token CSS,
   with the defaults on `:root` and `lightColors` on `html[data-theme='light']`.
   The app imports it as `virtual:buyerly-tokens.css`, and the public website's
@@ -68,7 +71,7 @@ what StyleX cannot express (#693), `src/styles/reset.css` (the element reset),
   `/virtual:stylex.css` and reloads on change. In the build, it is added to
   the end of the `index-*.css` asset.
 - Its lightningcss targets are Vite's default build targets, so `lch()` values
-  stay as they are written, as in `index.css`.
+  stay as they are written.
 
 ## Cascade layers
 
@@ -83,26 +86,26 @@ index.html's is missing. `src/styles/app.css` puts each file in its layer.
 | --- | --- | --- |
 | `reset` | the element reset | `reset.css` |
 | `base` | `@font-face`, `color-scheme`, the token variables, html and body | `tokens.css`, `virtual:buyerly-tokens.css`, `base.css`; the splash's html background in index.html |
-| `app.base` | the global classes, until #694–#698 move them out | `index.css` |
+| `app.base` | empty, since #699 deleted index.css's global classes | – |
 | `priority1`…`priorityN` | StyleX's rules, one layer per priority group | components (`useCSSLayers` in `vite.config.ts`) |
 | no layer | CSS Modules; the rest of the splash | `*.module.css`, index.html |
 
 - A later layer wins over an earlier one whatever the selectors, and CSS in
-  no layer wins over every layer. So StyleX always beats index.css and
-  reset.css, as it did before with `:not(#\#)` (now gone from its selectors),
-  and a CSS Module beats the StyleX on the same element.
-- Dev and build now order the same way: before, dev served StyleX's CSS ahead
-  of index.css and the build after it, and the unboosted `margin`/`padding`
-  shorthands could lose to index.css in one and win in the other.
-- For `!important` the order turns round: an `!important` in index.css
-  (`app.base`) beats StyleX's rules (which have none) and any `!important` in
-  a later layer or in no layer. A class from a caller only adds properties
-  the component leaves unset; an index.css rule that must restyle a StyleX
-  component needs `!important`.
+  no layer wins over every layer. So StyleX always beats reset.css, as it did
+  before with `:not(#\#)` (now gone from its selectors), and a CSS Module
+  beats the StyleX on the same element.
+- Dev and build order the same way. Before, dev served StyleX's CSS ahead of
+  index.css and the build after it, and the unboosted `margin`/`padding`
+  shorthands could lose in one and win in the other.
+- For `!important` the order turns round: an `!important` in `app.base`
+  (which is empty now) would beat StyleX's rules (which have none) and any
+  `!important` in a later layer or in no layer. A class from a caller only
+  adds properties the component leaves unset; a rule that must restyle a
+  StyleX component needs `!important` (as `ui/menu.css` does).
 - Within one layer, specificity and source order decide as before: the `*`
   rule at the end of reset.css stays below reset.css's element rules
-  (`code { font-feature-settings: normal }`), which is why it moved there from
-  index.css rather than into `base`.
+  (`code { font-feature-settings: normal }`), which is why it lives there
+  rather than in `base`.
 - StyleX's priority-0 rules (`@keyframes`, `defineVars`) are in no layer.
 
 ## CSS Modules
@@ -129,7 +132,7 @@ index.html's is missing. `src/styles/app.css` puts each file in its layer.
 - Browser checks find elements by role or by a semantic class the markup keeps
   for them, never by a module's or StyleX's class.
 
-## Moving an index.css section (#694–#698)
+## Moving a section out of index.css (#694–#698, done)
 
 1. Measure first: `scripts/screens-compare.ts` (below) against a checkout of
    `origin/main`, with `--only` for your screens. Add a scenario for any state
@@ -198,7 +201,7 @@ node scripts/screens-compare.ts --base ../buyerly-base --only '^settings'  # nam
 - The invite page's reload splash never goes away with this mock (on main
   too); that scenario removes it to look underneath.
 
-## Next to index.css
+## Next to StyleX
 
 - `stylex.when.ancestor(...)` and other `stylex.*` calls only compile inside
   `stylex.create`. Pulled into a module constant they reach the browser and
@@ -211,8 +214,9 @@ node scripts/screens-compare.ts --base ../buyerly-base --only '^settings'  # nam
   constant used inside `stylex.create` must be declared in the same file:
   imported from anywhere but a `.stylex.ts` file, it fails the build.
 - StyleX styles only the element it is applied to. A child selector goes in a
-  CSS Module (`Sidebar.module.css`); cmdk's group headings still use index.css
-  (`.buyerly-command-group`) until #694–#698 move them.
+  CSS Module (`Sidebar.module.css`); cmdk's group headings use
+  `components/command/commandExtras.css` (`.buyerly-command-group`), a plain
+  hook file.
 - A token that holds a whole border (`--canvas-border`) can't go in
   `borderBottom`: StyleX splits the shorthand and the line is lost. Such
   an element keeps `style={{ borderBottom: 'var(--canvas-border)' }}`.

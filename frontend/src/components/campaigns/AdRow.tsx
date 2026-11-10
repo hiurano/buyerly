@@ -42,7 +42,6 @@ export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable =
       columns={columns}
       tabIndex={readOnly ? undefined : 0}
       selected={isSelected}
-      className="ad-data-row"
       xstyle={readOnly ? styles.readOnly : styles.row}
     >
       <BuyerlyDataPrimaryCell

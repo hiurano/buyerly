@@ -78,7 +78,6 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
           }
         }}
         selected={isSelected}
-        className="campaign-data-row"
         xstyle={readOnly ? styles.readOnly : styles.row}
       >
         <BuyerlyDataPrimaryCell

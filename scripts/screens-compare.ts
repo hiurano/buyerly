@@ -241,6 +241,11 @@ const SCENARIOS: Scenario[] = [
     await page.locator('.buyerly-workspace-btn').first().click();
   } },
   { name: 'command-menu', path: `${W}/inbox`, ready: 'CPL is $14', only: 'desktop', act: press('ControlOrMeta+k') },
+  { name: 'command-menu-theme', path: `${W}/inbox`, ready: 'CPL is $14', only: 'desktop', act: async (page) => {
+    await page.keyboard.press('ControlOrMeta+k');
+    await page.getByRole('combobox').fill('theme');
+    await page.getByRole('option', { name: 'Change interface theme…' }).click();
+  } },
   { name: 'shortcuts-help', path: `${W}/inbox`, ready: 'CPL is $14', only: 'desktop', act: press('Shift+?') },
   // Views: lists, board, details pane, menus on them.
   { name: 'campaigns', path: `${W}/ads-manager/campaigns`, ready: 'Alpha campaign' },
@@ -261,6 +266,7 @@ const SCENARIOS: Scenario[] = [
   { name: 'rule', path: `${W}/rules/7`, ready: '$4 and no lead' },
   { name: 'rules-deleted', path: `${W}/rules/recently-deleted` },
   { name: 'search', path: `${W}/search?q=alpha` },
+  { name: 'search-display-options', path: `${W}/search?q=alpha`, act: click('[aria-label="Display options"]') },
   // Team and member pages.
   { name: 'members', path: `${W}/members`, ready: 'Bob Buyer' },
   { name: 'teams', path: `${W}/teams`, ready: 'Growth' },

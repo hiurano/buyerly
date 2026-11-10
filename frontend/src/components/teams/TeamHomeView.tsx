@@ -795,7 +795,7 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
               <div {...stylex.props(styles.toolbarEnd)}>
                 {canAdministerWorkspace({ role: workspace.role }) && (
                   <BuyerlyToolbarButton
-                    className="buyerly-header-button--labelled"
+                    labelled
                     onClick={() => {
                       openTeamSettings(`${team.key}/members`);
                     }}
