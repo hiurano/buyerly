@@ -1,7 +1,10 @@
 import { useEffect } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { favoritesStore, toggleFavorite, useFavorites, type FavoriteInput } from '@/lib/favorites';
+import { toolbarButtonStyles } from '@/ui/BuyerlyToolbarButton';
 import { Tooltip } from '@/ui/Tooltip';
+import { withClassName } from '@/ui/withClassName';
 import '@/ui/favorites.css';
 
 function isTyping(): boolean {
@@ -49,7 +52,10 @@ export function BuyerlyFavoriteButton({ favorite }: { favorite: FavoriteInput })
         // Linear marks it a switch; here a pressed button, since the switch role is BuyerlyToggle's alone.
         aria-pressed={starred}
         aria-label={label}
-        className="buyerly-header-button buyerly-header-button--header buyerly-header-target buyerly-favorite-button"
+        {...withClassName(
+          stylex.props(toolbarButtonStyles.base, toolbarButtonStyles.header),
+          'buyerly-header-button buyerly-header-button--header buyerly-header-target buyerly-favorite-button',
+        )}
         onClick={toggle}
       >
         {starred

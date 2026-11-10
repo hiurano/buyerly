@@ -1,8 +1,10 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import * as stylex from '@stylexjs/stylex';
 import type { MetaAccount } from '@/lib/types';
-import { BuyerlyDisplayOptions } from '@/ui/BuyerlyDisplayOptions';
+import { BuyerlyDisplayOptions, displayCss, displayStyles } from '@/ui/BuyerlyDisplayOptions';
 import { orderGroups } from '@/ui/listView';
+import { withClassName } from '@/ui/withClassName';
 import {
   ACCOUNT_GROUPING_OPTIONS,
   ACCOUNT_ORDERING_OPTIONS,
@@ -65,7 +67,11 @@ export const AccountDisplayOptionsPopover: React.FC<AccountDisplayOptionsPopover
   const hidden = view.hiddenGroups[view.grouping] ?? [];
 
   return createPortal(
-    <div ref={popoverRef} className="buyerly-display-options-popover" style={{ top: coords.top, right: coords.right }}>
+    <div
+      ref={popoverRef}
+      {...withClassName(stylex.props(displayStyles.popover), displayCss.popover, 'buyerly-display-options-popover')}
+      style={{ top: coords.top, right: coords.right }}
+    >
       <BuyerlyDisplayOptions
         viewMode="list"
         onViewModeChange={() => {}}
@@ -77,7 +83,7 @@ export const AccountDisplayOptionsPopover: React.FC<AccountDisplayOptionsPopover
           groups: groups.map((group) => ({
             id: group.id,
             label: group.label,
-            icon: <span className="details-facets-dot" style={{ backgroundColor: group.dotColor }} />,
+            icon: <span {...withClassName(stylex.props(displayStyles.facetDot), 'details-facets-dot')} style={{ backgroundColor: group.dotColor }} />,
           })),
           hidden,
           onReorder: (ids) => update({ groupOrder: { ...view.groupOrder, [view.grouping]: ids } }),

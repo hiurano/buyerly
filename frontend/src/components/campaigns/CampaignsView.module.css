@@ -1,0 +1,18 @@
+/* The Ads Manager list's toolbar: Linear's 43.5px tab row that wraps when the
+   controls no longer fit. The height needs !important to beat the shared
+   toolbar's fixed height; the children are child selectors StyleX cannot target. */
+.toolbar {
+  height: auto !important;
+  min-height: 43.5px;
+  flex-wrap: wrap;
+  gap: var(--facet-sidebar-gap);
+  padding-block: 7.75px;
+}
+
+.toolbar > * {
+  max-width: 100%;
+}
+
+.toolbar > div:last-child {
+  flex-wrap: wrap;
+}

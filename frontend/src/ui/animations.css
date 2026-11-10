@@ -4,3 +4,11 @@
 .animate-scale-in {
   animation: fadeIn 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+.selection-dock-enter {
+  animation: selectionDockEnter var(--motion-dock-enter-duration) var(--ease-out-cubic) both;
+}
+
+.toast-enter {
+  animation: toastEnter var(--motion-toast-enter-duration) var(--ease-out-cubic) both;
+}

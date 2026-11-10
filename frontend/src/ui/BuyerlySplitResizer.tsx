@@ -1,4 +1,49 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
+import splitResizerCss from './BuyerlySplitResizer.module.css';
+
+const styles = stylex.create({
+  resizer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 7,
+    zIndex: 91,
+    cursor: 'col-resize',
+  },
+  track: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 'calc(50% - 0.5px)',
+    width: 0.5,
+    overflow: 'hidden',
+    pointerEvents: 'none',
+    backgroundColor: colors['--split-resizer-track'],
+    opacity: 0,
+    transitionProperty: 'opacity',
+    transitionDuration: '0.25s',
+    transitionDelay: '0s',
+    maskImage: 'linear-gradient(rgba(0, 0, 0, 0), rgb(0, 0, 0) 10%, rgb(0, 0, 0) 90%, rgba(0, 0, 0, 0))',
+  },
+  indicator: {
+    position: 'absolute',
+    top: '-50%',
+    left: 0,
+    right: 0,
+    height: '200%',
+    backgroundColor: colors['--split-resizer-indicator'],
+    maskImage: 'var(--resizer-spot-mask)',
+  },
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 2147483000,
+    cursor: 'col-resize',
+  },
+});
 
 /**
  * Linear's split view (Inbox, Search, Triage), read from its SplitView and
@@ -114,9 +159,9 @@ export function BuyerlySplitResizer({ width, minWidth, maxWidth, onResize, onRes
 
   return (
     <>
-      {dragging && <div className="buyerly-split-resizer-overlay" />}
+      {dragging && <div {...withClassName(stylex.props(styles.overlay), 'buyerly-split-resizer-overlay')} />}
       <div
-        className="buyerly-split-resizer"
+        {...withClassName(stylex.props(styles.resizer), splitResizerCss.resizer, 'buyerly-split-resizer')}
         data-dragging={dragging ? 'true' : undefined}
         style={{ left: width - 3 }}
         onMouseEnter={(event) => placeIndicator(event.clientY)}
@@ -127,8 +172,8 @@ export function BuyerlySplitResizer({ width, minWidth, maxWidth, onResize, onRes
           start(event.clientX);
         }}
       >
-        <div ref={trackRef} className="buyerly-split-resizer-track" aria-hidden="true">
-          <div ref={indicatorRef} className="buyerly-split-resizer-indicator" />
+        <div ref={trackRef} {...withClassName(stylex.props(styles.track), splitResizerCss.track, 'buyerly-split-resizer-track')} aria-hidden="true">
+          <div ref={indicatorRef} {...withClassName(stylex.props(styles.indicator), 'buyerly-split-resizer-indicator')} />
         </div>
       </div>
     </>

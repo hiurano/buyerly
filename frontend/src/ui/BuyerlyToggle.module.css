@@ -1,0 +1,50 @@
+/* BuyerlyToggle knob (::after), in Display options (22x14) and settings (30x20) sizes. */
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--toggle-knob);
+  transition: transform 100ms ease-out;
+}
+
+.toggle[aria-checked='true']::after {
+  transform: translateX(8px);
+}
+
+/* Linear's settings switch (17.10): 30x20, a 14px knob 3px in that leans 2px
+   toward its travel under the cursor; its edges move 0.1s, the trailing one 50ms late. */
+.settings::after {
+  top: 3px;
+  left: 3px;
+  right: 13px;
+  width: auto;
+  height: 14px;
+  border-radius: 7px;
+  transform: none;
+  transition: left 0.1s ease-out, right 0.1s ease-out 0.05s;
+}
+
+.settings[aria-checked='true']::after {
+  left: 13px;
+  right: 3px;
+  transform: none;
+  transition: left 0.1s ease-out 0.05s, right 0.1s ease-out;
+}
+
+.settings[aria-checked='false']:not([aria-disabled='true'], [aria-busy='true']):hover::after {
+  right: 11px;
+}
+
+.settings[aria-checked='true']:not([aria-disabled='true'], [aria-busy='true']):hover::after {
+  left: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toggle::after {
+    transition: none;
+  }
+}

@@ -51,6 +51,8 @@ import { useViewStore, type RuleFilterTab } from '@/models/viewStore';
 import { useRulesStore } from '@/models/rulesStore';
 import { useSelectionStore } from '@/models/selectionStore';
 import { BuyerlyDisplayOptionsButton } from '@/ui/BuyerlyToolbarButton';
+import { displayStyles } from '@/ui/BuyerlyDisplayOptions';
+import { withClassName } from '@/ui/withClassName';
 
 const styles = stylex.create({
   root: {
@@ -139,12 +141,12 @@ function readQuickFilter(): RuleQuickFilter | null {
 
 function ruleFacetIcon(facet: string, value: string, labels: { id: string; color: string }[]): React.ReactNode {
   if (facet === 'status') {
-    if (value === 'needs_review') return <span className="details-facets-dot" style={{ backgroundColor: '#f2994a' }} />;
+    if (value === 'needs_review') return <span {...withClassName(stylex.props(displayStyles.facetDot), 'details-facets-dot')} style={{ backgroundColor: '#f2994a' }} />;
     return <BuyerlyStatusCircleIcon status={value === 'paused' ? 'paused' : 'active'} size={14} />;
   }
   if (facet === 'action') return <BuyerlyIcon name="rules" size={14} style={{ color: 'var(--text-tertiary)' }} />;
   const color = labels.find((label) => label.id === value)?.color ?? NO_LABEL_COLOR;
-  return <span className="details-facets-dot" style={{ backgroundColor: color }} />;
+  return <span {...withClassName(stylex.props(displayStyles.facetDot), 'details-facets-dot')} style={{ backgroundColor: color }} />;
 }
 
 interface RulesViewProps {

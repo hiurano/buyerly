@@ -27,6 +27,7 @@ import { SubmenuArrow } from '@/ui/SubmenuArrow';
 import { setRef } from '@/ui/setRef';
 import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlyToolbarButton, type BuyerlyToolbarButtonPlacement } from '@/ui/BuyerlyToolbarButton';
+import filterCss from './BuyerlyFilter.module.css';
 import '@/ui/menu.css';
 
 const MENU_SURFACE = 'var(--card-bg)';
@@ -339,7 +340,7 @@ export const FilterOptionAvatarImage: React.FC<{ avatar: FilterOptionAvatar; lab
     <span
       data-filter-avatar="user"
       data-initial={label.trim().slice(0, 1)}
-      className="filter-avatar-initial"
+      className={`${filterCss.filterAvatarInitial} filter-avatar-initial`}
       aria-hidden="true"
       style={{
         ...box,

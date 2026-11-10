@@ -5,6 +5,8 @@ import { BuyerlyDisclosureGlyph } from '@/icons/BuyerlyIcons';
 import { colors } from '@/styles/tokens.stylex';
 import { rowMarker } from '@/ui/markers.stylex';
 import { withClassName } from '@/ui/withClassName';
+import buyerlyDataListCss from './BuyerlyDataList.module.css';
+import './BuyerlyDataList.css';
 
 const BUYERLY_DATA_LIST = {
   toolbarHeight: 43.5,
@@ -513,6 +515,7 @@ export const BuyerlyDataListRow = React.forwardRef<HTMLDivElement, BuyerlyDataLi
       aria-selected={selected}
       {...withClassName(
         stylex.props(styles.row, layout === 'grid' && styles.rowGrid, issueLayout && styles.rowIssues, selected && styles.rowSelected, rowMarker, xstyle),
+        buyerlyDataListCss.row,
         `buyerly-data-row ${className}`.trim(),
       )}
       style={{

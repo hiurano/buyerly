@@ -1,0 +1,84 @@
+:global(html[data-theme='light']) {
+  --display-popover-border: lch(90.55% 0 282);
+  --display-menu-border: lch(86.5% 0 282);
+  --display-divider: lch(97.3% 0 282);
+  --display-selected: lch(95.543% 0 282);
+  --display-property-selected: lch(94.857% 0 282);
+  --display-control-hover: lch(97.3% 0 282);
+  --display-option-hover: lch(95.543% 0 282);
+}
+
+.tab::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  pointer-events: none;
+}
+
+.tab::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  box-shadow:
+    0 0 0 1px lch(0% 0 282 / 10.3%),
+    0 3px 6px -2px lch(0% 0 282 / 2%),
+    0 1px 1px lch(0% 0 282 / 4%);
+  pointer-events: none;
+}
+
+.tab[aria-selected='true']::after {
+  box-shadow:
+    0 0 0 1px lch(0% 0 282 / 14.7%),
+    0 0 0 0 transparent;
+}
+
+.tab > svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: currentColor;
+}
+
+.select > svg {
+  flex: none;
+  color: var(--text-tertiary);
+}
+
+/* With priority inbox on, Linear widens the selects to fit "Priority & Other". */
+.popover[data-wide] .select {
+  width: 117px;
+}
+
+.groupLabel > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.selectOption > svg {
+  position: absolute;
+  right: 10px;
+}
+
+.property::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  box-shadow:
+    0 0 0 1px lch(0% 0 282 / 10.3%),
+    0 3px 6px -2px lch(0% 0 282 / 2%),
+    0 1px 1px lch(0% 0 282 / 4%);
+  pointer-events: none;
+}
+
+.property[aria-pressed='true']::after {
+  box-shadow:
+    0 0 0 1px lch(0% 0 282 / 10.3%),
+    0 0 0 0 transparent;
+}
+
+.checkbox > svg {
+  width: 12px;
+  height: 12px;
+}

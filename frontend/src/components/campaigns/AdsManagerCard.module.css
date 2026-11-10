@@ -1,0 +1,6 @@
+/* A card's props: a chip's label and value truncate, which StyleX cannot reach on an element's
+   children (the chip itself is styled in AdsManagerCard.tsx's `styles`). */
+.chip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

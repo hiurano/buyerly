@@ -1,9 +1,13 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { BuyerlyChevronGlyph } from '@/icons/BuyerlyIcons';
-import { colors } from '@/styles/tokens.stylex';
+import { colors, type as typeTokens } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './DropdownMenu';
+import css from './BuyerlyTabs.module.css';
+
+const HOVER = '@media (any-hover: hover) and (any-pointer: fine)';
+const TOUCH = '@media (hover: none) and (pointer: coarse)';
 
 interface BuyerlyTabItem {
   id: string;
@@ -51,6 +55,73 @@ const styles = stylex.create({
     position: 'absolute',
     left: 0,
     visibility: 'hidden',
+  },
+  tab: {
+    position: 'relative',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: {
+      default: 28,
+      [TOUCH]: 32,
+    },
+    minWidth: 28,
+    maxWidth: 200,
+    paddingTop: 0,
+    paddingBottom: 0,
+    paddingLeft: 10,
+    paddingRight: 10,
+    margin: 0,
+    boxSizing: 'border-box',
+    borderRadius: 9999,
+    borderWidth: 0.5,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    fontFamily: typeTokens['--font-regular'],
+    fontSize: 12,
+    fontWeight: 500,
+    lineHeight: 'normal',
+    letterSpacing: 'normal',
+    userSelect: 'none',
+    whiteSpace: 'nowrap',
+    outlineWidth: { default: 0, ':focus-visible': 1 },
+    outlineStyle: { default: 'none', ':focus-visible': 'solid' },
+    outlineColor: { default: null, ':focus-visible': colors['--focus-ring-color'] },
+    outlineOffset: { default: null, ':focus-visible': -1 },
+    cursor: 'default',
+    transition: 'border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s',
+  },
+  tabInactive: {
+    backgroundColor: {
+      default: colors['--inbox-tab-bg'],
+      ':active': colors['--header-button-hover-bg'],
+      [HOVER]: {
+        default: null,
+        ':hover': colors['--header-button-hover-bg'],
+      },
+    },
+    color: {
+      default: colors['--text-tertiary'],
+      ':active': colors['--text-secondary'],
+      [HOVER]: {
+        default: null,
+        ':hover': colors['--text-secondary'],
+      },
+    },
+    /* As Linear's: hover and press land at once, only leaving fades over 0.15s. */
+    transitionDuration: {
+      default: null,
+      ':active': '0s',
+      [HOVER]: {
+        default: null,
+        ':hover': '0s',
+      },
+    },
+  },
+  tabActive: {
+    backgroundColor: colors['--tab-active-bg'],
+    color: colors['--text-primary'],
+    cursor: 'default',
   },
   label: {
     display: 'block',
@@ -183,7 +254,11 @@ export const BuyerlyTabs: React.FC<BuyerlyTabsProps> = ({
             disabled={tab.disabled}
             onClick={() => onChange(tab.id)}
             onKeyDown={(e) => handleKeyDown(e, index)}
-            className="buyerly-tab-capsule"
+            {...withClassName(
+              stylex.props(styles.tab, isActive ? styles.tabActive : styles.tabInactive),
+              css.tab,
+              'buyerly-tab-capsule',
+            )}
           >
             <span {...stylex.props(styles.label)}>{tab.label}</span>
             <TabCount count={tab.count} active={isActive} />
@@ -207,7 +282,7 @@ export const BuyerlyTabs: React.FC<BuyerlyTabsProps> = ({
               type="button"
               data-active="true"
               aria-label={`${tabs.length - 1} more`}
-              {...withClassName(stylex.props(styles.more), 'buyerly-tab-capsule')}
+              {...withClassName(stylex.props(styles.tab, styles.tabActive, styles.more), css.tab, 'buyerly-tab-capsule')}
             >
               <span {...stylex.props(styles.label)}>{activeTab.label}</span>
               <TabCount count={activeTab.count} active />

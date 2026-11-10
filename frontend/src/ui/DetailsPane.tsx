@@ -1,5 +1,9 @@
 import React, { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { useMediaQuery, useIsTouchScreen } from '@/lib/useMediaQuery';
+import { colors } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
+import detailsPaneCss from './DetailsPane.module.css';
 import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlySidebarToggleIcon } from '@/icons/BuyerlyIcons';
 import {
@@ -17,6 +21,142 @@ import { detailsPaneStore, useDetailsPaneStore } from '@/models/detailsPaneStore
 import { BuyerlyToolbarButton } from './BuyerlyToolbarButton';
 
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+
+const styles = stylex.create({
+  layout: {
+    position: 'relative',
+    display: 'flex',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 'auto',
+    minWidth: 0,
+    minHeight: 0,
+    overflow: 'hidden',
+  },
+  content: {
+    display: 'flex',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 'auto',
+    minWidth: 0,
+    minHeight: 0,
+    overflow: 'hidden',
+  },
+  pane: {
+    position: 'relative',
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: 'auto',
+    zIndex: 90,
+  },
+  paneOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    maxWidth: '100%',
+  },
+  backdrop: {
+    position: 'absolute',
+    inset: 0,
+    pointerEvents: 'none',
+    backgroundImage: 'linear-gradient(to left, var(--details-pane-backdrop), transparent)',
+  },
+  aside: {
+    position: 'absolute',
+    inset: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    paddingLeft: 4,
+    overflowX: 'hidden',
+    overflowY: 'auto',
+  },
+  scrim: {
+    position: 'absolute',
+    inset: 0,
+    zIndex: 80,
+    backgroundColor: colors['--details-pane-scrim'],
+    animationName: {
+      default: 'detailsPaneScrimIn',
+      '@media (prefers-reduced-motion: reduce)': 'none',
+    },
+    animationDuration: {
+      default: '0.25s',
+      '@media (prefers-reduced-motion: reduce)': '0s',
+    },
+    animationTimingFunction: 'ease',
+    transitionProperty: {
+      default: 'opacity',
+      '@media (prefers-reduced-motion: reduce)': 'none',
+    },
+    transitionDuration: {
+      default: '0.25s',
+      '@media (prefers-reduced-motion: reduce)': '0s',
+    },
+    transitionTimingFunction: 'ease',
+  },
+  scrimClosed: {
+    opacity: 0,
+    pointerEvents: 'none',
+  },
+  resizer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: -3,
+    width: 7,
+    zIndex: 91,
+    cursor: 'col-resize',
+    touchAction: 'none',
+  },
+  track: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 'calc(50% - 0.5px)',
+    width: 0.5,
+    overflow: 'hidden',
+    pointerEvents: 'none',
+    backgroundColor: colors['--details-pane-resizer-track'],
+    opacity: 0,
+    transitionProperty: 'opacity',
+    transitionDuration: '0.25s',
+    transitionDelay: '0s',
+    maskImage: 'linear-gradient(transparent, #000 10%, #000 90%, transparent)',
+  },
+  indicator: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: '-50%',
+    height: '200%',
+    backgroundColor: colors['--details-pane-resizer-indicator'],
+    maskImage: 'var(--resizer-spot-mask)',
+  },
+  tooltip: {
+    position: 'absolute',
+    right: 12,
+    transform: 'translateY(-50%)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    paddingTop: 5,
+    paddingBottom: 5,
+    paddingLeft: 8,
+    paddingRight: 8,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    borderRadius: 8,
+    backgroundColor: colors['--card-bg'],
+    boxShadow: colors['--dropdown-shadow'],
+    color: colors['--text-secondary'],
+    fontSize: 12,
+    lineHeight: '16px',
+    whiteSpace: 'nowrap',
+    pointerEvents: 'none',
+  },
+});
 
 function useWindowWidth(): number {
   const [width, setWidth] = useState(() => window.innerWidth);
@@ -169,7 +309,7 @@ function DetailsPaneResizeHandle({ width, windowWidth, onResize, onResizeEnd, on
   return (
     <div
       ref={handleRef}
-      className="details-pane-resizer"
+      {...withClassName(stylex.props(styles.resizer), detailsPaneCss.resizer, 'details-pane-resizer')}
       data-dragging={dragging ? 'true' : undefined}
       aria-hidden="true"
       onMouseEnter={(event) => {
@@ -195,12 +335,12 @@ function DetailsPaneResizeHandle({ width, windowWidth, onResize, onResizeEnd, on
         if (touch && event.touches.length === 1) start(touch.clientX, 'touch', touch.identifier);
       }}
     >
-      <div className="details-pane-resizer-track">
-        <div ref={indicatorRef} className="details-pane-resizer-indicator" />
+      <div {...withClassName(stylex.props(styles.track), detailsPaneCss.track, 'details-pane-resizer-track')}>
+        <div ref={indicatorRef} {...withClassName(stylex.props(styles.indicator), 'details-pane-resizer-indicator')} />
       </div>
       {tooltipTop !== null && !dragging && (
         <div
-          className="details-pane-resizer-tooltip"
+          {...withClassName(stylex.props(styles.tooltip), detailsPaneCss.tooltip, 'details-pane-resizer-tooltip')}
           style={{ top: Math.min(Math.max(tooltipTop, 36), window.innerHeight - 36) }}
         >
           <span><strong>Drag</strong> to resize</span>
@@ -291,21 +431,25 @@ export function DetailsPaneLayout({ pane, label, details, children }: DetailsPan
   const scrim = phone && touch && mounted;
 
   return (
-    <div className="details-pane-layout">
-      <div className="details-pane-content">{children}</div>
+    <div {...withClassName(stylex.props(styles.layout), 'details-pane-layout')}>
+      <div {...withClassName(stylex.props(styles.content), 'details-pane-content')}>{children}</div>
       {scrim && (
         <div
-          className="details-pane-scrim"
+          {...withClassName(stylex.props(styles.scrim, !open && styles.scrimClosed), 'details-pane-scrim')}
           data-open={open ? 'true' : 'false'}
           aria-hidden="true"
           onClick={close}
         />
       )}
       {mounted && (
-        <div ref={containerRef} className="details-pane" data-overlay={overlay ? 'true' : 'false'}>
-          <div className="details-pane-backdrop" aria-hidden="true" />
+        <div
+          ref={containerRef}
+          {...withClassName(stylex.props(styles.pane, overlay && styles.paneOverlay), 'details-pane')}
+          data-overlay={overlay ? 'true' : 'false'}
+        >
+          <div {...withClassName(stylex.props(styles.backdrop), 'details-pane-backdrop')} aria-hidden="true" />
           <aside
-            className="details-pane-aside"
+            {...withClassName(stylex.props(styles.aside), 'details-pane-aside')}
             aria-label={label}
             onTouchStart={(event) => {
               const touchPoint = event.touches[0];

@@ -1,0 +1,16 @@
+/* A group's 2px separation from the one above it. */
+.group + .group,
+[data-inbox-event-id] + .group {
+  margin-top: 2px;
+}
+
+/* Linear's Focus group header: the caret sits 5px before the name and turns down when open. */
+.header svg {
+  margin-left: -5px;
+  color: var(--inbox-group-header-icon);
+  transition: transform 150ms ease;
+}
+
+.header[aria-expanded='true'] svg {
+  transform: rotate(90deg);
+}
