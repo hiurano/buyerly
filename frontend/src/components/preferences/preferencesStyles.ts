@@ -33,6 +33,7 @@ export const preferencesStyles = stylex.create({
     flexShrink: 0,
     flexBasis: 244,
     backgroundColor: 'transparent',
+    backgroundPosition: '0 0',
     display: 'flex',
     flexDirection: 'column',
     userSelect: 'none',
@@ -101,6 +102,7 @@ export const preferencesStyles = stylex.create({
         ':hover': colors['--sidebar-icon-button-hover-bg'],
       },
     },
+    backgroundPosition: '0 0',
     color: {
       default: colors['--sidebar-item-fg'],
       ':active': colors['--sidebar-item-fg-strong'],
@@ -257,6 +259,7 @@ export const preferencesStyles = stylex.create({
         ':hover': colors['--sidebar-item-hover-bg'],
       },
     },
+    backgroundPosition: '0 0',
     color: {
       default: colors['--sidebar-item-fg'],
       ':active': colors['--sidebar-item-fg-strong'],
@@ -521,6 +524,7 @@ export const preferencesStyles = stylex.create({
     borderColor: 'transparent',
     borderRadius: 999,
     backgroundColor: 'transparent',
+    backgroundPosition: '0 0',
     '::placeholder': {
       color: colors['--settings-list-group-count'],
       opacity: 1,
@@ -774,6 +778,7 @@ export const preferencesStyles = stylex.create({
       ':hover': colors['--header-button-hover-bg'],
       ':active': colors['--header-button-hover-bg'],
     },
+    backgroundPosition: '0 0',
     color: {
       default: 'inherit',
       ':hover': colors['--text-primary'],
@@ -918,6 +923,7 @@ export const preferencesStyles = stylex.create({
       ':enabled:hover': colors['--preferences-search-bg'],
       ':enabled:focus-visible': colors['--preferences-search-bg'],
     },
+    backgroundPosition: '0 0',
     color: colors['--text-secondary'],
     fontSize: 13,
     textAlign: 'left',
@@ -1208,6 +1214,7 @@ export const preferencesStyles = stylex.create({
       default: 'transparent',
       ':hover:not(:disabled)': colors['--item-hover-bg'],
     },
+    backgroundPosition: '0 0',
     cursor: 'pointer',
     outline: {
       default: null,
@@ -1236,6 +1243,7 @@ export const preferencesStyles = stylex.create({
       default: 'transparent',
       ':hover:not(:disabled)': colors['--item-hover-bg'],
     },
+    backgroundPosition: '0 0',
     color: {
       default: colors['--text-secondary'],
       ':hover:not(:disabled)': colors['--text-primary'],
@@ -1286,6 +1294,7 @@ export const preferencesStyles = stylex.create({
     borderColor: colors['--preferences-avatar-ring'],
     borderRadius: 9,
     backgroundColor: 'transparent',
+    backgroundPosition: '0 0',
     overflow: 'hidden',
     cursor: 'default',
     outline: {
@@ -1332,10 +1341,7 @@ export const preferencesStyles = stylex.create({
   },
 
   urlFieldWide: {
-    width: {
-      default: 256,
-      '@media (max-width: 640px)': '100%',
-    },
+    width: 256,
   },
 
   urlPrefix: {
@@ -1360,6 +1366,7 @@ export const preferencesStyles = stylex.create({
     borderStyle: 'none',
     borderColor: 'currentColor',
     backgroundColor: 'transparent',
+    backgroundPosition: '0 0',
     color: colors['--text-primary'],
     font: 'inherit',
     outline: 'none',
@@ -1546,10 +1553,7 @@ export const preferencesStyles = stylex.create({
   },
 
   rowInputWide: {
-    width: {
-      default: 256,
-      '@media (max-width: 640px)': '100%',
-    },
+    width: 256,
     height: 32,
     fontSize: 13,
   },
@@ -1629,6 +1633,7 @@ export const preferencesStyles = stylex.create({
       default: 'transparent',
       ':hover': colors['--preferences-row-hover-bg'],
     },
+    backgroundPosition: '0 0',
     textAlign: 'left',
     cursor: 'default',
   },
@@ -1685,6 +1690,7 @@ export const preferencesStyles = stylex.create({
       default: 'transparent',
       ':hover': colors['--item-hover-bg'],
     },
+    backgroundPosition: '0 0',
     color: colors['--text-primary'],
     font: 'inherit',
     cursor: 'default',
@@ -1719,6 +1725,7 @@ export const preferencesStyles = stylex.create({
       default: 'transparent',
       ':hover': colors['--item-hover-bg'],
     },
+    backgroundPosition: '0 0',
     fontFamily: fonts['--font-regular'],
     fontSize: 13,
     fontWeight: 450,
@@ -1809,6 +1816,7 @@ export const preferencesStyles = stylex.create({
       default: 'transparent',
       ':hover': colors['--item-hover-bg'],
     },
+    backgroundPosition: '0 0',
     fontFamily: fonts['--font-regular'],
     fontSize: 12,
     fontWeight: 500,
@@ -1839,6 +1847,7 @@ export const preferencesStyles = stylex.create({
       default: 'transparent',
       ':hover': colors['--item-hover-bg'],
     },
+    backgroundPosition: '0 0',
     fontFamily: fonts['--font-regular'],
     fontSize: 12,
     fontWeight: 500,
@@ -1868,6 +1877,7 @@ export const preferencesStyles = stylex.create({
       ':hover': colors['--item-hover-bg'],
       ':is([data-state="open"])': colors['--item-hover-bg'],
     },
+    backgroundPosition: '0 0',
     cursor: 'pointer',
   },
 
@@ -2131,6 +2141,7 @@ export const preferencesStyles = stylex.create({
       default: 'transparent',
       ':hover': colors['--preferences-menu-hover'],
     },
+    backgroundPosition: '0 0',
     color: {
       default: colors['--text-secondary'],
       ':hover': colors['--text-primary'],
@@ -2210,6 +2221,7 @@ export const preferencesStyles = stylex.create({
     borderStyle: 'none',
     borderColor: 'currentColor',
     backgroundColor: 'transparent',
+    backgroundPosition: '0 0',
     color: 'inherit',
     font: 'inherit',
     textAlign: 'left',
@@ -2245,6 +2257,7 @@ export const preferencesStyles = stylex.create({
     borderStyle: 'solid',
     borderColor: colors['--color-border-secondary'],
     backgroundColor: 'transparent',
+    backgroundPosition: '0 0',
     color: colors['--text-secondary'],
   },
 
@@ -2317,6 +2330,7 @@ export const preferencesStyles = stylex.create({
       default: 'transparent',
       ':hover': colors['--item-hover-bg'],
     },
+    backgroundPosition: '0 0',
     color: {
       default: colors['--text-secondary'],
       ':hover': colors['--text-primary'],
@@ -2402,6 +2416,7 @@ export const preferencesStyles = stylex.create({
       ':hover:not(:disabled)': colors['--item-hover-bg'],
       ':is([data-state="open"])': colors['--item-hover-bg'],
     },
+    backgroundPosition: '0 0',
     color: colors['--text-secondary'],
     fontFamily: fonts['--font-regular'],
     fontSize: 13,

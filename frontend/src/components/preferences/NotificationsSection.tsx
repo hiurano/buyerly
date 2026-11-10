@@ -27,8 +27,11 @@ import {
 } from '@/ui/DropdownMenu';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { Tooltip } from '@/ui/Tooltip';
+import { withClassName } from '@/ui/withClassName';
 import { useInboxStore } from '@/models/inboxStore';
 import { useNotificationSettingsStore } from '@/models/notificationSettingsStore';
+import { preferencesStyles } from './preferencesStyles';
+import css from './Preferences.module.css';
 
 const styles = stylex.create({
   menuItem: {
@@ -112,26 +115,30 @@ const ChannelRow: React.FC<{
 }> = ({ name, icon, status, onOpen }) => {
   const content = (
     <>
-      <span className="preferences-channel-icon">{icon}</span>
-      <span className="preferences-row-copy">
-        <span className="preferences-row-title">{name}</span>
-        <span className="preferences-row-desc preferences-channel-status">
+      <span {...withClassName(stylex.props(preferencesStyles.channelIcon), 'preferences-channel-icon')}>{icon}</span>
+      <span {...withClassName(stylex.props(preferencesStyles.rowCopy), 'preferences-row-copy')}>
+        <span {...withClassName(stylex.props(preferencesStyles.rowTitle), 'preferences-row-title')}>{name}</span>
+        <span {...stylex.props(preferencesStyles.rowDesc, preferencesStyles.channelStatus)}>
           <span
-            className={`preferences-channel-dot${status.enabled ? ' preferences-channel-dot--on' : ''}`}
+            {...stylex.props(preferencesStyles.channelDot, status.enabled && preferencesStyles.channelDotOn)}
             aria-hidden="true"
           />
           {status.text}
         </span>
       </span>
-      {onOpen && <BuyerlyIcon name="chevron-right" size={16} aria-hidden="true" className="preferences-row-chevron" />}
+      {onOpen && <BuyerlyIcon name="chevron-right" size={16} aria-hidden="true" {...stylex.props(preferencesStyles.rowChevron)} />}
     </>
   );
   return onOpen ? (
-    <button type="button" className="preferences-row-item preferences-row-link" onClick={onOpen}>
+    <button
+      type="button"
+      {...withClassName(stylex.props(preferencesStyles.rowItem, preferencesStyles.rowLink), css.rowItem)}
+      onClick={onOpen}
+    >
       {content}
     </button>
   ) : (
-    <div className="preferences-row-item">{content}</div>
+    <div {...withClassName(stylex.props(preferencesStyles.rowItem), css.rowItem)}>{content}</div>
   );
 };
 
@@ -152,36 +159,36 @@ export const NotificationsSection: React.FC<{
   const telegramConnection = useTelegramConnection();
   const { desktop: desktopHere } = useDesktopNotifications();
   const { desktop, email, telegram } = notificationChannels;
-  const priorityRowContent = (
+  const priorityRowContent = (disabled: boolean) => (
     <>
-      <span className="preferences-row-copy">
-        <span className="preferences-row-title">Priority notifications</span>
-        <span className="preferences-row-desc">Choose which notifications are treated as priority</span>
+      <span {...stylex.props(preferencesStyles.rowCopy, disabled && preferencesStyles.rowCopyDisabled)}>
+        <span {...stylex.props(preferencesStyles.rowTitle)}>Priority notifications</span>
+        <span {...stylex.props(preferencesStyles.rowDesc)}>Choose which notifications are treated as priority</span>
       </span>
-      <span className="preferences-row-control">
+      <span {...stylex.props(preferencesStyles.rowControl, preferencesStyles.rowControlLink)}>
         {/* Linear counts each custom filter as a type too, and says "0 types" with none. */}
-        <span className="preferences-row-value">
+        <span {...stylex.props(preferencesStyles.rowValue, preferencesStyles.rowValueLink)}>
           {plural(inboxDisplay.priorityKinds.length + inboxDisplay.priorityRules.length, 'type')}
         </span>
-        <BuyerlyIcon name="chevron-right" size={16} aria-hidden="true" className="preferences-row-chevron" />
+        <BuyerlyIcon name="chevron-right" size={16} aria-hidden="true" {...stylex.props(preferencesStyles.rowChevron, preferencesStyles.rowChevronInControl)} />
       </span>
     </>
   );
   return (
     <>
-      <div className="preferences-title-container">
-        <h1 className="preferences-page-title">Notifications</h1>
+      <div {...stylex.props(preferencesStyles.titleContainer)}>
+        <h1 {...stylex.props(preferencesStyles.pageTitle)}>Notifications</h1>
       </div>
-      <div className="preferences-section preferences-section--notifications">
-        <div className="preferences-section-header">
-          <h3 className="preferences-section-title">Inbox</h3>
+      <div {...stylex.props(preferencesStyles.section)}>
+        <div {...stylex.props(preferencesStyles.sectionHeader)}>
+          <h3 {...stylex.props(preferencesStyles.sectionTitle)}>Inbox</h3>
         </div>
-        <p className="preferences-section-note preferences-section-note--notifications">Manage how notifications are organized in your inbox</p>
-        <section className="preferences-card-container preferences-card-container--divided">
-          <div className="preferences-row-item">
-            <div className="preferences-row-copy">
-              <span className="preferences-row-title">Priority inbox</span>
-              <span className="preferences-row-desc">Separate important notifications from the rest of your inbox</span>
+        <p {...stylex.props(preferencesStyles.sectionNote, preferencesStyles.sectionNoteNotifications)}>Manage how notifications are organized in your inbox</p>
+        <section {...withClassName(stylex.props(preferencesStyles.cardContainer), css.cardDivided)}>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem), css.rowItem)}>
+            <div {...stylex.props(preferencesStyles.rowCopy)}>
+              <span {...stylex.props(preferencesStyles.rowTitle)}>Priority inbox</span>
+              <span {...stylex.props(preferencesStyles.rowDesc)}>Separate important notifications from the rest of your inbox</span>
             </div>
             <BuyerlyToggle
               size="settings"
@@ -191,25 +198,31 @@ export const NotificationsSection: React.FC<{
             />
           </div>
           {inboxDisplay.priorityInbox ? (
-            <button type="button" className="preferences-row-item preferences-row-link" onClick={onOpenPriority}>
-              {priorityRowContent}
+            <button
+              type="button"
+              {...withClassName(stylex.props(preferencesStyles.rowItem, preferencesStyles.rowLink), css.rowItem)}
+              onClick={onOpenPriority}
+            >
+              {priorityRowContent(false)}
             </button>
           ) : (
             // Linear dims the row and opens nothing until Priority inbox is on.
             <Tooltip content="Enable priority inbox to customize priority types" side="bottom" sideOffset={8}>
-              <div className="preferences-row-item preferences-row-item--disabled">{priorityRowContent}</div>
+              <div {...withClassName(stylex.props(preferencesStyles.rowItem), css.rowItem, 'preferences-row-item--disabled')}>
+                {priorityRowContent(true)}
+              </div>
             </Tooltip>
           )}
         </section>
       </div>
-      <div className="preferences-section preferences-section--notifications">
-        <div className="preferences-section-header">
-          <h3 className="preferences-section-title">Push notifications</h3>
+      <div {...stylex.props(preferencesStyles.section)}>
+        <div {...stylex.props(preferencesStyles.sectionHeader)}>
+          <h3 {...stylex.props(preferencesStyles.sectionTitle)}>Push notifications</h3>
         </div>
-        <p className="preferences-section-note preferences-section-note--notifications">
+        <p {...stylex.props(preferencesStyles.sectionNote, preferencesStyles.sectionNoteNotifications)}>
           Choose which notifications are pushed to your devices. All notifications will still appear in your inbox.
         </p>
-        <section className="preferences-card-container preferences-card-container--divided">
+        <section {...withClassName(stylex.props(preferencesStyles.cardContainer), css.cardDivided)}>
           {/* Linear lists Desktop first; it is on only in a browser that gets them. */}
           <ChannelRow
             name="Desktop"
@@ -234,18 +247,18 @@ export const NotificationsSection: React.FC<{
       </div>
       {/* Linear's Updates from Linear holds Changelog, Marketing and Other updates;
           Buyerly has only Other updates → Invite accepted, so the note goes too. */}
-      <div className="preferences-section preferences-section--notifications">
-        <div className="preferences-section-header preferences-section-header--group">
-          <h3 className="preferences-section-title">Updates from Buyerly</h3>
+      <div {...stylex.props(preferencesStyles.section)}>
+        <div {...stylex.props(preferencesStyles.sectionHeader, preferencesStyles.sectionHeaderGroup)}>
+          <h3 {...stylex.props(preferencesStyles.sectionTitle)}>Updates from Buyerly</h3>
         </div>
-        <div className="preferences-section-header preferences-section-header--sub">
-          <h4 className="preferences-section-title preferences-section-title--sub">Other updates</h4>
+        <div {...stylex.props(preferencesStyles.sectionHeader, preferencesStyles.sectionHeaderSub)}>
+          <h4 {...stylex.props(preferencesStyles.sectionTitle, preferencesStyles.sectionTitleSub)}>Other updates</h4>
         </div>
-        <section className="preferences-card-container preferences-card-container--divided">
-          <div className="preferences-row-item">
-            <div className="preferences-row-copy">
-              <span className="preferences-row-title">Invite accepted</span>
-              <span className="preferences-row-desc">Email when invitees accept an invite</span>
+        <section {...withClassName(stylex.props(preferencesStyles.cardContainer), css.cardDivided)}>
+          <div {...withClassName(stylex.props(preferencesStyles.rowItem), css.rowItem)}>
+            <div {...stylex.props(preferencesStyles.rowCopy)}>
+              <span {...stylex.props(preferencesStyles.rowTitle)}>Invite accepted</span>
+              <span {...stylex.props(preferencesStyles.rowDesc)}>Email when invitees accept an invite</span>
             </div>
             <BuyerlyToggle
               size="settings"
@@ -290,16 +303,21 @@ const ChannelNotificationsSection: React.FC<{
     kinds: INBOX_KINDS.filter((entry) => (entry === kind ? on : settings.kinds.includes(entry))),
   });
   const kindsDisabled = !enabled || priorityOnly;
+  const priorityOff = !enabled || !inboxDisplay.priorityInbox;
 
   const priorityRow = (
     <div
-      className={`preferences-row-item${enabled && inboxDisplay.priorityInbox ? '' : ' preferences-row-item--disabled'}`}
+      {...withClassName(
+        stylex.props(preferencesStyles.rowItem),
+        css.rowItem,
+        priorityOff ? 'preferences-row-item--disabled' : undefined,
+      )}
     >
-      <div className="preferences-row-copy">
-        <span className="preferences-row-title">Only deliver priority notifications</span>
-        <span className="preferences-row-desc">
+      <div {...stylex.props(preferencesStyles.rowCopy, priorityOff && preferencesStyles.rowCopyDisabled)}>
+        <span {...stylex.props(preferencesStyles.rowTitle)}>Only deliver priority notifications</span>
+        <span {...stylex.props(preferencesStyles.rowDesc)}>
           Uses your{' '}
-          <button type="button" className="preferences-inline-link" onClick={onOpenPriority}>
+          <button type="button" {...stylex.props(preferencesStyles.inlineLink)} onClick={onOpenPriority}>
             priority notification settings
           </button>
         </span>
@@ -308,7 +326,7 @@ const ChannelNotificationsSection: React.FC<{
         size="settings"
         label="Only deliver priority notifications"
         checked={priorityOnly}
-        disabled={!enabled || !inboxDisplay.priorityInbox}
+        disabled={priorityOff}
         onChange={(value) => update({ priorityOnly: value })}
       />
     </div>
@@ -316,21 +334,21 @@ const ChannelNotificationsSection: React.FC<{
 
   return (
     <>
-      <button type="button" className="preferences-breadcrumb" onClick={onBack}>
+      <button type="button" {...withClassName(stylex.props(preferencesStyles.breadcrumb), 'preferences-breadcrumb')} onClick={onBack}>
         <BuyerlyIcon name="chevron-left" size={14} aria-hidden="true" />
         Notifications
       </button>
-      <div className="preferences-title-container">
-        <h1 className="preferences-page-title">{title}</h1>
+      <div {...stylex.props(preferencesStyles.titleContainer)}>
+        <h1 {...stylex.props(preferencesStyles.pageTitle)}>{title}</h1>
       </div>
-      {notice && <div className="preferences-section preferences-section--sub">{notice}</div>}
-      <div className="preferences-section preferences-section--sub">
+      {notice && <div {...stylex.props(preferencesStyles.section, preferencesStyles.sectionSub)}>{notice}</div>}
+      <div {...stylex.props(preferencesStyles.section, preferencesStyles.sectionSub)}>
         {accountCard ?? (
-          <section className="preferences-card-container preferences-card-container--divided">
-            <div className="preferences-row-item">
-              <div className="preferences-row-copy">
-                <span className="preferences-row-title">{enableTitle}</span>
-                <span className="preferences-row-desc">{enableDescription}</span>
+          <section {...withClassName(stylex.props(preferencesStyles.cardContainer), css.cardDivided)}>
+            <div {...withClassName(stylex.props(preferencesStyles.rowItem), css.rowItem)}>
+              <div {...stylex.props(preferencesStyles.rowCopy)}>
+                <span {...stylex.props(preferencesStyles.rowTitle)}>{enableTitle}</span>
+                <span {...stylex.props(preferencesStyles.rowDesc)}>{enableDescription}</span>
               </div>
               <BuyerlyToggle
                 size="settings"
@@ -348,17 +366,24 @@ const ChannelNotificationsSection: React.FC<{
           </section>
         )}
       </div>
-      <div className="preferences-section preferences-section--sub">
-        <div className="preferences-section-header preferences-section-header--sub">
-          <h3 className="preferences-section-title preferences-section-title--sub">General notifications</h3>
+      <div {...stylex.props(preferencesStyles.section, preferencesStyles.sectionSub)}>
+        <div {...stylex.props(preferencesStyles.sectionHeader, preferencesStyles.sectionHeaderSub)}>
+          <h3 {...stylex.props(preferencesStyles.sectionTitle, preferencesStyles.sectionTitleSub)}>General notifications</h3>
         </div>
-        <section className="preferences-card-container preferences-card-container--divided">
+        <section {...withClassName(stylex.props(preferencesStyles.cardContainer), css.cardDivided)}>
           {INBOX_KINDS.map((kind) => {
             const row = (
-              <div key={kind} className={`preferences-row-item${kindsDisabled ? ' preferences-row-item--disabled' : ''}`}>
-                <div className="preferences-row-copy">
-                  <span className="preferences-row-title">{INBOX_KIND_LABELS[kind]}</span>
-                  <span className="preferences-row-desc">{KIND_DESCRIPTIONS[kind]}</span>
+              <div
+                key={kind}
+                {...withClassName(
+                  stylex.props(preferencesStyles.rowItem),
+                  css.rowItem,
+                  kindsDisabled ? 'preferences-row-item--disabled' : undefined,
+                )}
+              >
+                <div {...stylex.props(preferencesStyles.rowCopy, kindsDisabled && preferencesStyles.rowCopyDisabled)}>
+                  <span {...stylex.props(preferencesStyles.rowTitle)}>{INBOX_KIND_LABELS[kind]}</span>
+                  <span {...stylex.props(preferencesStyles.rowDesc)}>{KIND_DESCRIPTIONS[kind]}</span>
                 </div>
                 <BuyerlyToggle
                   size="settings"
@@ -399,11 +424,11 @@ export const EmailNotificationsSection: React.FC<{
 
 /** A line in a card: why the channel cannot deliver here. */
 const NoticeCard: React.FC<{ title: string; description?: string }> = ({ title, description }) => (
-  <section className="preferences-card-container">
-    <div className="preferences-row-item">
-      <span className="preferences-row-copy">
-        <span className="preferences-row-title">{title}</span>
-        {description && <span className="preferences-row-desc">{description}</span>}
+  <section {...stylex.props(preferencesStyles.cardContainer)}>
+    <div {...stylex.props(preferencesStyles.rowItem)}>
+      <span {...stylex.props(preferencesStyles.rowCopy)}>
+        <span {...stylex.props(preferencesStyles.rowTitle)}>{title}</span>
+        {description && <span {...stylex.props(preferencesStyles.rowDesc)}>{description}</span>}
       </span>
     </div>
   </section>
@@ -457,14 +482,18 @@ export const DesktopNotificationsSection: React.FC<{
 
 /** Linear's "Personal Slack account not connected" card, leading to Connected accounts. */
 const AccountCard: React.FC<{ title: string; onOpenConnections: () => void }> = ({ title, onOpenConnections }) => (
-  <section className="preferences-card-container">
-    <button type="button" className="preferences-row-item preferences-row-link" onClick={onOpenConnections}>
-      <span className="preferences-row-copy">
-        <span className="preferences-row-title">{title}</span>
+  <section {...stylex.props(preferencesStyles.cardContainer)}>
+    <button
+      type="button"
+      {...withClassName(stylex.props(preferencesStyles.rowItem, preferencesStyles.rowLink), css.rowItem)}
+      onClick={onOpenConnections}
+    >
+      <span {...stylex.props(preferencesStyles.rowCopy)}>
+        <span {...stylex.props(preferencesStyles.rowTitle)}>{title}</span>
       </span>
-      <span className="preferences-row-control">
-        <span className="preferences-row-value">Connected accounts</span>
-        <BuyerlyIcon name="chevron-right" size={16} aria-hidden="true" className="preferences-row-chevron" />
+      <span {...stylex.props(preferencesStyles.rowControl, preferencesStyles.rowControlLink)}>
+        <span {...stylex.props(preferencesStyles.rowValue, preferencesStyles.rowValueLink)}>Connected accounts</span>
+        <BuyerlyIcon name="chevron-right" size={16} aria-hidden="true" {...stylex.props(preferencesStyles.rowChevron, preferencesStyles.rowChevronInControl)} />
       </span>
     </button>
   </section>
@@ -506,21 +535,28 @@ export const PriorityNotificationsSection: React.FC<{ onBack: () => void }> = ({
   });
   return (
     <>
-      <button type="button" className="preferences-breadcrumb" onClick={onBack}>
+      <button type="button" {...withClassName(stylex.props(preferencesStyles.breadcrumb), 'preferences-breadcrumb')} onClick={onBack}>
         <BuyerlyIcon name="chevron-left" size={14} aria-hidden="true" />
         Notifications
       </button>
-      <div className="preferences-title-container preferences-title-container--with-note">
-        <h1 className="preferences-page-title">Priority notifications</h1>
-        <p className="preferences-page-note">Choose which notifications are treated as priority</p>
+      <div {...stylex.props(preferencesStyles.titleContainer, preferencesStyles.titleContainerWithNote)}>
+        <h1 {...stylex.props(preferencesStyles.pageTitle)}>Priority notifications</h1>
+        <p {...stylex.props(preferencesStyles.pageNote)}>Choose which notifications are treated as priority</p>
       </div>
-      <div className="preferences-section">
-        <section className="preferences-card-container preferences-card-container--divided">
+      <div {...stylex.props(preferencesStyles.section)}>
+        <section {...withClassName(stylex.props(preferencesStyles.cardContainer), css.cardDivided)}>
           {INBOX_KINDS.map((kind) => (
-            <div key={kind} className={`preferences-row-item${enabled ? '' : ' preferences-row-item--disabled'}`}>
-              <div className="preferences-row-copy">
-                <span className="preferences-row-title">{INBOX_KIND_LABELS[kind]}</span>
-                <span className="preferences-row-desc">{KIND_DESCRIPTIONS[kind]}</span>
+            <div
+              key={kind}
+              {...withClassName(
+                stylex.props(preferencesStyles.rowItem),
+                css.rowItem,
+                enabled ? undefined : 'preferences-row-item--disabled',
+              )}
+            >
+              <div {...stylex.props(preferencesStyles.rowCopy, !enabled && preferencesStyles.rowCopyDisabled)}>
+                <span {...stylex.props(preferencesStyles.rowTitle)}>{INBOX_KIND_LABELS[kind]}</span>
+                <span {...stylex.props(preferencesStyles.rowDesc)}>{KIND_DESCRIPTIONS[kind]}</span>
               </div>
               <BuyerlyToggle
                 size="settings"
@@ -600,13 +636,13 @@ const CustomFilters: React.FC<{
     setMenu({ mode, anchor, fieldId });
 
   const editor = (
-    <div className="preferences-filter-row" aria-label="Custom filter">
-      <span className="preferences-filter-include">Include</span>
-      <div className="preferences-filter-chips">
+    <div {...withClassName(stylex.props(preferencesStyles.filterRow), css.filterRow)} aria-label="Custom filter">
+      <span {...stylex.props(preferencesStyles.filterInclude)}>Include</span>
+      <div {...stylex.props(preferencesStyles.filterChips)}>
         {draft.length === 0 ? (
           <button
             type="button"
-            className="preferences-filter-button"
+            {...stylex.props(preferencesStyles.filterButton)}
             onClick={(event) => openMenu('root', event.currentTarget)}
           >
             <BuyerlyIcon name="filter" size={14} />
@@ -630,7 +666,7 @@ const CustomFilters: React.FC<{
               <button
                 type="button"
                 aria-label="Add another filter"
-                className="preferences-filter-icon-button"
+                {...stylex.props(preferencesStyles.filterIconButton)}
                 onClick={(event) => openMenu('root', event.currentTarget)}
               >
                 <BuyerlyIcon name="add" size={14} />
@@ -639,7 +675,7 @@ const CustomFilters: React.FC<{
           </>
         )}
       </div>
-      <div className="preferences-filter-actions">
+      <div {...stylex.props(preferencesStyles.filterActions)}>
         <Button size="compact" onClick={stopEditing}>Cancel</Button>
         <Button size="compact" variant="primary" disabled={fromMenuClauses(draft).length === 0} onClick={save}>
           Save
@@ -649,27 +685,27 @@ const CustomFilters: React.FC<{
   );
 
   return (
-    <div className="preferences-section">
-      <div className="preferences-section-header">
-        <h3 className="preferences-section-title">Custom filters</h3>
+    <div {...stylex.props(preferencesStyles.section)}>
+      <div {...stylex.props(preferencesStyles.sectionHeader)}>
+        <h3 {...stylex.props(preferencesStyles.sectionTitle)}>Custom filters</h3>
       </div>
-      <p className="preferences-section-note">Include additional notifications in your Priority inbox</p>
-      <section className="preferences-card-container preferences-card-container--divided" aria-label="Custom filters">
-        <div className="preferences-filter-row">
+      <p {...stylex.props(preferencesStyles.sectionNote)}>Include additional notifications in your Priority inbox</p>
+      <section {...withClassName(stylex.props(preferencesStyles.cardContainer), css.cardDivided)} aria-label="Custom filters">
+        <div {...withClassName(stylex.props(preferencesStyles.filterRow), css.filterRow)}>
           {rules.length === 0 ? (
-            <span className="preferences-filter-count preferences-filter-count--empty">No custom filters</span>
+            <span {...stylex.props(preferencesStyles.filterCount, preferencesStyles.filterCountEmpty)}>No custom filters</span>
           ) : (
-            <span className="preferences-filter-count">{plural(rules.length, 'custom filter')}</span>
+            <span {...stylex.props(preferencesStyles.filterCount)}>{plural(rules.length, 'custom filter')}</span>
           )}
           {editing === null && (rules.length === 0 ? (
-            <button type="button" className="preferences-filter-add" onClick={() => startEditing('new')}>
+            <button type="button" {...stylex.props(preferencesStyles.filterAdd)} onClick={() => startEditing('new')}>
               Add filter
             </button>
           ) : (
             <button
               type="button"
               aria-label="Add filter"
-              className="preferences-filter-icon-button"
+              {...stylex.props(preferencesStyles.filterIconButton)}
               onClick={() => startEditing('new')}
             >
               <BuyerlyIcon name="add" size={14} />
@@ -715,9 +751,9 @@ const SavedFilter: React.FC<{
   onDelete: () => void;
 }> = ({ rule, fields, canEdit, onEdit, onDelete }) => {
   return (
-    <div className="preferences-filter-row preferences-filter-row--saved">
-      <span className="preferences-filter-include">Include</span>
-      <div className="preferences-filter-chips">
+    <div {...withClassName(stylex.props(preferencesStyles.filterRow), `${css.filterRow} ${css.filterRowSaved}`)}>
+      <span {...stylex.props(preferencesStyles.filterInclude)}>Include</span>
+      <div {...stylex.props(preferencesStyles.filterChips)}>
         {rule.map((clause) => {
           const menuClause = toMenuClause(clause);
           const field = fields.find((entry) => entry.id === menuClause.fieldId);
@@ -730,7 +766,10 @@ const SavedFilter: React.FC<{
             <button
               type="button"
               aria-label="Custom filter actions"
-              className="preferences-filter-icon-button preferences-filter-actions-trigger"
+              {...withClassName(
+                stylex.props(preferencesStyles.filterIconButton, preferencesStyles.filterActionsTrigger),
+                css.filterActionsTrigger,
+              )}
             >
               <BuyerlyIcon name="more" size={14} />
             </button>

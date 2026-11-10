@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import {
   ADMINISTRATION_PAGES,
   SETTINGS_PAGE_GROUPS,
@@ -36,6 +37,9 @@ import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapse
 import { useShellStore, type InterfaceTheme } from '@/models/shellStore';
 import { openSettings, openTeamSettings, useSettingsPage } from '@/lib/routing';
 import { openLastAppPage } from '@/lib/navigation';
+import { withClassName } from '@/ui/withClassName';
+import { preferencesStyles } from './preferencesStyles';
+import css from './Preferences.module.css';
 
 const themeOptions: Array<{
   value: InterfaceTheme;
@@ -88,6 +92,13 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
   }, [canAdminister, searchQuery]);
   const administrationPages = (SETTINGS_PAGE_GROUPS.find((group) => group.heading === 'Administration')?.pages ?? [])
     .filter((page) => visibleSections.includes(page.section));
+  // Linear's interface previews: "• Aa" in the theme's own colors and accent.
+  const badgeVariant = (value: InterfaceTheme) =>
+    value === 'light' ? preferencesStyles.aaBadgeLight : value === 'dark' ? preferencesStyles.aaBadgeDark : null;
+  const dotVariant = (value: InterfaceTheme) =>
+    value === 'light' ? preferencesStyles.aaDotLight : value === 'dark' ? preferencesStyles.aaDotDark : null;
+  const navIconClass = (active: boolean) =>
+    `${stylex.props(preferencesStyles.navIcon, active && preferencesStyles.navIconActive).className ?? ''} ${css.navIcon}`.trim();
 
   useEffect(() => {
     // Linear's "Back to app": Ctrl+Esc leaves Settings for the page it came from.
@@ -125,26 +136,33 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
   }, [themeMenuOpen]);
 
   return (
-    <div className="preferences-shell">
+    <div {...stylex.props(preferencesStyles.shell)}>
       {/* 1. Left Navigation Sidebar */}
       {drawer.isSmall && <SidebarBackdrop open={drawer.isOpen} onClose={drawer.close} />}
       <aside
         ref={sidebarRef}
-        className="preferences-sidebar"
+        {...withClassName(
+          stylex.props(
+            preferencesStyles.sidebar,
+            drawer.isSmall && preferencesStyles.sidebarSmall,
+            drawer.isSmall && drawer.isOpen && preferencesStyles.sidebarSmallOpen,
+          ),
+          'preferences-sidebar',
+        )}
         aria-label="Settings navigation"
         data-small={drawer.isSmall ? 'true' : undefined}
         data-open={drawer.isOpen ? 'true' : 'false'}
         {...drawer.swipeHandlers}
       >
         {/* Back to app */}
-        <div className="preferences-back-container">
+        <div {...stylex.props(preferencesStyles.backContainer)}>
           <button
             type="button"
             aria-label="Back to app"
-            className="preferences-back-button"
+            {...stylex.props(preferencesStyles.backButton)}
             onClick={openLastAppPage}
           >
-            <span className="preferences-back-icon" aria-hidden="true">
+            <span {...stylex.props(preferencesStyles.backIcon)} aria-hidden="true">
               <BuyerlyIcon name="chevron-left" size={14} />
             </span>
             <span>Back to app</span>
@@ -152,8 +170,8 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
         </div>
 
         {/* Search Settings */}
-        <div className="preferences-search-container" aria-label="Search settings">
-          <form onSubmit={(e) => e.preventDefault()} className="preferences-search-form">
+        <div {...stylex.props(preferencesStyles.searchContainer)} aria-label="Search settings">
+          <form onSubmit={(e) => e.preventDefault()} {...stylex.props(preferencesStyles.searchForm)}>
             <input
               type="search"
               role="search"
@@ -163,111 +181,111 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
               autoComplete="off"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="preferences-search-input"
+              {...withClassName(stylex.props(preferencesStyles.searchInput), `${css.searchInput} preferences-search-input`)}
             />
-            <span className="preferences-search-icon" aria-hidden="true">
+            <span {...stylex.props(preferencesStyles.searchIcon)} aria-hidden="true">
               <BuyerlyIcon name="search" size={16} />
             </span>
           </form>
         </div>
 
         {/* Navigation list */}
-        <nav className="preferences-nav-list">
-          <div className="preferences-nav-group">
-            <h2 className="preferences-nav-heading">Personal</h2>
+        <nav {...stylex.props(preferencesStyles.navList)}>
+          <div {...withClassName(stylex.props(preferencesStyles.navGroup), 'preferences-nav-group')}>
+            <h2 {...withClassName(stylex.props(preferencesStyles.navHeading), 'preferences-nav-heading')}>Personal</h2>
             {visibleSections.includes('preferences') && (
               <a
                 href="#preferences"
-                className={`preferences-nav-item ${section === 'preferences' ? 'active' : ''}`}
+                {...withClassName(stylex.props(preferencesStyles.navItem, section === 'preferences' && preferencesStyles.navItemActive), css.navItem)}
                 data-active={section === 'preferences'}
                 onClick={(e) => {
                   e.preventDefault();
                   openSettings('preferences');
                 }}
               >
-                <SettingsPageIcon section="preferences" className="preferences-nav-icon" />
-                <span className="preferences-nav-label">Preferences</span>
+                <SettingsPageIcon section="preferences" className={navIconClass(section === 'preferences')} />
+                <span {...withClassName(stylex.props(preferencesStyles.navLabel), 'preferences-nav-label')}>Preferences</span>
               </a>
             )}
             {visibleSections.includes('profile') && (
               <a
                 href="#profile"
-                className={`preferences-nav-item ${section === 'profile' ? 'active' : ''}`}
+                {...withClassName(stylex.props(preferencesStyles.navItem, section === 'profile' && preferencesStyles.navItemActive), css.navItem)}
                 data-active={section === 'profile'}
                 onClick={(e) => {
                   e.preventDefault();
                   openSettings('profile');
                 }}
               >
-                <SettingsPageIcon section="profile" className="preferences-nav-icon" />
-                <span className="preferences-nav-label">Profile</span>
+                <SettingsPageIcon section="profile" className={navIconClass(section === 'profile')} />
+                <span {...withClassName(stylex.props(preferencesStyles.navLabel), 'preferences-nav-label')}>Profile</span>
               </a>
             )}
             {visibleSections.includes('notifications') && (
               <a
                 href="#notifications"
-                className={`preferences-nav-item ${notificationsOpen ? 'active' : ''}`}
+                {...withClassName(stylex.props(preferencesStyles.navItem, notificationsOpen && preferencesStyles.navItemActive), css.navItem)}
                 data-active={notificationsOpen}
                 onClick={(e) => {
                   e.preventDefault();
                   openSettings('notifications');
                 }}
               >
-                <SettingsPageIcon section="notifications" className="preferences-nav-icon" />
-                <span className="preferences-nav-label">Notifications</span>
+                <SettingsPageIcon section="notifications" className={navIconClass(notificationsOpen)} />
+                <span {...withClassName(stylex.props(preferencesStyles.navLabel), 'preferences-nav-label')}>Notifications</span>
               </a>
             )}
             {visibleSections.includes('security') && (
               <a
                 href="#security"
-                className={`preferences-nav-item ${section === 'security' ? 'active' : ''}`}
+                {...withClassName(stylex.props(preferencesStyles.navItem, section === 'security' && preferencesStyles.navItemActive), css.navItem)}
                 data-active={section === 'security'}
                 onClick={(e) => {
                   e.preventDefault();
                   openSettings('security');
                 }}
               >
-                <SettingsPageIcon section="security" className="preferences-nav-icon" />
-                <span className="preferences-nav-label">Security &amp; access</span>
+                <SettingsPageIcon section="security" className={navIconClass(section === 'security')} />
+                <span {...withClassName(stylex.props(preferencesStyles.navLabel), 'preferences-nav-label')}>Security &amp; access</span>
               </a>
             )}
             {visibleSections.includes('connected-accounts') && (
               <a
                 href="#connected-accounts"
-                className={`preferences-nav-item ${section === 'connected-accounts' ? 'active' : ''}`}
+                {...withClassName(stylex.props(preferencesStyles.navItem, section === 'connected-accounts' && preferencesStyles.navItemActive), css.navItem)}
                 data-active={section === 'connected-accounts'}
                 onClick={(e) => {
                   e.preventDefault();
                   openSettings('connected-accounts');
                 }}
               >
-                <SettingsPageIcon section="connected-accounts" className="preferences-nav-icon" />
-                <span className="preferences-nav-label">Connected accounts</span>
+                <SettingsPageIcon section="connected-accounts" className={navIconClass(section === 'connected-accounts')} />
+                <span {...withClassName(stylex.props(preferencesStyles.navLabel), 'preferences-nav-label')}>Connected accounts</span>
               </a>
             )}
           </div>
 
           {visibleSections.includes('rule-labels') && (
-            <div className="preferences-nav-group">
-              <h2 className="preferences-nav-heading">Rules</h2>
+            <div {...withClassName(stylex.props(preferencesStyles.navGroup), 'preferences-nav-group')}>
+              <h2 {...withClassName(stylex.props(preferencesStyles.navHeading), 'preferences-nav-heading')}>Rules</h2>
               <a
                 href="#rule-labels"
-                className={`preferences-nav-item ${section === 'rule-labels' ? 'active' : ''}`}
+                {...withClassName(stylex.props(preferencesStyles.navItem, section === 'rule-labels' && preferencesStyles.navItemActive), css.navItem)}
                 data-active={section === 'rule-labels'}
                 onClick={(e) => {
                   e.preventDefault();
                   openSettings('rule-labels');
                 }}
               >
-                <SettingsPageIcon section="rule-labels" className="preferences-nav-icon" />
-                <span className="preferences-nav-label">Labels</span>
+                <SettingsPageIcon section="rule-labels" className={navIconClass(section === 'rule-labels')} />
+                <span {...withClassName(stylex.props(preferencesStyles.navLabel), 'preferences-nav-label')}>Labels</span>
               </a>
             </div>
           )}
 
           {administrationPages.length > 0 && (
-            <div className="preferences-nav-group">
-              <h2 className="preferences-nav-heading">Administration</h2>
+            <div {...withClassName(stylex.props(preferencesStyles.navGroup), 'preferences-nav-group')}>
+              <h2 {...withClassName(stylex.props(preferencesStyles.navHeading), 'preferences-nav-heading')}>Administration</h2>
               {administrationPages.map((page) => {
                 // A team's pages belong to Teams, unless "Your teams" lists the open one.
                 const active = section === page.section || (page.section === 'teams'
@@ -276,15 +294,15 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                 <a
                   key={page.section}
                   href={`#${page.section}`}
-                  className={`preferences-nav-item ${active ? 'active' : ''}`}
+                  {...withClassName(stylex.props(preferencesStyles.navItem, active && preferencesStyles.navItemActive), css.navItem)}
                   data-active={active}
                   onClick={(e) => {
                     e.preventDefault();
                     openSettings(page.section);
                   }}
                 >
-                  <SettingsPageIcon section={page.section} className="preferences-nav-icon" />
-                  <span className="preferences-nav-label">{page.label}</span>
+                  <SettingsPageIcon section={page.section} className={navIconClass(active)} />
+                  <span {...withClassName(stylex.props(preferencesStyles.navLabel), 'preferences-nav-label')}>{page.label}</span>
                 </a>
                 );
               })}
@@ -292,55 +310,55 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
           )}
 
           {canOpenTeams && !searchQuery.trim() && (
-            <div className="preferences-nav-group">
-              <h2 className="preferences-nav-heading">Your teams</h2>
+            <div {...withClassName(stylex.props(preferencesStyles.navGroup), 'preferences-nav-group')}>
+              <h2 {...withClassName(stylex.props(preferencesStyles.navHeading), 'preferences-nav-heading')}>Your teams</h2>
               {yourTeams.map((team) => (
                 <a
                   key={team.id}
                   href={`#team-${team.key}`}
-                  className={`preferences-nav-item ${openTeamKey === team.key ? 'active' : ''}`}
+                  {...withClassName(stylex.props(preferencesStyles.navItem, openTeamKey === team.key && preferencesStyles.navItemActive), css.navItem)}
                   data-active={openTeamKey === team.key}
                   onClick={(e) => {
                     e.preventDefault();
                     openTeamSettings(team.key);
                   }}
                 >
-                  <TeamIcon size={16} className="preferences-nav-icon" />
-                  <span className="preferences-nav-label">{team.name}</span>
+                  <TeamIcon size={16} className={navIconClass(openTeamKey === team.key)} />
+                  <span {...withClassName(stylex.props(preferencesStyles.navLabel), 'preferences-nav-label')}>{team.name}</span>
                 </a>
               ))}
               <a
                 href="#new-team"
-                className={`preferences-nav-item ${section === 'new-team' ? 'active' : ''}`}
+                {...withClassName(stylex.props(preferencesStyles.navItem, section === 'new-team' && preferencesStyles.navItemActive), css.navItem)}
                 data-active={section === 'new-team'}
                 onClick={(e) => {
                   e.preventDefault();
                   openSettings('new-team');
                 }}
               >
-                <BuyerlyIcon name="add" size={16} className="preferences-nav-icon" />
-                <span className="preferences-nav-label">Create a team</span>
+                <BuyerlyIcon name="add" size={16} className={navIconClass(section === 'new-team')} />
+                <span {...withClassName(stylex.props(preferencesStyles.navLabel), 'preferences-nav-label')}>Create a team</span>
               </a>
             </div>
           )}
 
           {visibleSections.length === 0 && (
-            <div className="preferences-no-results">No settings found</div>
+            <div {...stylex.props(preferencesStyles.noResults)}>No settings found</div>
           )}
         </nav>
         <SidebarUtilityFooter />
       </aside>
 
       {/* 2. Main Scrollable Canvas */}
-      <main className="preferences-main-canvas">
-        <div className="preferences-scroll-container">
+      <main {...stylex.props(preferencesStyles.mainCanvas)}>
+        <div {...stylex.props(preferencesStyles.scrollContainer)}>
           {drawer.isSmall && (
             // Linear's small-screen settings header: the menu button and a way back to the app.
-            <header className="preferences-small-header">
+            <header {...stylex.props(preferencesStyles.smallHeader)}>
               <SidebarCollapsedNavigation />
               <button
                 type="button"
-                className="preferences-small-header-link"
+                {...withClassName(stylex.props(preferencesStyles.smallHeaderLink), css.smallHeaderLink)}
                 onClick={openLastAppPage}
               >
                 <BuyerlyChevronGlyph size={12} direction="right" />
@@ -348,7 +366,10 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
               </button>
             </header>
           )}
-          <div className={`preferences-content-column${section === 'members' || section === 'teams' || section === 'rule-labels' ? ' preferences-content-column--wide' : ''}`}>
+          <div {...stylex.props(
+            preferencesStyles.contentColumn,
+            (section === 'members' || section === 'teams' || section === 'rule-labels') && preferencesStyles.contentColumnWide,
+          )}>
             {section === 'profile' && (
               <ProfileSection user={user} workspace={workspace} onUserChanged={onUserChanged} />
             )}
@@ -418,56 +439,54 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
             {section === 'preferences' && (
               <>
             {/* Page Title */}
-            <div className="preferences-title-container">
-              <h1 className="preferences-page-title">Preferences</h1>
+            <div {...stylex.props(preferencesStyles.titleContainer)}>
+              <h1 {...stylex.props(preferencesStyles.pageTitle)}>Preferences</h1>
             </div>
 
             {/* Section: Interface and theme */}
-            <div className="preferences-section">
-              <div className="preferences-section-header">
-                <h3 className="preferences-section-title">Interface and theme</h3>
+            <div {...stylex.props(preferencesStyles.section)}>
+              <div {...stylex.props(preferencesStyles.sectionHeader)}>
+                <h3 {...stylex.props(preferencesStyles.sectionTitle)}>Interface and theme</h3>
               </div>
 
-              <section className="preferences-card-container">
-                <div className="preferences-row-item preferences-row-item--column-on-mobile">
-                  <div className="preferences-row-copy">
-                    <span className="preferences-row-title">Interface theme</span>
-                    <span className="preferences-row-desc">
+              <section {...stylex.props(preferencesStyles.cardContainer)}>
+                <div {...withClassName(stylex.props(preferencesStyles.rowItem, preferencesStyles.rowItemColumnOnMobile), css.rowItem)}>
+                  <div {...stylex.props(preferencesStyles.rowCopy, preferencesStyles.rowCopyColumnOnMobile)}>
+                    <span {...stylex.props(preferencesStyles.rowTitle)}>Interface theme</span>
+                    <span {...stylex.props(preferencesStyles.rowDesc)}>
                       Select or customize your interface color scheme
                     </span>
                   </div>
 
-                  <div className="preferences-theme-control" ref={menuRef}>
+                  <div {...stylex.props(preferencesStyles.themeControl)} ref={menuRef}>
                     <button
                       type="button"
                       role="combobox"
                       aria-haspopup="listbox"
                       aria-expanded={themeMenuOpen}
                       aria-label="Interface theme"
-                      className="preferences-combobox-trigger"
+                      {...stylex.props(preferencesStyles.comboboxTrigger)}
                       onClick={() => setThemeMenuOpen((prev) => !prev)}
                     >
-                      <span className="preferences-combobox-content">
-                        <span className="preferences-combobox-value">
-                          <span
-                            className={`preferences-aa-badge preferences-aa-badge--${selectedTheme.value}`}
-                          >
-                            <span className="preferences-aa-dot">•</span>
+                      <span {...stylex.props(preferencesStyles.comboboxContent)}>
+                        <span {...stylex.props(preferencesStyles.comboboxValue)}>
+                          <span {...stylex.props(preferencesStyles.aaBadge, badgeVariant(selectedTheme.value))}>
+                            <span {...stylex.props(preferencesStyles.aaDot, dotVariant(selectedTheme.value))}>•</span>
                             <span>Aa</span>
                           </span>
-                          <span className="preferences-combobox-text">
+                          <span {...stylex.props(preferencesStyles.comboboxText)}>
                             {selectedTheme.label}
                           </span>
                         </span>
                       </span>
-                      <span className="preferences-combobox-chevron" aria-hidden="true">
+                      <span {...stylex.props(preferencesStyles.comboboxChevron)} aria-hidden="true">
                         <BuyerlyChevronGlyph />
                       </span>
                     </button>
 
                     {themeMenuOpen && (
                       <div
-                        className="preferences-dropdown-menu"
+                        {...stylex.props(preferencesStyles.dropdownMenu)}
                         role="listbox"
                         aria-label="Interface theme"
                       >
@@ -479,23 +498,24 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                               type="button"
                               role="option"
                               aria-selected={isSelected}
-                              className={`preferences-dropdown-item ${isSelected ? 'selected' : ''}`}
+                              {...withClassName(
+                                stylex.props(preferencesStyles.dropdownItem, isSelected && preferencesStyles.dropdownItemSelected),
+                                isSelected && css.dropdownItemSelected,
+                              )}
                               onClick={() => {
                                 setInterfaceTheme(option.value);
                                 setThemeMenuOpen(false);
                               }}
                             >
-                              <span
-                                className={`preferences-aa-badge preferences-aa-badge--${option.value}`}
-                              >
-                                <span className="preferences-aa-dot">•</span>
+                              <span {...stylex.props(preferencesStyles.aaBadge, badgeVariant(option.value))}>
+                                <span {...stylex.props(preferencesStyles.aaDot, dotVariant(option.value))}>•</span>
                                 <span>Aa</span>
                               </span>
-                              <span className="preferences-dropdown-item-label">
+                              <span {...stylex.props(preferencesStyles.dropdownItemLabel)}>
                                 {option.label}
                               </span>
                               {isSelected && (
-                                <BuyerlyIcon name="check" size={14} className="preferences-dropdown-check" />
+                                <BuyerlyIcon name="check" size={14} {...stylex.props(preferencesStyles.dropdownCheck)} />
                               )}
                             </button>
                           );
@@ -508,16 +528,16 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
             </div>
 
             {/* Section: AI assistant */}
-            <div className="preferences-section">
-              <div className="preferences-section-header">
-                <h3 className="preferences-section-title">AI assistant</h3>
+            <div {...stylex.props(preferencesStyles.section)}>
+              <div {...stylex.props(preferencesStyles.sectionHeader)}>
+                <h3 {...stylex.props(preferencesStyles.sectionTitle)}>AI assistant</h3>
               </div>
 
-              <section className="preferences-card-container">
-                <div className="preferences-row-item">
-                  <div className="preferences-row-copy">
-                    <span className="preferences-row-title">Let your browser's AI assistant use Buyerly</span>
-                    <span className="preferences-row-desc">
+              <section {...stylex.props(preferencesStyles.cardContainer)}>
+                <div {...withClassName(stylex.props(preferencesStyles.rowItem), css.rowItem)}>
+                  <div {...stylex.props(preferencesStyles.rowCopy)}>
+                    <span {...stylex.props(preferencesStyles.rowTitle)}>Let your browser's AI assistant use Buyerly</span>
+                    <span {...stylex.props(preferencesStyles.rowDesc)}>
                       {assistantSupported
                         ? 'It reads stats and sets up alerts, asking you before each change. This browser only.'
                         : 'Not available in this browser yet. Use Chrome 149 or newer.'}

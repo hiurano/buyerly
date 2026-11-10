@@ -319,7 +319,7 @@ const styles = stylex.create({
   },
   exportButton: {
     display: {
-      default: null,
+      default: 'inline-flex',
       '@media not all and (min-width: 640px)': 'none',
     },
   },

@@ -64,7 +64,7 @@ const styles = stylex.create({
   // As Members': a phone keeps Create team only.
   exportButton: {
     display: {
-      default: null,
+      default: 'inline-flex',
       '@media not all and (min-width: 640px)': 'none',
     },
   },
