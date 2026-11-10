@@ -309,7 +309,7 @@ export const RuleStatesDialog: React.FC<RuleStatesDialogProps> = ({ rule, open, 
         <div {...stylex.props(styles.frame)}>
           <Dialog.Content
             data-rule-states-dialog="true"
-            {...withClassName(stylex.props(styles.content), 'ui-dialog animate-scale-in')}
+            {...withClassName(stylex.props(styles.content), 'animate-scale-in')}
           >
             <div {...stylex.props(styles.header)}>
               <Dialog.Title {...stylex.props(styles.title)}>

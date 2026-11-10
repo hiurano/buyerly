@@ -580,11 +580,7 @@ export const BuyerlySelect: React.FC<BuyerlySelectProps> = ({ value, options, on
         role="combobox"
         aria-expanded={open}
         aria-haspopup="listbox"
-        {...withClassName(
-          stylex.props(displayStyles.select, open && displayStyles.selectOpen),
-          displayCss.select,
-          'buyerly-display-select',
-        )}
+        {...withClassName(stylex.props(displayStyles.select, open && displayStyles.selectOpen), displayCss.select)}
         data-open={open || undefined}
         onClick={() => setOpen((current) => !current)}
       >
@@ -606,11 +602,7 @@ export const BuyerlySelect: React.FC<BuyerlySelectProps> = ({ value, options, on
                 role="option"
                 aria-selected={isSelected}
                 key={option.value}
-                {...withClassName(
-                  stylex.props(displayStyles.selectOption),
-                  displayCss.selectOption,
-                  'buyerly-display-select-option',
-                )}
+                {...withClassName(stylex.props(displayStyles.selectOption), displayCss.selectOption)}
                 onClick={() => {
                   onChange(option.value);
                   close();
@@ -682,11 +674,7 @@ export const BuyerlyMultiSelect: React.FC<BuyerlyMultiSelectProps> = ({ values, 
         aria-label={ariaLabel}
         aria-expanded={open}
         aria-haspopup="listbox"
-        {...withClassName(
-          stylex.props(displayStyles.select, open && displayStyles.selectOpen),
-          displayCss.select,
-          'buyerly-display-select',
-        )}
+        {...withClassName(stylex.props(displayStyles.select, open && displayStyles.selectOpen), displayCss.select)}
         data-open={open || undefined}
         onClick={() => setOpen((current) => !current)}
       >
@@ -699,10 +687,7 @@ export const BuyerlyMultiSelect: React.FC<BuyerlyMultiSelectProps> = ({ values, 
           role="listbox"
           aria-multiselectable="true"
           aria-label={ariaLabel}
-          {...withClassName(
-            stylex.props(displayStyles.selectMenu, displayStyles.checkMenu),
-            'buyerly-display-select-menu buyerly-display-check-menu',
-          )}
+          {...withClassName(stylex.props(displayStyles.selectMenu, displayStyles.checkMenu), 'buyerly-display-select-menu')}
           style={{ top: coords.top, right: coords.right }}
         >
           {options.map((option) => {
@@ -713,7 +698,7 @@ export const BuyerlyMultiSelect: React.FC<BuyerlyMultiSelectProps> = ({ values, 
                 role="option"
                 aria-selected={isSelected}
                 key={option.value}
-                {...withClassName(stylex.props(displayStyles.checkOption), 'buyerly-display-check-option')}
+                {...stylex.props(displayStyles.checkOption)}
                 onClick={() => onChange(
                   isSelected
                     ? values.filter((value) => value !== option.value)
@@ -721,11 +706,7 @@ export const BuyerlyMultiSelect: React.FC<BuyerlyMultiSelectProps> = ({ values, 
                 )}
               >
                 <span
-                  {...withClassName(
-                    stylex.props(displayStyles.checkbox, isSelected && displayStyles.checkboxChecked),
-                    displayCss.checkbox,
-                    'buyerly-display-checkbox',
-                  )}
+                  {...withClassName(stylex.props(displayStyles.checkbox, isSelected && displayStyles.checkboxChecked), displayCss.checkbox)}
                   data-checked={isSelected || undefined}
                   aria-hidden="true"
                 >
@@ -737,18 +718,18 @@ export const BuyerlyMultiSelect: React.FC<BuyerlyMultiSelectProps> = ({ values, 
           })}
           {footer && (
             <>
-              <div role="separator" {...withClassName(stylex.props(displayStyles.checkDivider), 'buyerly-display-check-divider')} />
+              <div role="separator" {...stylex.props(displayStyles.checkDivider)} />
               <button
                 type="button"
                 role="option"
                 aria-selected={false}
-                {...withClassName(stylex.props(displayStyles.checkOption), 'buyerly-display-check-option')}
+                {...stylex.props(displayStyles.checkOption)}
                 onClick={() => {
                   setOpen(false);
                   footer.onSelect();
                 }}
               >
-                <span {...withClassName(stylex.props(displayStyles.checkIcon), 'buyerly-display-check-icon')} aria-hidden="true">{footer.icon}</span>
+                <span {...stylex.props(displayStyles.checkIcon)} aria-hidden="true">{footer.icon}</span>
                 <span>{footer.label}</span>
               </button>
             </>
@@ -813,7 +794,7 @@ const SortableGroupRow: React.FC<{ group: DisplayGroupOption; hidden: boolean; o
       style={{ transform: CSS.Translate.toString(transform), transition }}
     >
       <div
-        {...withClassName(stylex.props(displayStyles.groupHandle), 'buyerly-display-group-handle')}
+        {...stylex.props(displayStyles.groupHandle)}
         aria-label={`Move ${group.label}`}
         {...attributes}
         {...listeners}
@@ -828,15 +809,12 @@ const SortableGroupRow: React.FC<{ group: DisplayGroupOption; hidden: boolean; o
         )}
         data-hidden={hidden || undefined}
       >
-        {group.icon && <span {...withClassName(stylex.props(displayStyles.groupIcon), 'buyerly-display-group-icon')} aria-hidden="true">{group.icon}</span>}
+        {group.icon && <span {...stylex.props(displayStyles.groupIcon)} aria-hidden="true">{group.icon}</span>}
         <span>{group.label}</span>
       </div>
       <button
         type="button"
-        {...withClassName(
-          stylex.props(displayStyles.orderButton, displayStyles.groupOrderButton),
-          'buyerly-display-order-button',
-        )}
+        {...stylex.props(displayStyles.orderButton, displayStyles.groupOrderButton)}
         aria-label={hidden ? 'Show group' : 'Hide group'}
         aria-pressed={hidden}
         onClick={onToggleHidden}
@@ -866,13 +844,10 @@ const GroupOrderingPanel: React.FC<GroupOrderingProps & { onBack: () => void }> 
   };
   return (
     <>
-      <section {...withClassName(stylex.props(displayStyles.groupHeader), 'buyerly-display-group-header')}>
+      <section {...stylex.props(displayStyles.groupHeader)}>
         <button
           type="button"
-          {...withClassName(
-            stylex.props(displayStyles.orderButton, displayStyles.groupOrderButton),
-            'buyerly-display-order-button',
-          )}
+          {...stylex.props(displayStyles.orderButton, displayStyles.groupOrderButton)}
           aria-label="Back"
           onClick={onBack}
         >
@@ -994,12 +969,12 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
 
   return (
     <>
-      <section {...withClassName(stylex.props(displayStyles.mainSection), 'buyerly-display-main-section')}>
-        {showViewModes && <div role="tablist" {...withClassName(stylex.props(displayStyles.tabs), 'buyerly-display-tabs')}>
+      <section {...stylex.props(displayStyles.mainSection)}>
+        {showViewModes && <div role="tablist" {...stylex.props(displayStyles.tabs)}>
           {(['list', 'board'] as const).map((mode) => {
             const isSelected = viewMode === mode;
             return (
-              <div {...withClassName(stylex.props(displayStyles.tabSlot), 'buyerly-display-tab-slot')} key={mode}>
+              <div {...stylex.props(displayStyles.tabSlot)} key={mode}>
                 <Tooltip content="Toggle layout view" shortcut={LAYOUT_SHORTCUT}>
                   <button
                     type="button"
@@ -1008,11 +983,7 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
                     aria-label={mode === 'list' ? 'List' : 'Board'}
                     data-state={isSelected ? 'active' : 'inactive'}
                     tabIndex={isSelected ? 0 : -1}
-                    {...withClassName(
-                      stylex.props(displayStyles.tab, isSelected && displayStyles.tabSelected),
-                      displayCss.tab,
-                      'buyerly-display-tab',
-                    )}
+                    {...withClassName(stylex.props(displayStyles.tab, isSelected && displayStyles.tabSelected), displayCss.tab)}
                     onClick={() => onViewModeChange(mode)}
                     onKeyDown={(event) => {
                       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
@@ -1032,13 +1003,13 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
 
         {showGrouping && <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
           <span>{groupingLabel}</span>
-          <div {...withClassName(stylex.props(displayStyles.rowControls), 'buyerly-display-row-controls')}>
+          <div {...stylex.props(displayStyles.rowControls)}>
             <BuyerlySelect value={grouping} options={groupingOptions} onChange={onGroupingChange} />
             {canOrderGroups && (
               <Tooltip content="Group ordering">
                 <button
                   type="button"
-                  {...withClassName(stylex.props(displayStyles.orderButton), 'buyerly-display-order-button')}
+                  {...stylex.props(displayStyles.orderButton)}
                   aria-label="Group ordering"
                   onClick={() => setPanel('groups')}
                 >
@@ -1058,13 +1029,13 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
 
         <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
           <span>Ordering</span>
-          <div {...withClassName(stylex.props(displayStyles.rowControls), 'buyerly-display-row-controls')}>
+          <div {...stylex.props(displayStyles.rowControls)}>
             <BuyerlySelect value={ordering} options={orderingOptions} onChange={onOrderingChange} />
             {direction && onDirectionChange && ordering !== 'manual' && (
               <Tooltip content={direction === 'asc' ? 'Ascending' : 'Descending'}>
                 <button
                   type="button"
-                  {...withClassName(stylex.props(displayStyles.orderButton), 'buyerly-display-order-button')}
+                  {...stylex.props(displayStyles.orderButton)}
                   aria-label="Direction"
                   data-direction={direction}
                   onClick={() => onDirectionChange(direction === 'asc' ? 'desc' : 'asc')}
@@ -1078,7 +1049,7 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
       </section>
 
       {period !== undefined && periodOptions && onPeriodChange && (
-        <section {...withClassName(stylex.props(displayStyles.section), 'buyerly-display-view-section')}>
+        <section {...stylex.props(displayStyles.section)}>
           <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
             <span>Period</span>
             <BuyerlySelect value={period} options={periodOptions} onChange={onPeriodChange} />
@@ -1086,8 +1057,8 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
         </section>
       )}
 
-      <section {...withClassName(stylex.props(displayStyles.section), 'buyerly-display-options-section')}>
-        {showOptionsTitle && <div {...withClassName(stylex.props(displayStyles.sectionTitle), 'buyerly-display-section-title')}>{optionsLabel}</div>}
+      <section {...stylex.props(displayStyles.section)}>
+        {showOptionsTitle && <div {...stylex.props(displayStyles.sectionTitle)}>{optionsLabel}</div>}
         {showEmptyGroups !== undefined && onShowEmptyGroupsChange && (
           <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
             <span>{showEmptyLabel}</span>
@@ -1114,8 +1085,8 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
             <BuyerlyToggle label={toggle.label} checked={toggle.checked} onChange={toggle.onChange} />
           </div>
         ))}
-        <div {...withClassName(stylex.props(displayStyles.propertiesLabel), 'buyerly-display-properties-label')}>Display properties</div>
-        <div {...withClassName(stylex.props(displayStyles.properties), 'buyerly-display-properties')}>
+        <div {...stylex.props(displayStyles.propertiesLabel)}>Display properties</div>
+        <div {...stylex.props(displayStyles.properties)}>
           {Object.entries(properties).map(([key, label]) => {
             const inactive = inactiveProperties.includes(key);
             const isPressed = !inactive && !!enabledProperties[key];
@@ -1144,11 +1115,11 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
       </section>
 
       {(onReset || onSetDefault) && (
-        <section {...withClassName(stylex.props(displayStyles.footer), 'buyerly-display-footer')}>
+        <section {...stylex.props(displayStyles.footer)}>
           {onReset && (
             <button
               type="button"
-              {...withClassName(stylex.props(displayStyles.footerButton), 'buyerly-display-footer-button')}
+              {...stylex.props(displayStyles.footerButton)}
               aria-label="Reset to default"
               onClick={onReset}
             >
@@ -1158,10 +1129,7 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
           {onSetDefault && (
             <button
               type="button"
-              {...withClassName(
-                stylex.props(displayStyles.footerButton, displayStyles.footerButtonAccent),
-                'buyerly-display-footer-button buyerly-display-footer-button--accent',
-              )}
+              {...stylex.props(displayStyles.footerButton, displayStyles.footerButtonAccent)}
               onClick={onSetDefault}
             >
               Set default for everyone
@@ -1180,7 +1148,7 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
 export const DisplayOptionsChangedDot: React.FC<{ show: boolean }> = ({ show }) =>
   show ? (
     <span
-      {...withClassName(stylex.props(displayStyles.changedDot), 'buyerly-display-changed-dot')}
+      {...stylex.props(displayStyles.changedDot)}
       data-display-changed="true"
       aria-hidden="true"
     />

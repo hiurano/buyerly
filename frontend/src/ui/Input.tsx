@@ -53,7 +53,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     <input
       ref={ref}
       type={type}
-      {...withClassName(stylex.props(styles.input, xstyle), `ui-input ${className}`.trim())}
+      {...withClassName(stylex.props(styles.input, xstyle), className)}
       {...props}
     />
   ),

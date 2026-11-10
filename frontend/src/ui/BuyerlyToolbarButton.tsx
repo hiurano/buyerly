@@ -136,7 +136,7 @@ export const BuyerlyToolbarButton = React.forwardRef<HTMLButtonElement, BuyerlyT
             xstyle,
           ),
           placement === 'toolbar' && css.toolbar,
-          `buyerly-header-button buyerly-header-button--${placement} buyerly-header-target`,
+          'buyerly-header-target',
           className,
         )}
       >

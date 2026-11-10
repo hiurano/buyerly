@@ -65,7 +65,6 @@ import { useInboxStore } from '@/models/inboxStore';
 import { useScopeStore } from '@/models/scopeStore';
 import * as stylex from '@stylexjs/stylex';
 import { colors, radii } from '@/styles/tokens.stylex';
-import { withClassName } from '@/ui/withClassName';
 import { iconButton } from '@/ui/iconButton.stylex';
 import { openSettings } from '@/lib/routing';
 import { BuyerlyDisplayOptionsButton, BuyerlyToolbarButton } from '@/ui/BuyerlyToolbarButton';
@@ -1056,7 +1055,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
     <div ref={splitContainerRef} {...stylex.props(styles.root)}>
       <section
         aria-label="Inbox"
-        {...withClassName(stylex.props(styles.inboxList, selectedItem && styles.hiddenUntilSplit), 'inbox-list')}
+        {...stylex.props(styles.inboxList, selectedItem && styles.hiddenUntilSplit)}
         style={{
           '--inbox-list-width': `${splitWidth}px`,
           // Linear's Inbox list beside the notification: a 0.5px edge in the canvas border's colour.
@@ -1139,7 +1138,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
         </header>
 
         {activeTab && (
-          <nav aria-label="Priority inbox" {...withClassName(stylex.props(styles.inboxTabs), 'buyerly-inbox-tabs')}>
+          <nav aria-label="Priority inbox" {...stylex.props(styles.inboxTabs)}>
             {(['priority', 'other'] as const).map((tab) => {
               const count = tab === 'priority' ? inboxPriorityUnreadCount : inboxUnreadCount - inboxPriorityUnreadCount;
               return (
@@ -1147,14 +1146,14 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                   key={tab}
                   href={`${pathname.split('/inbox')[0]}/inbox/${tab}`}
                   aria-current={activeTab === tab ? 'page' : undefined}
-                  {...withClassName(stylex.props(styles.inboxTab, activeTab === tab && styles.inboxTabActive), 'buyerly-inbox-tab')}
+                  {...stylex.props(styles.inboxTab, activeTab === tab && styles.inboxTabActive)}
                   onClick={(event) => {
                     event.preventDefault();
                     onNavigate(tab, null);
                   }}
                 >
                   {tab === 'priority' ? 'Priority' : 'Other'}
-                  {count > 0 && <span {...withClassName(stylex.props(styles.inboxTabCount), 'buyerly-inbox-tab-count')}>{count}</span>}
+                  {count > 0 && <span {...stylex.props(styles.inboxTabCount)}>{count}</span>}
                 </a>
               );
             })}

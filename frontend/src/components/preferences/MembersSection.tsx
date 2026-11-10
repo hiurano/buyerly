@@ -489,7 +489,7 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onC
               event.preventDefault();
               fieldRef.current?.focus();
             }}
-            {...withClassName(stylex.props(styles.dialog), 'ui-dialog animate-scale-in')}
+            {...withClassName(stylex.props(styles.dialog), 'animate-scale-in')}
           >
             <div {...stylex.props(styles.dialogHeader)}>
               <WorkspaceAvatar workspace={workspace} size="tiny" />

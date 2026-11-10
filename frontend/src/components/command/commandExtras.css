@@ -36,10 +36,8 @@
   margin-right: 0;
 }
 
-@keyframes buyerlyCommandMenuFade { from { opacity: 0; } }
-@keyframes buyerlyCommandMenuGrow { from { transform: scale(0.98); } }
-@keyframes buyerlyCommandMenuShut { to { opacity: 0; transform: scale(0.96); } }
-
+/* The @keyframes buyerlyCommandMenuFade/Grow/Shut live in src/styles/base.css,
+   shared with the other menus; a CSS Module would scope these names. */
 .buyerly-command-menu-motion.buyerly-command-menu-instant[data-state='closed'] { animation: none; }
 
 @media (prefers-reduced-motion: reduce) {

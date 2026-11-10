@@ -10,7 +10,7 @@ import stylex from '@stylexjs/unplugin';
 import { publicSite } from './site/plugin.ts';
 
 // The design tokens are StyleX variables in src/styles/tokens.stylex.ts (#512).
-// Their keys keep their CSS names, so index.css and the public website read
+// Their keys keep their CSS names, so the app's CSS and the public website read
 // the same var(--…) as before. This compiles that file into their CSS: the
 // defaults on :root, and each theme on the data-theme that the boot script in
 // index.html sets from Settings or the system, as before.
@@ -71,8 +71,9 @@ function buyerlyTokens(): Plugin {
   };
 }
 
-// The cascade order, as Linear's: the reset, the tokens and page base, index.css's
-// global classes (until #699), then StyleX's priority layers (src/styles/app.css).
+// The cascade order, as Linear's: the reset, the tokens and page base, the
+// app.base layer (empty since #699 removed index.css's global classes, kept
+// where they sat), then StyleX's priority layers (src/styles/app.css).
 // Declared up front: first in index.html's inline <style>, before its splash
 // styles (checked here), and at the top of the built CSS, where the minifier would
 // otherwise fold the statement into the layers' first blocks. StyleX's own
@@ -211,7 +212,7 @@ const apiOrigin = process.env.VITE_API_ORIGIN || 'http://127.0.0.1:8080';
 // https://vitejs.dev/config/
 export default defineConfig({
   // StyleX compiles a component's styles before the React Compiler sees it, and
-  // its CSS joins index.css's in the build; dev serves it at /virtual:stylex.css.
+  // its CSS joins the app's stylesheets in the build; dev serves it at /virtual:stylex.css.
   // Its rules sit in @layer priority1…N, after reset, base and app.base, as
   // Linear's (src/styles/app.css): the layers rank them instead of :not(#\#).
   plugins: [
@@ -227,7 +228,7 @@ export default defineConfig({
       // Its own @layer statement names the layers below its own, so the order holds
       // in dev too, where its stylesheet loads before the app's.
       useCSSLayers: { before: layersBelowStylex },
-      // Vite's default build target, so StyleX's CSS keeps lch() as index.css does
+      // Vite's default build target, so StyleX's CSS keeps lch() as the app's CSS does
       // instead of lowering it to hex and lab() for older browsers.
       lightningcssOptions: { targets: { chrome: 111 << 16, edge: 111 << 16, firefox: 114 << 16, safari: (16 << 16) | (4 << 8) } },
     }),

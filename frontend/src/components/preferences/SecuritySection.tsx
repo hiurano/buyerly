@@ -282,7 +282,7 @@ const SessionRow: React.FC<SessionRowProps> = ({ session, busy, onOpen, onAction
         <div
           {...withClassName(
             stylex.props(preferencesStyles.session, isOld && preferencesStyles.sessionOld),
-            `${css.session} preferences-session`,
+            css.session,
           )}
           data-session-id={session.id}
           data-current={session.current}
@@ -380,13 +380,13 @@ const SessionDetailsDialog: React.FC<SessionDetailsDialogProps> = ({ session, bu
               event.preventDefault();
               actionRef.current?.focus();
             }}
-            {...withClassName(stylex.props(styles.content), 'ui-dialog preferences-session-dialog animate-scale-in')}
+            {...withClassName(stylex.props(styles.content), 'animate-scale-in')}
           >
             <Dialog.Close asChild>
               <button
                 type="button"
                 aria-label="Close dialog"
-                {...withClassName(stylex.props(styles.close), 'ui-icon-button')}
+                {...stylex.props(styles.close)}
               >
                 <BuyerlyIcon name="close" size={14} />
               </button>

@@ -94,7 +94,7 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
       style={{ top: coords.top, left: coords.left }}
       data-wide={inboxDisplay.priorityInbox || undefined}
     >
-      <section {...withClassName(stylex.props(displayStyles.mainSection), 'buyerly-display-main-section')}>
+      <section {...stylex.props(displayStyles.mainSection)}>
         <SwitchRow
           label="Enable priority inbox"
           checked={inboxDisplay.priorityInbox}
@@ -137,7 +137,7 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
           </>
         )}
       </section>
-      <section {...withClassName(stylex.props(displayStyles.section), 'buyerly-display-options-section')}>
+      <section {...stylex.props(displayStyles.section)}>
         <div {...withClassName(stylex.props(displayStyles.row), 'buyerly-display-row')}>
           <span>Group unreads by</span>
           <BuyerlySelect
@@ -161,7 +161,7 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
           />
         </div>
       </section>
-      <section {...withClassName(stylex.props(displayStyles.section), 'buyerly-display-options-section')}>
+      <section {...stylex.props(displayStyles.section)}>
         <SwitchRow
           label="Show snoozed"
           checked={inboxDisplay.showSnoozed}

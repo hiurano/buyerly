@@ -340,7 +340,7 @@ export const FilterOptionAvatarImage: React.FC<{ avatar: FilterOptionAvatar; lab
     <span
       data-filter-avatar="user"
       data-initial={label.trim().slice(0, 1)}
-      className={`${filterCss.filterAvatarInitial} filter-avatar-initial`}
+      className={filterCss.filterAvatarInitial}
       aria-hidden="true"
       style={{
         ...box,

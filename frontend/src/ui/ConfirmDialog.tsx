@@ -131,7 +131,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               event.preventDefault();
               confirmRef.current?.focus();
             }}
-            {...withClassName(stylex.props(styles.content), 'ui-dialog animate-scale-in')}
+            {...withClassName(stylex.props(styles.content), 'animate-scale-in')}
           >
             <Dialog.Title {...stylex.props(styles.title)}>
               {title}
