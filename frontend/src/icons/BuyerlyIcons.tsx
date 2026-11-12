@@ -1,6 +1,4 @@
 import React from 'react';
-import * as stylex from '@stylexjs/stylex';
-import { colors } from '@/styles/tokens.stylex';
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
   size?: number;
@@ -93,46 +91,6 @@ const DeliveryMark: React.FC<{ state: BuyerlyDeliveryState }> = ({ state }) => {
   // Linear's Backlog: a sparse dashed ring, for a state the snapshot does not hold.
   return <circle cx="7" cy="7" r="5.5" stroke="#73767c" strokeWidth="1.5" strokeDasharray="1 2.4" />;
 };
-
-// 12. Buyerly Logo Avatar (#557), as Linear's logo in its Inbox welcome item:
-// a disc in the inverse of the page (#2f2f31 in light, #e3e4e6 in dark) with
-// the letter B at 160/256 in the canvas color.
-const avatarStyles = stylex.create({
-  root: {
-    display: 'block',
-    flexShrink: 0,
-    userSelect: 'none',
-  },
-  disc: {
-    fill: colors['--logo-avatar-bg'],
-  },
-  mark: {
-    fill: colors['--bg-canvas'],
-  },
-});
-
-export const BuyerlyLogoAvatar: React.FC<{ size?: number }> = ({ size = 32 }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 256 256"
-    fill="none"
-    role="img"
-    aria-label="Buyerly"
-    {...stylex.props(avatarStyles.root)}
-  >
-    <rect width="256" height="256" rx="128" {...stylex.props(avatarStyles.disc)} />
-    <svg x="48" y="48" width="160" height="160" viewBox="0 0 512 512" aria-hidden="true">
-      <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M117 64H271C335 64 379 102 379 160C379 200 359 230 327 246C369 260 395 296 395 344C395 406 347 448 277 448H117Z M199 130V218H261C289 218 305 200 305 174C305 148 289 130 261 130Z M199 282V382H269C299 382 317 362 317 332C317 302 299 282 269 282Z"
-        {...stylex.props(avatarStyles.mark)}
-      />
-    </svg>
-  </svg>
-);
-
 // A panel's frame in Phosphor Bold's weight (1.5px at 16px), drawn for Buyerly.
 const BuyerlyPanelFrame: React.FC = () => (
   <rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2.75" fill="none" stroke="currentColor" strokeWidth="1.5" />

@@ -329,16 +329,12 @@ export const AuthLoading: React.FC<{ label?: string; plain?: boolean }> = ({
   if (boot) return <div data-boot-loading hidden />;
   return (
     <div
-      className={`splash content-loaded${plain ? ' plain' : ''}${slow ? ' loading-text' : ''}`}
+      className={`splash${plain ? ' plain' : ''}${slow ? ' loading-text' : ''}`}
       role="status"
       aria-label={label}
     >
       <div className="splash-frame">
         <div className="splash-content" aria-hidden="true">
-          <div className="splash-mark">
-            <svg className="bkg" width="64" height="64" viewBox="0 0 512 512" fill="none"><circle cx="256" cy="256" r="244" /></svg>
-            <svg width="32" height="32" viewBox="0 0 512 512" fill="none"><path fill="currentColor" fillRule="evenodd" d="M117 64H271C335 64 379 102 379 160C379 200 359 230 327 246C369 260 395 296 395 344C395 406 347 448 277 448H117Z M199 130V218H261C289 218 305 200 305 174C305 148 289 130 261 130Z M199 282V382H269C299 382 317 362 317 332C317 302 299 282 269 282Z" /></svg>
-          </div>
           <div className="splash-text">Loading…</div>
         </div>
       </div>

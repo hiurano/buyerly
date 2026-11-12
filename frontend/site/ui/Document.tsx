@@ -29,8 +29,7 @@ export function Document({ title, description, stylesheet, current, bodyClassNam
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="description" content={description} />
         <title>{title}</title>
-        <link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg?v=4" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" sizes="180x180" />
+        <link rel="icon" href="data:," />
         <link rel="stylesheet" href={stylesheet} />
       </head>
       <body className={bodyClassName}>

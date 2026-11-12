@@ -53,9 +53,6 @@ export function InboxFeature() {
               </div>
               <div className={mockup.ibList}>
                 <div className={cx(mockup.ibRow, mockup.isUnread)}>
-                  <span className={mockup.ibAvatar}>
-                    <span className={mockup.appWsMark} />
-                  </span>
                   <span className={mockup.ibText}>
                     <b>Turned off</b>
                     <span>NL | Leads | Interests · Finance · Spend $21.40 ≥ $20 and 0 leads today</span>
@@ -63,9 +60,6 @@ export function InboxFeature() {
                   <span className={mockup.ibTime}>2m</span>
                 </div>
                 <div className={cx(mockup.ibRow, mockup.isUnread)}>
-                  <span className={mockup.ibAvatar}>
-                    <span className={mockup.appWsMark} />
-                  </span>
                   <span className={mockup.ibText}>
                     <b>Budget raised</b>
                     <span>{'US | Sweeps | Broad · $250 → $300 a day, CPL $1.80 < $2'}</span>
@@ -73,9 +67,6 @@ export function InboxFeature() {
                   <span className={mockup.ibTime}>14m</span>
                 </div>
                 <div className={mockup.ibRow}>
-                  <span className={mockup.ibAvatar}>
-                    <span className={mockup.appWsMark} />
-                  </span>
                   <span className={mockup.ibText}>
                     <b>Rule alert</b>
                     <span>{'UK | Leads | Creative test #6 · CPReg $27.10 > $25'}</span>
@@ -83,9 +74,6 @@ export function InboxFeature() {
                   <span className={mockup.ibTime}>1h</span>
                 </div>
                 <div className={mockup.ibRow}>
-                  <span className={mockup.ibAvatar}>
-                    <span className={mockup.appWsMark} />
-                  </span>
                   <span className={mockup.ibText}>
                     <b>Ad account needs attention</b>
                     <span>FR · E-commerce · Payment is in a grace period</span>
@@ -93,9 +81,6 @@ export function InboxFeature() {
                   <span className={mockup.ibTime}>3h</span>
                 </div>
                 <div className={mockup.ibRow}>
-                  <span className={mockup.ibAvatar}>
-                    <span className={mockup.appWsMark} />
-                  </span>
                   <span className={mockup.ibText}>
                     <b>Turned on</b>
                     <span>DE | Shop | Retargeting 7d · A purchase landed after the pause</span>

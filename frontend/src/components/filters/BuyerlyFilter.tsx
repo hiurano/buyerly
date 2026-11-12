@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
-import { BuyerlyLogoAvatar, BuyerlyBacklogDashedIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyBacklogDashedIcon } from '@/icons/BuyerlyIcons';
 import {
   DATE_PRESETS,
   NEVER_DATE,
@@ -293,20 +293,13 @@ SearchRow.displayName = 'SearchRow';
 /**
  * Linear's avatar under From: 16px round in the menu, 14px in a chip. A person
  * shows their photo or initials; an agent (our rules) a disc in the text color
- * with its mark at 10px in the menu's color; Buyerly its logo.
+ * with its mark at 10px in the menu's color.
  */
 export const FilterOptionAvatarImage: React.FC<{ avatar: FilterOptionAvatar; label: string; size: number }> = ({
   avatar,
   label,
   size,
 }) => {
-  if (avatar.kind === 'buyerly') {
-    return (
-      <span data-filter-avatar="buyerly" aria-hidden="true" style={{ display: 'inline-flex' }}>
-        <BuyerlyLogoAvatar size={size} />
-      </span>
-    );
-  }
   const box: React.CSSProperties = {
     display: 'inline-flex',
     width: size,

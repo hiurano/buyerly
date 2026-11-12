@@ -43,7 +43,6 @@ import { SnoozeCalendarDialog } from './SnoozeCalendarDialog';
 import { SNOOZE_SEARCH_HINT, SnoozePalette } from './SnoozePalette';
 import { usePageCommands } from '@/components/command/pageCommands';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
-import { BuyerlyLogoAvatar } from '@/icons/BuyerlyIcons';
 import { Button } from '@/ui/Button';
 import { DataState } from '@/ui/DataState';
 import {
@@ -1252,7 +1251,6 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
             <div {...stylex.props(styles.scroll)}>
               <article {...stylex.props(styles.article)}>
                 <div {...stylex.props(styles.lead)}>
-                  <BuyerlyLogoAvatar size={40} />
                   <div {...stylex.props(styles.leadText)}>
                     <h2 {...stylex.props(styles.heading)}>
                       {auditEventTitle(selectedItem)}

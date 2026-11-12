@@ -5,7 +5,6 @@
 .appWs { display: flex; align-items: center; justify-content: space-between; height: 28px; }
 .appWsName { display: flex; align-items: center; gap: 6px; padding-inline: 4px; color: var(--sidebar-workspace-fg); font-size: 14px; font-weight: 590; letter-spacing: -0.013em; }
 .appWsInitial { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 4px; background: var(--sidebar-workspace-fg); color: var(--bg-window); font-size: 11px; font-weight: 600; letter-spacing: 0; }
-.appWsMark { width: 18px; height: 18px; background: var(--sidebar-workspace-fg); -webkit-mask: url('/buyerly-logo.png') center / contain no-repeat; mask: url('/buyerly-logo.png') center / contain no-repeat; }
 .appWsName svg { color: var(--text-muted); }
 .appIconBtn { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9999px; color: var(--text-tertiary); }
 .appNav { display: flex; flex-direction: column; gap: 2px; margin-top: 16px; }
@@ -111,11 +110,8 @@
 .cfSub { margin-left: auto; color: var(--text-tertiary); font-weight: 400; }
 .cfCrumb { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 9999px; background: var(--item-hover-bg); color: var(--text-tertiary); font-size: 12px; }
 .ibList { padding: 6px 8px; }
-.ibRow { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 10px; height: 56px; padding: 0 10px; border-radius: 8px; }
+.ibRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; height: 56px; padding: 0 10px; border-radius: 8px; }
 .ibRow.isUnread { background: var(--item-hover-bg); }
-.ibAvatar { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9999px; background: var(--tab-active-bg); }
-.ibAvatar .appWsMark { width: 14px; height: 14px; }
-.ibText { display: flex; flex-direction: column; gap: 3px; min-width: 0; white-space: nowrap; }
 .ibText b { color: var(--text-primary); font-size: 13px; font-weight: 500; }
 .ibText span { overflow: hidden; color: var(--text-tertiary); text-overflow: ellipsis; }
 .ibRow:not(.isUnread) .ibText b { color: var(--text-secondary); font-weight: 450; }
