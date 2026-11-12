@@ -751,14 +751,14 @@ try {
         (await ruleFrom.getByRole('option').allInnerTexts()).map((text) => text.replace(/\s+/g, ' ').trim()),
         ['Olga Owner', 'Pavel Quiet', 'Stop without leads Rule', 'Buyerly'],
       );
-      // Each with a 16px round avatar, the name 8px after it, as in Linear.
+      // Each with a 16px round avatar, the name 8px after it, as in Linear; Buyerly has no logo, so no avatar.
       const avatars = await ruleFrom.getByRole('option').evaluateAll((options) => options.map((option) => {
         const avatar = option.querySelector('[data-filter-avatar]');
         const box = avatar?.getBoundingClientRect();
         const row = option.getBoundingClientRect();
         return box ? [avatar!.getAttribute('data-filter-avatar'), Math.round(box.width), Math.round(box.left - row.left)] : null;
       }));
-      assert.deepEqual(avatars, [['user', 16, 36], ['user', 16, 36], ['rule', 16, 36], ['buyerly', 16, 36]]);
+      assert.deepEqual(avatars, [['user', 16, 36], ['user', 16, 36], ['rule', 16, 36], null]);
       await page.keyboard.press('Escape');
       await customFilters.getByRole('button', { name: 'Cancel' }).click();
       await customFilters.getByRole('button', { name: 'Custom filter actions' }).click();
