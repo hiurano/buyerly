@@ -101,7 +101,7 @@ function linearEmailHtml(options: { heading: string; bodyHtml: string; button: s
                   <td style="font-family:${font};">
                     <table border="0" cellspacing="0" cellpadding="0" style="margin-bottom:48px;">
                       <tr>
-                        <td><a href="https://buyerly.app" target="_blank" rel="noopener"><img alt="Buyerly" src="https://buyerly.app/buyerly-logotype@4x.png" height="22" width="92" style="display:block"></a></td>
+                        <td><a href="https://buyerly.app" style="color:#222326;font-size:18px;font-weight:600;line-height:22px;letter-spacing:-0.02em;text-decoration:none" target="_blank" rel="noopener">Buyerly</a></td>
                       </tr>
                     </table>
                     <h1 style="font-size:24px;line-height:1.2;font-weight:700;font-family:${font};margin-top:0;margin-bottom:24px;color:#282a30;">${heading}</h1>

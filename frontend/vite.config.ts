@@ -167,8 +167,8 @@ function reactCompiler(): Plugin {
 
 // The service worker (#499): sw/sw.ts with the list of every file the app can
 // load written into it, as Linear's /client/sw.js carries its build's files.
-// That is index.html, every chunk and its CSS and assets, and the fonts and
-// icons index.html names from public/; not the public website's pages and CSS.
+// That is index.html, every chunk and its CSS and assets, and the fonts
+// index.html names from public/; not the public website's pages and CSS.
 // The list's contents name the build, so each deploy is a new worker with its
 // own cache. sw/off.ts is the kill switch the server can serve instead.
 function serviceWorker(): Plugin {
@@ -194,7 +194,7 @@ function serviceWorker(): Plugin {
           files.add(`/${file}`);
         }
       }
-      for (const folder of ['fonts', 'static/icons']) {
+      for (const folder of ['fonts']) {
         for (const file of fs.readdirSync(path.join(outDir, folder)).sort()) files.add(`/${folder}/${file}`);
       }
       const hash = crypto.createHash('sha256');

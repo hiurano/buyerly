@@ -15,7 +15,6 @@
       html[data-theme=dark]{--splash-sidebar:lch(2.595% 0.4 272);--splash-canvas:lch(5.52% 0.4 272);--splash-border:lch(13.08% 1.48 272);--splash-shadow:0 .5px 1px 1px lch(0% 0 0/.3);--splash-signed-out:rgb(9 9 10);--splash-content:#6b6f76}
       html.logged-out{background-color:var(--splash-signed-out)}
       body{margin:0}
-      @keyframes splashPulse{0%{opacity:0;transform:scale(.8)}70%{opacity:1}100%{opacity:0;transform:scale(1)}}
       @keyframes splashFadeIn{0%{opacity:0}100%{opacity:1}}
       .splash{position:fixed;inset:0;z-index:99999;display:flex;overflow:hidden;pointer-events:none;background-color:var(--splash-sidebar);color:var(--splash-content);font:500 13px/1.5 "Inter Variable",Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased;transition:opacity .1s}
       .splash.loaded{opacity:0}
@@ -24,19 +23,12 @@
       html.logged-out #loading .splash-frame,.splash.plain .splash-frame{margin:0;border:0;border-radius:0;box-shadow:none}
       .splash-content{position:absolute;top:50%;left:calc(50% - 220px);width:440px;height:64px;margin:-46px 0 0 122px;display:flex;flex-direction:column;align-items:center;animation:splashFadeIn .4s ease-out 1s both}
       html.logged-out #loading .splash-content,.splash.plain .splash-content{margin:-32px 0 0}
-      .splash-mark{position:relative;width:64px;height:64px;display:grid;place-items:center}
-      .splash-mark svg{grid-area:1/1}
-      .splash .bkg{opacity:0}
-      .splash .bkg circle{fill:none;stroke:currentColor;stroke-opacity:.4;stroke-width:8}
-      .splash.content-loaded .bkg{animation:splashPulse 3.2s ease-out 1.2s infinite forwards}
-      .splash.loaded .bkg{animation-play-state:paused}
       .splash-text{position:relative;top:8px;margin-bottom:-8px;opacity:0;transition:opacity .8s .8s ease-out}
       .splash.loading-text .splash-text{opacity:1}
       @media (max-width:880px){.splash .splash-frame{margin:0;border:0;border-radius:0;box-shadow:none}.splash .splash-content{margin-left:0}}
-      @media (prefers-reduced-motion:reduce){.splash.content-loaded .bkg{animation:none}}
     </style>
-    <link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg?v=4" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" sizes="180x180" />
+    <!-- No logo yet: an empty icon keeps browsers from asking for /favicon.ico. -->
+    <link rel="icon" href="data:," />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- WebMCP origin trial for https://buyerly.app, Chrome 149–156, expires 2026-11-17. Other origins ignore it. -->
     <meta http-equiv="origin-trial" content="Ap4N6kY/2NJ00+lUaT5dBICS83z+r3EF1r6tF1HjeiQ8jv2a7mdPwj2X5NdofM4+i8sL3/ZqDVsIxkzAzZa50AIAAABLeyJvcmlnaW4iOiJodHRwczovL2J1eWVybHkuYXBwOjQ0MyIsImZlYXR1cmUiOiJXZWJNQ1AiLCJleHBpcnkiOjE3OTQ4NzM2MDB9" />
@@ -49,15 +41,11 @@
     <div id="loading" class="splash" aria-hidden="true">
       <div class="splash-frame">
         <div class="splash-content">
-          <div class="splash-mark">
-            <svg class="bkg" width="64" height="64" viewBox="0 0 512 512" fill="none"><circle cx="256" cy="256" r="244" /></svg>
-            <svg width="32" height="32" viewBox="0 0 512 512" fill="none"><path fill="currentColor" fill-rule="evenodd" d="M192 464V336H112L80 224H192V192H288V48H320L432 464H192Z M288 224L224 256H288V224Z M192 176V48H224L256 176H192Z" /></svg>
-          </div>
           <div class="splash-text">Loading…</div>
         </div>
       </div>
     </div>
-    <script>window.addEventListener('DOMContentLoaded',function(){var l=document.getElementById('loading');l&&!l.classList.contains('loaded')&&(l.classList.add('content-loaded'),setTimeout(function(){l.classList.add('loading-text')},8e3))})</script>
+    <script>window.addEventListener('DOMContentLoaded',function(){var l=document.getElementById('loading');l&&!l.classList.contains('loaded')&&setTimeout(function(){l.classList.add('loading-text')},8e3)})</script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

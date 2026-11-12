@@ -6,10 +6,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
 import { firstPageCode, router } from './routes';
-import { keepFaviconAcrossRoutes } from './lib/favicon';
 import { registerServiceWorker } from './lib/serviceWorker';
 
-keepFaviconAcrossRoutes();
 // The next start opens from the worker's copy of this build, with no network (#499).
 registerServiceWorker();
 

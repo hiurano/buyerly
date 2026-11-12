@@ -4,7 +4,7 @@
 .appSidebar { padding: 8px 16px 16px 8px; }
 .appWs { display: flex; align-items: center; justify-content: space-between; height: 28px; }
 .appWsName { display: flex; align-items: center; gap: 6px; padding-inline: 4px; color: var(--sidebar-workspace-fg); font-size: 14px; font-weight: 590; letter-spacing: -0.013em; }
-.appWsMark { width: 18px; height: 18px; background: var(--sidebar-workspace-fg); -webkit-mask: url('/buyerly-logo.png') center / contain no-repeat; mask: url('/buyerly-logo.png') center / contain no-repeat; }
+.appWsInitial { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 4px; background: var(--sidebar-workspace-fg); color: var(--bg-window); font-size: 11px; font-weight: 600; letter-spacing: 0; }
 .appWsName svg { color: var(--text-muted); }
 .appIconBtn { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9999px; color: var(--text-tertiary); }
 .appNav { display: flex; flex-direction: column; gap: 2px; margin-top: 16px; }
@@ -110,11 +110,8 @@
 .cfSub { margin-left: auto; color: var(--text-tertiary); font-weight: 400; }
 .cfCrumb { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 9999px; background: var(--item-hover-bg); color: var(--text-tertiary); font-size: 12px; }
 .ibList { padding: 6px 8px; }
-.ibRow { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 10px; height: 56px; padding: 0 10px; border-radius: 8px; }
+.ibRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; height: 56px; padding: 0 10px; border-radius: 8px; }
 .ibRow.isUnread { background: var(--item-hover-bg); }
-.ibAvatar { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9999px; background: var(--tab-active-bg); }
-.ibAvatar .appWsMark { width: 14px; height: 14px; }
-.ibText { display: flex; flex-direction: column; gap: 3px; min-width: 0; white-space: nowrap; }
 .ibText b { color: var(--text-primary); font-size: 13px; font-weight: 500; }
 .ibText span { overflow: hidden; color: var(--text-tertiary); text-overflow: ellipsis; }
 .ibRow:not(.isUnread) .ibText b { color: var(--text-secondary); font-weight: 450; }
@@ -128,8 +125,7 @@
 .ibActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 28px; }
 .ibUndo { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border-radius: 9999px; background: var(--button-primary-bg); color: var(--button-primary-text); font-weight: 500; }
 .emCard { margin: 20px; padding: 28px 24px; border-radius: 10px; background: var(--card-bg); box-shadow: 0 0 0 1px var(--color-border-secondary); }
-.emLogo { display: block; margin-bottom: 24px; }
-.emLogo .appWsMark { display: block; width: 22px; height: 22px; background: var(--text-primary); }
+.emLogo { display: block; margin-bottom: 24px; color: var(--text-primary); font-size: 18px; font-weight: 600; line-height: 22px; letter-spacing: -0.02em; }
 .emCard h4 { font-size: 18px; line-height: 1.3; }
 .emContext { margin: 12px 0 0; color: var(--text-tertiary); font-size: 13px; }
 .emMessage { margin-top: 16px; padding: 7px 12px; border-radius: 4px; background: var(--item-hover-bg); color: var(--text-secondary); font-size: 13px; line-height: 20px; }

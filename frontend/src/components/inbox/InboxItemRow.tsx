@@ -13,7 +13,7 @@ import {
 } from '@/lib/inbox';
 import { parseSnoozeQuery } from '@/lib/snoozeQuery';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
-import { BuyerlyLogoAvatar, BuyerlyDisclosureGlyph } from '@/icons/BuyerlyIcons';
+import { BuyerlyDisclosureGlyph } from '@/icons/BuyerlyIcons';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -111,11 +111,6 @@ const styles = stylex.create({
     backgroundColor: colors['--inbox-row-active-bg'],
   },
   // 12px from the row's top, so it stays level with the first two lines when a third one is added.
-  avatar: {
-    display: 'flex',
-    flexShrink: 0,
-    marginTop: 12,
-  },
   lines: {
     display: 'flex',
     minWidth: 0,
@@ -387,9 +382,6 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
           <div
             {...stylex.props(styles.rowBody, menuOpen && styles.rowBodyMenuOpen, isSelected && styles.rowBodySelected)}
           >
-            <span {...stylex.props(styles.avatar)}>
-              <BuyerlyLogoAvatar size={32} />
-            </span>
             <div {...stylex.props(styles.lines)}>
               <div {...stylex.props(styles.line, unread && styles.lineStrong, isSelected && styles.lineActiveTitle)}>
                 {unread && (

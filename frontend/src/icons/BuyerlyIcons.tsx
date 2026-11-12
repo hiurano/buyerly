@@ -1,6 +1,4 @@
 import React from 'react';
-import * as stylex from '@stylexjs/stylex';
-import { colors } from '@/styles/tokens.stylex';
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
   size?: number;
@@ -93,70 +91,6 @@ const DeliveryMark: React.FC<{ state: BuyerlyDeliveryState }> = ({ state }) => {
   // Linear's Backlog: a sparse dashed ring, for a state the snapshot does not hold.
   return <circle cx="7" cy="7" r="5.5" stroke="#73767c" strokeWidth="1.5" strokeDasharray="1 2.4" />;
 };
-
-// 12a. Buyerly mark (#432): monochrome, follows the theme through --site-logo
-// (Linear's #222326 in light, white in dark). Same 512 frame as /buyerly-logo.png.
-export const BuyerlyMark: React.FC<{ size?: number; className?: string }> = ({
-  size = 16,
-  className = '',
-}) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 512 512"
-    fill="none"
-    aria-hidden="true"
-    className={className}
-    style={{ display: 'block', color: 'var(--site-logo)' }}
-  >
-    <path
-      fill="currentColor"
-      fillRule="evenodd"
-      clipRule="evenodd"
-      d="M192 464V336H112L80 224H192V192H288V48H320L432 464H192Z M288 224L224 256H288V224Z M192 176V48H224L256 176H192Z"
-    />
-  </svg>
-);
-
-// 12b. Buyerly Logo Avatar (#557), as Linear's logo in its Inbox welcome item:
-// a disc in the inverse of the page (#2f2f31 in light, #e3e4e6 in dark) with
-// the mark at 160/256 in the canvas color.
-const avatarStyles = stylex.create({
-  root: {
-    display: 'block',
-    flexShrink: 0,
-    userSelect: 'none',
-  },
-  disc: {
-    fill: colors['--logo-avatar-bg'],
-  },
-  mark: {
-    fill: colors['--bg-canvas'],
-  },
-});
-
-export const BuyerlyLogoAvatar: React.FC<{ size?: number }> = ({ size = 32 }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 256 256"
-    fill="none"
-    role="img"
-    aria-label="Buyerly"
-    {...stylex.props(avatarStyles.root)}
-  >
-    <rect width="256" height="256" rx="128" {...stylex.props(avatarStyles.disc)} />
-    <svg x="48" y="48" width="160" height="160" viewBox="0 0 512 512" aria-hidden="true">
-      <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M192 464V336H112L80 224H192V192H288V48H320L432 464H192Z M288 224L224 256H288V224Z M192 176V48H224L256 176H192Z"
-        {...stylex.props(avatarStyles.mark)}
-      />
-    </svg>
-  </svg>
-);
-
 // A panel's frame in Phosphor Bold's weight (1.5px at 16px), drawn for Buyerly.
 const BuyerlyPanelFrame: React.FC = () => (
   <rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2.75" fill="none" stroke="currentColor" strokeWidth="1.5" />

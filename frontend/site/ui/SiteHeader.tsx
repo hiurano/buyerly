@@ -1,4 +1,3 @@
-import { BrandMark } from './BrandMark';
 import { cx } from './cx';
 import site from './Site.module.css';
 import styles from './SiteHeader.module.css';
@@ -8,7 +7,7 @@ export function SiteHeader() {
   return (
     <header className={styles.siteHeader}>
       <nav className={cx(site.siteContainer, styles.siteHeaderInner)} aria-label="Main navigation">
-        <a className={styles.siteBrand} href="/" aria-label="Buyerly home"><BrandMark /><span>Buyerly</span></a>
+        <a className={styles.siteBrand} href="/" aria-label="Buyerly home">Buyerly</a>
         <div className={styles.siteNav}>
           <a className={styles.siteNavLink} href="/#product">Product</a>
           <a className={styles.siteNavLink} href="/changelog">Changelog</a>

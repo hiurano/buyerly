@@ -1,10 +1,3 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/buyerly/logo-white.svg">
-    <img src="docs/branding/buyerly/logo-black.svg" alt="Buyerly" width="72">
-  </picture>
-</p>
-
 <h1 align="center">Buyerly</h1>
 
 <p align="center">

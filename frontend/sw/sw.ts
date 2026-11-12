@@ -53,7 +53,7 @@ self.addEventListener('install', (event) => {
   // All or nothing: one file missing (a deploy still rolling out) fails the
   // install, and the browser tries again at its next update check.
   // A hashed file never changes, so the HTTP cache's copy (the page just
-  // loaded it) will do; index.html, fonts and icons come from the server.
+  // loaded it) will do; index.html and fonts come from the server.
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(BUILD.files.map((file) =>
     new Request(file, { cache: file.startsWith('/assets/') ? 'default' : 'reload' })))));
 });
@@ -112,7 +112,6 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(message.title, {
     body: message.body,
     tag: message.tag,
-    icon: '/apple-touch-icon.png',
     data: { url: message.url ?? '/' },
   }));
 });

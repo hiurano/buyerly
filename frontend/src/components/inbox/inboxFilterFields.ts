@@ -51,9 +51,9 @@ export const fromMenuClauses = (clauses: FilterClause[]): InboxFilterClause[] =>
     return [{ field: entry.field, operator: clause.operator, values: clause.values.map(String) }];
   });
 
-/** Linear's From shows everyone's avatar; a sender who has left gets initials. */
-function senderAvatar(value: string, senders?: InboxSender[] | null): FilterOptionAvatar {
-  if (value === 'buyerly') return { kind: 'buyerly' };
+/** Linear's From shows everyone's avatar; a sender who has left gets initials. Buyerly has no logo, so no avatar. */
+function senderAvatar(value: string, senders?: InboxSender[] | null): FilterOptionAvatar | undefined {
+  if (value === 'buyerly') return undefined;
   if (value.startsWith('rule:')) return { kind: 'rule' };
   const url = senders?.find((sender) => sender.value === value)?.avatar_url;
   return url ? { kind: 'user', url } : { kind: 'user' };
